@@ -1,0 +1,30 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$code": {
+        ".read": "auth != null",
+        ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid)",
+        "status": {
+          ".write": "auth != null && data.val() === 'playing' && newData.val() === 'done' && data.parent().child('players').child(auth.uid).exists()",
+          ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'done'"
+        },
+        "winnerId": {
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid && data.parent().child('players').child(auth.uid).exists()"
+        },
+        "players": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && data.parent().parent().child('hostId').exists()",
+            "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
+            "online": { ".validate": "newData.isBoolean()" },
+            "gaveUp": { ".validate": "newData.isBoolean()" },
+            "finishedAt": { ".validate": "newData.isNumber()" },
+            "joinedAt": { ".validate": "newData.isNumber()" },
+            "path": { ".validate": "newData.hasChildren() || newData.isString()" }
+          }
+        }
+      }
+    }
+  }
+}
