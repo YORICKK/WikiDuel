@@ -463,7 +463,8 @@ async function recordMove(title, reached) {
   await S.ref.child('players/' + uid).update(upd);
   if (reached) {
     const t = await S.ref.child('winnerId').transaction(cur => cur ? undefined : uid);
-    if (t.committed) await S.ref.child('status').set('done');
+    // Un autre téléphone a pu clore la manche juste avant : le refus est alors normal.
+    if (t.committed) await S.ref.child('status').set('done').catch(() => {});
   }
 }
 
