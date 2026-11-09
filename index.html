@@ -208,6 +208,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .podium .score { margin-left: auto; font: 700 14px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
 .podium .path { font: 500 12px/1.7 var(--mono); color: var(--muted); }
 .podium .path b { color: var(--ink); font-weight: 700; }
+.record { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font: 500 15px/1.4 var(--display); }
+.record strong { color: var(--flag); }
 .big { font: 800 clamp(34px, 10vw, 52px)/1 var(--display); margin: 0; letter-spacing: -.02em; }
 
 @media (prefers-reduced-motion: reduce) { .progress.on { animation: none; width: 100%; } }
@@ -232,6 +234,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <input id="codeIn" class="field" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" aria-label="Code du salon">
         <button id="join" class="btn ghost">Rejoindre</button>
       </div>
+      <div class="or">ou t'entraîner seul</div>
+      <button id="solo" class="btn ghost">Jouer en solo</button>
       <div id="homeErr" class="err" role="alert"></div>
     </div>
   </div>
@@ -296,7 +300,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
     </div>
     <div class="route" id="resRoute"></div>
     <ol class="podium" id="podium"></ol>
+    <p class="record" id="soloRecord" hidden></p>
     <button id="againBtn" class="btn">Nouvelle course</button>
+    <button id="retryBtn" class="btn ghost" hidden>Rejouer ce parcours</button>
     <p class="wait" id="againWait" hidden>L'hôte peut lancer une nouvelle course.</p>
     <button id="leaveBtn2" class="btn ghost small" style="justify-self:center">Quitter le salon</button>
   </div>
@@ -456,7 +462,51 @@ async function startRound() {
   await S.ref.update(upd);
 }
 
+/* ---------- Mode solo (local, sans Firebase) ---------- */
+function soloEmit() {
+  const r = S.solo;
+  const p = r.me;
+  onState({
+    code: 'SOLO', status: r.status, start: r.start, target: r.target, startedAt: r.startedAt, round: r.round,
+    winnerId: p.finishedAt ? 'me' : null,
+    players: [{ id: 'me', name: S.me.name, host: true, clicks: p.path.length - 1, finishedAt: p.finishedAt, gaveUp: p.gaveUp, online: true, path: r.status === 'done' ? p.path : null }]
+  });
+}
+function startSolo(pair) {
+  pair = pair || pickPair();
+  const round = S.solo ? S.solo.round + 1 : 1;
+  S.me = { playerId: 'me', name: (store.get('wd-name') || 'Toi') };
+  S.solo = { status: 'playing', start: pair.start, target: pair.target, startedAt: serverNow() + 3000, round: round,
+             me: { path: [pair.start], finishedAt: null, gaveUp: false } };
+  soloEmit();
+}
+function soloEnd() {
+  const p = S.solo.me;
+  S.solo.status = 'done';
+  S.solo.rec = p.finishedAt ? saveSoloRecord(S.solo, p.finishedAt - S.solo.startedAt, p.path.length - 1) : null;
+  soloEmit();
+}
+function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }
+$('solo').onclick = () => { $('homeErr').textContent = ''; S.solo = null; startSolo(); };
+$('retryBtn').onclick = () => startSolo({ start: S.solo.start, target: S.solo.target });
+
+// Records personnels par parcours (gardés sur le téléphone).
+function soloRecordKey(r) { return r.start + ' → ' + r.target; }
+function saveSoloRecord(r, time, clicks) {
+  const all = store.get('wd-records') || {};
+  const k = soloRecordKey(r), old = all[k];
+  const better = !old || clicks < old.clicks || (clicks === old.clicks && time < old.time);
+  if (better) { all[k] = { time: time, clicks: clicks }; store.set('wd-records', all); }
+  return { best: better ? { time: time, clicks: clicks } : old, isNew: better, hadOld: !!old };
+}
+
 async function recordMove(title, reached) {
+  if (S.solo) {
+    const p = S.solo.me;
+    p.path.push(title);
+    if (reached) { p.finishedAt = serverNow(); soloEnd(); } else soloEmit();
+    return;
+  }
   const mine = (S.raw && S.raw.players && S.raw.players[uid]) || {};
   const upd = { path: (mine.path || [S.room.start]).concat(title) };
   if (reached) upd.finishedAt = NOW();
@@ -470,6 +520,7 @@ async function recordMove(title, reached) {
 
 // La manche se termine quand quelqu'un gagne, ou quand tous les joueurs connectés ont fini ou abandonné.
 function maybeEndRound() {
+  if (S.solo) return;
   const r = S.room;
   if (r.status !== 'playing') return;
   const active = r.players.filter(p => p.online);
@@ -519,6 +570,10 @@ function detach() {
   S.ref = S.connRef = S.onlineRef = null;
 }
 async function leave(silent) {
+  if (S.solo) {
+    S.solo = null; S.me = null; S.room = null; S.round = 0;
+    stopTick(); show('home'); return;
+  }
   const me = S.me, room = S.room, ref = S.ref;
   detach();
   S.me = null; S.room = null; S.raw = null; S.round = 0;
@@ -661,6 +716,7 @@ function renderHud() {
   const room = S.room;
   const me = room.players.find(p => p.id === S.me.playerId);
   $('clicks').textContent = me ? me.clicks : 0;
+  $('rivals').hidden = !!S.solo; // pas d'adversaires en solo
   $('rivals').innerHTML = room.players.map(p => {
     const cls = 'rival' + (p.id === S.me.playerId ? ' me' : '') + (p.finishedAt ? ' done' : '') + (p.gaveUp ? ' out' : '');
     const label = p.finishedAt ? '✓' : (p.clicks + ' clic' + (p.clicks > 1 ? 's' : ''));
@@ -824,6 +880,7 @@ $('giveupBtn').onclick = async () => {
     return;
   }
   S.finished = true; stopTick();
+  if (S.solo) { S.solo.me.gaveUp = true; soloEnd(); return; }
   try { await S.ref.child('players/' + uid + '/gaveUp').set(true); } catch (e) {}
 };
 
@@ -849,8 +906,25 @@ function renderResults() {
   }).join('');
   const host = isHost();
   $('againBtn').hidden = !host; $('againWait').hidden = host;
+
+  const solo = !!S.solo;
+  $('retryBtn').hidden = !solo;
+  $('soloRecord').hidden = !solo;
+  $('againBtn').textContent = solo ? 'Nouveau parcours' : 'Nouvelle course';
+  $('leaveBtn2').textContent = solo ? 'Retour à l’accueil' : 'Quitter le salon';
+  if (solo) {
+    const me = room.players[0];
+    $('resRound').textContent = 'Solo · partie ' + room.round;
+    $('resTitle').textContent = me.finishedAt ? 'Arrivé !' : 'Abandon';
+    const rec = S.solo.rec;
+    const best = rec ? rec.best : (store.get('wd-records') || {})[soloRecordKey(room)];
+    $('soloRecord').innerHTML = rec && rec.isNew
+      ? (rec.hadOld ? '<strong>Nouveau record !</strong> ' : '<strong>Premier record</strong> sur ce parcours : ') + fmtRec(rec.best)
+      : best ? 'Ton record sur ce parcours : ' + fmtRec(best) : 'Pas encore de record sur ce parcours.';
+  }
 }
 $('againBtn').onclick = async () => {
+  if (S.solo) return startSolo();
   $('againBtn').disabled = true;
   try { await startRound(); } catch (e) {}
   $('againBtn').disabled = false;
