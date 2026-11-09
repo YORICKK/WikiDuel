@@ -375,9 +375,36 @@ const PAGES = [
   'Marseille', 'Musée du Louvre', 'The Beatles', 'Michael Jackson', 'Pokémon', 'Lego',
   'Échecs', 'Bière', 'Hamburger', 'Gorille', 'Volley-ball', 'Ski alpin'
 ];
+// Réserve élargie : les ~1000 « articles vitaux » de Wikipédia FR (niveau 3),
+// chargés une fois puis gardés 7 jours sur le téléphone. La liste ci-dessus sert de secours.
+let POOL = PAGES.slice();
+function mergePool(list) { return Array.from(new Set(PAGES.concat(list))); }
+const poolReady = (async () => {
+  const cached = store.get('wd-pool');
+  if (cached && cached.list && cached.list.length > 200 && cached.t > Date.now() - 7 * 864e5) { POOL = mergePool(cached.list); return; }
+  try {
+    const list = [];
+    let cont = '';
+    for (let i = 0; i < 10; i++) {
+      const j = await (await fetch(WIKI + '/w/api.php?action=query&format=json&formatversion=2&origin=*&prop=links&plnamespace=0&pllimit=max&titles=' +
+        encodeURIComponent('Wikipédia:Articles vitaux') + cont)).json();
+      (j.query.pages[0].links || []).forEach(l => list.push(l.title));
+      if (!j.continue) break;
+      cont = '&plcontinue=' + encodeURIComponent(j.continue.plcontinue);
+    }
+    if (list.length > 200) { store.set('wd-pool', { t: Date.now(), list: list }); POOL = mergePool(list); }
+  } catch (e) { /* on garde la liste de secours */ }
+})();
+
+// Tirage qui évite les 200 derniers articles déjà sortis sur ce téléphone.
 function pickPair() {
-  const a = PAGES[Math.floor(Math.random() * PAGES.length)];
-  let b; do { b = PAGES[Math.floor(Math.random() * PAGES.length)]; } while (b === a);
+  const recent = store.get('wd-recent') || [];
+  let avail = POOL.filter(t => recent.indexOf(t) === -1);
+  if (avail.length < 20) avail = POOL;
+  const rand = () => avail[Math.floor(Math.random() * avail.length)];
+  const a = rand();
+  let b; do { b = rand(); } while (b === a);
+  store.set('wd-recent', recent.concat([a, b]).slice(-200));
   return { start: a, target: b };
 }
 function makeCode() {
@@ -452,6 +479,7 @@ function toState(code, v) {
 }
 
 async function startRound() {
+  await poolReady;
   const pair = pickPair();
   const upd = { start: pair.start, target: pair.target, status: 'playing', round: S.room.round + 1, winnerId: null, startedAt: serverNow() + 3000 };
   S.room.players.forEach(p => {
@@ -487,7 +515,7 @@ function soloEnd() {
   soloEmit();
 }
 function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }
-$('solo').onclick = () => { $('homeErr').textContent = ''; S.solo = null; startSolo(); };
+$('solo').onclick = async () => { $('homeErr').textContent = ''; S.solo = null; await poolReady; startSolo(); };
 $('retryBtn').onclick = () => startSolo({ start: S.solo.start, target: S.solo.target });
 
 // Records personnels par parcours (gardés sur le téléphone).
