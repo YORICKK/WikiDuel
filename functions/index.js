@@ -8,7 +8,7 @@ const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
-const db = admin.database();
+let db = null; // connecté au premier appel (l'adresse de la base est fournie par le cloud)
 
 const WIKI = 'https://fr.wikipedia.org/w/api.php';
 const UA = 'WikiDuel/1.0 (https://yorickk.github.io/WikiDuel/)';
@@ -86,6 +86,7 @@ exports.rateRound = onValueWritten(
   { ref: '/rooms/{code}/status', region: 'europe-west1', instance: 'wikiduel-default-rtdb' },
   async event => {
     if (event.data.after.val() !== 'done' || event.data.before.val() !== 'playing') return;
+    if (!db) db = admin.database();
     const code = event.params.code;
     const room = (await db.ref('rooms/' + code).once('value')).val();
     if (!room || room.ranked !== true || !room.round) return;

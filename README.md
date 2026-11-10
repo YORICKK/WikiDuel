@@ -62,7 +62,7 @@ Le mode classé demande le forfait **Blaze**, car une Cloud Function vérifie le
    ```
 4. Installe les dépendances de la fonction :
    ```bash
-   npm --prefix functions install
+   cd functions && npm install && cd ..
    ```
 5. Déploie les règles et la fonction :
    ```bash
