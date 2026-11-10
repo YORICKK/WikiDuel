@@ -90,6 +90,17 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .delta.down { color: var(--flag); }
 .verdict { font: 600 12px var(--display); color: var(--flag); }
 
+/* Défis WhatsApp */
+.share-box { display: grid; gap: 10px; justify-items: center; }
+.btn.wa { background: #1fa855; border-color: #1fa855; color: #fff; text-decoration: none; }
+.challenge { display: grid; gap: 12px; padding: 14px; border: 2px solid var(--flag); border-radius: 14px; background: var(--card); }
+.ch-info { display: grid; gap: 4px; min-width: 0; }
+.ch-info strong { font: 800 18px/1.25 var(--display); overflow-wrap: anywhere; }
+.ch-info span:last-child { font: 500 14px/1.4 var(--display); color: var(--muted); }
+.challenge-res { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font: 600 15px/1.4 var(--display); text-align: center; }
+.challenge-res.won { border-color: var(--ok); color: var(--ok); }
+.challenge-res.lost { border-color: var(--flag); color: var(--flag); }
+
 /* File d'attente */
 #queue .wrap { display: grid; gap: 20px; padding-block: 32px; }
 .dots::after { content: ""; animation: dots 1.4s steps(4, end) infinite; }
@@ -237,6 +248,17 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .sheet .route { font-size: 14px; }
 .sheet img { width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; background: var(--line); }
 .sheet p { margin: 0; font-size: 15px; }
+.sheet { max-height: calc(100vh - 48px); grid-template-rows: auto; overflow: hidden; }
+.sheet img { max-height: 150px; }
+/* Résumé de la cible : plus long, défilable dans la fiche */
+.sheet-text {
+  max-height: 42vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  display: grid; gap: 10px; padding-right: 6px; font-size: 15px; line-height: 1.55;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  padding-bottom: 24px;
+}
+.sheet-text:focus-visible { outline: 2px solid var(--flag); outline-offset: 4px; border-radius: 6px; }
 .count { font: 800 96px/1 var(--display); text-align: center; color: var(--flag); font-variant-numeric: tabular-nums; }
 
 /* Résultats */
@@ -266,6 +288,14 @@ input.field:focus { border-color: var(--ink); outline: none; }
     </div>
     <p class="pitch">Même page de départ, même cible. Seuls les liens de l'article comptent. Le premier arrivé gagne.</p>
     <div class="route" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>
+    <div class="challenge" id="challengeBox" hidden>
+      <div class="ch-info">
+        <span class="label">Défi reçu</span>
+        <strong id="chTitle"></strong>
+        <span id="chText"></span>
+      </div>
+      <button id="chGo" class="btn ranked">Relever le défi</button>
+    </div>
     <div class="account" id="account">
       <div class="acc-info">
         <span class="label">Compte</span>
@@ -387,6 +417,14 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div class="route" id="resRoute"></div>
     <ol class="podium" id="podium"></ol>
     <p class="wait" id="rateMsg" hidden></p>
+    <p class="challenge-res" id="challengeRes" hidden></p>
+    <div class="share-box" id="shareBox" hidden>
+      <a id="shareWa" class="btn wa" href="#" target="_blank" rel="noopener">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.5 1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
+        Défier un ami sur WhatsApp
+      </a>
+      <button id="shareCopy" class="btn ghost small">Copier le lien du défi</button>
+    </div>
     <p class="record" id="soloRecord" hidden></p>
     <button id="againBtn" class="btn">Nouvelle course</button>
     <button id="retryBtn" class="btn ghost" hidden>Rejouer ce parcours</button>
@@ -402,7 +440,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div class="route" id="sheetRoute"></div>
     <img id="sheetImg" alt="" hidden>
     <h3 id="sheetTitle" style="margin:0;font-size:24px"></h3>
-    <p id="sheetText"></p>
+    <div class="sheet-text" id="sheetText" tabindex="0" aria-label="Résumé de la page cible"></div>
     <button class="btn" id="sheetClose">Compris</button>
   </div>
 </div>
@@ -934,17 +972,27 @@ async function loadSummary(title) {
     return await r.json();
   } catch (e) { return null; }
 }
+// Introduction complète de l'article (texte brut), plus longue que le résumé.
+async function loadIntro(title) {
+  try {
+    const j = await (await fetch(WIKI + '/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=extracts&exintro=1&explaintext=1&titles=' + encodeURIComponent(title))).json();
+    const p = j.query && j.query.pages && j.query.pages[0];
+    return (p && p.extract) || '';
+  } catch (e) { return ''; }
+}
 async function openSheet(withCount) {
   const room = S.room;
   $('overlay').hidden = false;
   $('countdown').hidden = !withCount; $('sheetClose').hidden = withCount;
   $('sheetRoute').innerHTML = '<b>' + esc(room.start) + '</b> → … → <b>' + esc(room.target) + '</b>';
   $('sheetTitle').textContent = room.target; $('sheetText').textContent = 'Chargement du résumé…'; $('sheetImg').hidden = true;
-  const s = await loadSummary(room.target);
-  if (s && s.extract) {
-    $('sheetText').textContent = s.extract.length > 260 ? s.extract.slice(0, 257) + '…' : s.extract;
-    if (s.thumbnail) { $('sheetImg').src = s.thumbnail.source; $('sheetImg').hidden = false; }
-  } else $('sheetText').textContent = '';
+  $('sheetText').scrollTop = 0;
+  const [s, intro] = await Promise.all([loadSummary(room.target), loadIntro(room.target)]);
+  // Introduction complète (défilable), sinon le résumé court.
+  let text = intro || (s && s.extract) || '';
+  if (text.length > 2500) text = text.slice(0, 2500).replace(/\s+\S*$/, '') + '…';
+  $('sheetText').innerHTML = text ? text.split(/\n+/).filter(Boolean).map(t => '<p>' + esc(t) + '</p>').join('') : '';
+  if (s && s.thumbnail) { $('sheetImg').src = s.thumbnail.source; $('sheetImg').hidden = false; }
 }
 $('goalBtn').onclick = () => openSheet(false);
 $('sheetClose').onclick = () => $('overlay').hidden = true;
@@ -1185,6 +1233,73 @@ function renderResults() {
       ? (rec.hadOld ? '<strong>Nouveau record !</strong> ' : '<strong>Premier record</strong> sur ce parcours : ') + fmtRec(rec.best)
       : best ? 'Ton record sur ce parcours : ' + fmtRec(best) : 'Pas encore de record sur ce parcours.';
   }
+  renderChallengeResult(room);
+  renderShare(room);
+}
+
+/* ---------- Défis WhatsApp ---------- */
+// Lien de défi : même départ et même cible, avec le score à battre dans l'adresse.
+function challengeLink(room, me) {
+  const p = new URLSearchParams({
+    defi: '1', d: room.start, a: room.target, c: String(me.clicks),
+    t: String(Math.max(0, me.finishedAt - room.startedAt)), n: (S.me && S.me.name) || 'Un ami'
+  });
+  return location.origin + location.pathname + '?' + p.toString();
+}
+function renderShare(room) {
+  const me = room.players.find(p => p.id === S.me.playerId);
+  const ok = !!(me && me.finishedAt);
+  $('shareBox').hidden = !ok;
+  if (!ok) return;
+  const time = fmt(me.finishedAt - room.startedAt);
+  const clicks = me.clicks + ' clic' + (me.clicks > 1 ? 's' : '');
+  S.shareText = 'WikiDuel 🏁 J’ai relié « ' + room.start + ' » à « ' + room.target + ' » en ' + clicks + ' et ' + time +
+    ' sur Wikipédia. Tu fais mieux ? Relève le défi : ' + challengeLink(room, me);
+  // wa.me ouvre WhatsApp (appli ou web) avec le message prêt : on choisit ensuite le contact.
+  $('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(S.shareText);
+}
+$('shareCopy').onclick = async () => {
+  try { await navigator.clipboard.writeText(S.shareText); $('shareCopy').textContent = 'Défi copié'; }
+  catch (e) { $('shareCopy').textContent = 'Copie impossible'; }
+  setTimeout(() => $('shareCopy').textContent = 'Copier le lien du défi', 2000);
+};
+
+// Défi reçu par lien : on l'affiche sur l'accueil et on le joue en solo.
+function readChallenge() {
+  if (!params.get('defi')) return null;
+  const ch = { start: params.get('d'), target: params.get('a'), clicks: parseInt(params.get('c'), 10), time: parseInt(params.get('t'), 10), name: String(params.get('n') || 'Un ami').slice(0, 16) };
+  history.replaceState(null, '', location.pathname); // nettoie l'adresse
+  if (!ch.start || !ch.target || ch.start === ch.target || !(ch.time >= 0) || !(ch.clicks >= 1)) return null;
+  return ch;
+}
+S.challenge = readChallenge();
+if (S.challenge) {
+  const c = S.challenge;
+  $('chTitle').textContent = c.start + ' → ' + c.target;
+  $('chText').textContent = c.name + ' l’a fait en ' + c.clicks + ' clic' + (c.clicks > 1 ? 's' : '') + ' et ' + fmt(c.time) + '. Bats son temps !';
+  $('challengeBox').hidden = false;
+}
+$('chGo').onclick = () => {
+  const c = S.challenge; if (!c) return;
+  $('challengeBox').hidden = true; $('homeErr').textContent = '';
+  const n = $('name').value.trim(); if (n) store.set('wd-name', n); // pour signer ton propre défi en retour
+  S.solo = null;
+  startSolo({ start: c.start, target: c.target });
+};
+function renderChallengeResult(room) {
+  const c = S.challenge, box = $('challengeRes');
+  const active = !!(S.solo && c && norm(c.start) === norm(room.start) && norm(c.target) === norm(room.target));
+  box.hidden = !active;
+  if (!active) return;
+  const me = room.players[0];
+  const theirs = fmt(c.time) + ' (' + c.clicks + ' clic' + (c.clicks > 1 ? 's' : '') + ')';
+  if (!me.finishedAt) { box.className = 'challenge-res lost'; box.textContent = 'Défi raté : ' + c.name + ' reste devant avec ' + theirs + '.'; return; }
+  const mine = me.finishedAt - room.startedAt;
+  const won = mine < c.time || (mine === c.time && me.clicks < c.clicks);
+  box.className = 'challenge-res ' + (won ? 'won' : 'lost');
+  box.textContent = won
+    ? 'Défi relevé ! Tu bats ' + c.name + ' : ' + fmt(mine) + ' contre ' + theirs + '.'
+    : 'Raté de peu ? ' + c.name + ' reste devant : ' + theirs + ' contre ' + fmt(mine) + '.';
 }
 function watchResults(room) {
   const key = room.code + '/' + room.round;
