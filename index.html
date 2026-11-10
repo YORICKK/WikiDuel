@@ -1238,6 +1238,8 @@ function renderResults() {
 }
 
 /* ---------- Défis WhatsApp ---------- */
+// Temps au dixième de seconde (ex. 1:24,3) : départage les défis serrés.
+function fmtP(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ',' + Math.floor((ms % 1000) / 100); }
 // Lien de défi : même départ et même cible, avec le score à battre dans l'adresse.
 function challengeLink(room, me) {
   const p = new URLSearchParams({
@@ -1251,7 +1253,7 @@ function renderShare(room) {
   const ok = !!(me && me.finishedAt);
   $('shareBox').hidden = !ok;
   if (!ok) return;
-  const time = fmt(me.finishedAt - room.startedAt);
+  const time = fmtP(me.finishedAt - room.startedAt);
   const clicks = me.clicks + ' clic' + (me.clicks > 1 ? 's' : '');
   S.shareText = 'WikiDuel 🏁 J’ai relié « ' + room.start + ' » à « ' + room.target + ' » en ' + clicks + ' et ' + time +
     ' sur Wikipédia. Tu fais mieux ? Relève le défi : ' + challengeLink(room, me);
@@ -1276,7 +1278,7 @@ S.challenge = readChallenge();
 if (S.challenge) {
   const c = S.challenge;
   $('chTitle').textContent = c.start + ' → ' + c.target;
-  $('chText').textContent = c.name + ' l’a fait en ' + c.clicks + ' clic' + (c.clicks > 1 ? 's' : '') + ' et ' + fmt(c.time) + '. Bats son temps !';
+  $('chText').textContent = c.name + ' l’a fait en ' + c.clicks + ' clic' + (c.clicks > 1 ? 's' : '') + ' et ' + fmtP(c.time) + '. Bats son temps !';
   $('challengeBox').hidden = false;
 }
 $('chGo').onclick = () => {
@@ -1292,14 +1294,14 @@ function renderChallengeResult(room) {
   box.hidden = !active;
   if (!active) return;
   const me = room.players[0];
-  const theirs = fmt(c.time) + ' (' + c.clicks + ' clic' + (c.clicks > 1 ? 's' : '') + ')';
+  const theirs = fmtP(c.time) + ' (' + c.clicks + ' clic' + (c.clicks > 1 ? 's' : '') + ')';
   if (!me.finishedAt) { box.className = 'challenge-res lost'; box.textContent = 'Défi raté : ' + c.name + ' reste devant avec ' + theirs + '.'; return; }
   const mine = me.finishedAt - room.startedAt;
   const won = mine < c.time || (mine === c.time && me.clicks < c.clicks);
   box.className = 'challenge-res ' + (won ? 'won' : 'lost');
   box.textContent = won
-    ? 'Défi relevé ! Tu bats ' + c.name + ' : ' + fmt(mine) + ' contre ' + theirs + '.'
-    : 'Raté de peu ? ' + c.name + ' reste devant : ' + theirs + ' contre ' + fmt(mine) + '.';
+    ? 'Défi relevé ! Tu bats ' + c.name + ' : ' + fmtP(mine) + ' contre ' + theirs + '.'
+    : 'Défi raté : ' + c.name + ' reste devant avec ' + theirs + ', toi ' + fmtP(mine) + '.';
 }
 function watchResults(room) {
   const key = room.code + '/' + room.round;
