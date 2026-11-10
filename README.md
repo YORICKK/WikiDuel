@@ -39,6 +39,38 @@ Ces valeurs ne sont pas des secrets : elles finissent dans la page publique de t
 4. Après une à deux minutes, le jeu est en ligne à l'adresse `https://TON-PSEUDO.github.io/wikiduel/`.
 5. Dans Firebase, **Authentication** > **Paramètres** > **Domaines autorisés** : ajoute `TON-PSEUDO.github.io`.
 
+## 3. Parties classées (Google + Elo)
+
+Le mode classé demande le forfait **Blaze**, car une Cloud Function vérifie les chemins et calcule l'Elo côté serveur.
+
+- `functions/index.js` se déclenche à la fin de chaque manche classée.
+  - Il vérifie auprès de Wikipédia que chaque étape du chemin est un vrai lien.
+  - Il calcule l'Elo : départ à 1200, K = 40 pendant les 10 premières parties, puis 20.
+  - Il écrit le résultat dans `users/` et `results/`, deux zones que les joueurs ne peuvent pas modifier.
+- Le classement (top 50) est lu dans `users/`, trié par Elo.
+
+### Mise en place
+
+1. Dans Firebase, **Authentication** > **Mode de connexion** > **Ajouter un fournisseur** : active **Google**, puis choisis l'adresse e-mail d'assistance.
+2. Installe **Node.js 22 LTS** depuis https://nodejs.org. Le déploiement ne fonctionne pas avec Node 8.
+3. Installe l'outil Firebase et connecte-toi :
+   ```bash
+   npm install -g firebase-tools
+   ```
+   ```bash
+   firebase login
+   ```
+4. Installe les dépendances de la fonction :
+   ```bash
+   npm --prefix functions install
+   ```
+5. Déploie les règles et la fonction :
+   ```bash
+   firebase deploy --only database,functions
+   ```
+   Ensuite, `firebase deploy --only database` suffit pour ne republier que les règles.
+6. Conseillé : dans Google Cloud > **Facturation** > **Budgets et alertes**, crée une alerte à 1 €.
+
 ## Tester en local
 
 ```bash
@@ -50,4 +82,6 @@ Ouvre ensuite http://localhost:3000. `localhost` est autorisé par défaut dans 
 
 - Les vieux salons ne sont jamais supprimés. Ils pèsent quelques Ko chacun : supprime le nœud `rooms` dans la console de temps en temps.
 - Si l'hôte quitte une course en cours, personne ne peut relancer de manche dans ce salon. Il faut en créer un nouveau.
-- Le téléphone de chaque joueur annonce lui-même son arrivée : un joueur déterminé pourrait tricher.
+- En partie entre amis, le téléphone de chaque joueur annonce lui-même son arrivée : un joueur déterminé pourrait tricher. En partie classée, le serveur vérifie le chemin.
+- En partie classée, la vérification accepte aussi les liens des boîtes de navigation que l'affichage du jeu masque.
+- Un hôte qui supprime son adversaire du salon en pleine course empêche la manche d'être classée, mais n'y gagne aucun point.

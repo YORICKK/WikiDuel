@@ -2,10 +2,31 @@
   "rules": {
     ".read": false,
     ".write": false,
+
+    "users": {
+      ".read": true,
+      ".indexOn": ["elo"],
+      "$uid": {
+        "name": {
+          ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+        }
+      }
+    },
+
+    "results": {
+      "$code": {
+        ".read": "auth != null"
+      }
+    },
+
     "rooms": {
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid)",
+        ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid && (newData.child('ranked').val() !== true || auth.token.firebase.sign_in_provider !== 'anonymous')) || data.child('hostId').val() === auth.uid)",
+        "ranked": {
+          ".validate": "newData.isBoolean() && (!data.exists() || data.val() === newData.val())"
+        },
         "status": {
           ".write": "auth != null && data.val() === 'playing' && newData.val() === 'done' && data.parent().child('players').child(auth.uid).exists()",
           ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'done'"
@@ -16,7 +37,8 @@
         },
         "players": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && data.parent().parent().child('hostId').exists()",
+            ".write": "auth != null && auth.uid === $uid && data.parent().parent().child('hostId').exists() && (data.parent().parent().child('ranked').val() !== true || auth.token.firebase.sign_in_provider !== 'anonymous')",
+            ".validate": "auth.uid === $uid || (!newData.child('path').child('1').exists() && !newData.child('finishedAt').exists() && newData.child('name').val() === data.child('name').val())",
             "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
             "online": { ".validate": "newData.isBoolean()" },
             "gaveUp": { ".validate": "newData.isBoolean()" },

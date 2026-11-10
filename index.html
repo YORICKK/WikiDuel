@@ -72,6 +72,37 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .join-row input { text-transform: uppercase; letter-spacing: .3em; font-family: var(--mono); }
 .join-row .btn { width: auto; }
 
+/* Compte et modes */
+.account { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.acc-info { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.acc-info strong { font: 800 18px/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-elo { font: 500 13px var(--display); color: var(--muted); }
+.acc-elo b { font: 700 13px var(--mono); color: var(--ink); }
+.account .btn { flex: none; }
+.create-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.create-row .btn { padding: 0 10px; font-size: 16px; }
+.btn.ranked { background: var(--flag); border-color: var(--flag); color: #fff; }
+.pill { display: inline-block; margin-left: 8px; padding: 3px 8px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--muted); letter-spacing: .08em; }
+.pill.ranked { background: var(--flag); border-color: var(--flag); color: #fff; }
+.elo { margin-left: 6px; font: 700 12px var(--mono); color: var(--muted); }
+.delta { font: 700 13px var(--mono); }
+.delta.up { color: var(--ok); }
+.delta.down { color: var(--flag); }
+.verdict { font: 600 12px var(--display); color: var(--flag); }
+
+/* Classement */
+#ranking .wrap { display: grid; gap: 20px; padding-block: 32px; }
+.lb { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lb li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.lb li.me { border: 2px solid var(--ink); }
+.lb .pos { font: 700 15px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.lb li:nth-child(-n+3) .pos { color: var(--flag); }
+.lb .who { min-width: 0; }
+.lb .who strong { display: block; font: 800 17px var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb .who small { font: 500 12px var(--display); color: var(--muted); }
+.lb .score { font: 700 18px var(--mono); font-variant-numeric: tabular-nums; }
+.lb-empty { display: block !important; text-align: center; color: var(--muted); font: 500 15px var(--display); }
+
 /* Salon */
 #lobby .wrap { display: grid; gap: 24px; padding-block: 32px; }
 .code { font: 700 clamp(56px, 20vw, 88px)/1 var(--mono); letter-spacing: .12em; margin: 4px 0 0; }
@@ -225,10 +256,25 @@ input.field:focus { border-color: var(--ink); outline: none; }
     </div>
     <p class="pitch">Même page de départ, même cible. Seuls les liens de l'article comptent. Le premier arrivé gagne.</p>
     <div class="route" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>
+    <div class="account" id="account">
+      <div class="acc-info">
+        <span class="label">Compte</span>
+        <strong id="accName">Invité</strong>
+        <span class="acc-elo" id="accElo">Connecte-toi pour jouer en classé</span>
+      </div>
+      <button id="googleBtn" class="btn ghost small" disabled>
+        <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Google
+      </button>
+      <button id="logoutBtn" class="btn ghost small" hidden>Déconnexion</button>
+    </div>
     <div class="stack">
       <label class="label" for="name">Ton pseudo</label>
       <input id="name" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
-      <button id="create" class="btn">Créer un salon</button>
+      <div class="create-row">
+        <button id="create" class="btn">Salon entre amis</button>
+        <button id="createRanked" class="btn ranked">Partie classée</button>
+      </div>
       <div class="or">ou rejoindre avec un code</div>
       <div class="join-row">
         <input id="codeIn" class="field" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" aria-label="Code du salon">
@@ -237,7 +283,20 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <div class="or">ou t'entraîner seul</div>
       <button id="solo" class="btn ghost">Jouer en solo</button>
       <div id="homeErr" class="err" role="alert"></div>
+      <button id="rankBtn" class="btn ghost small" style="justify-self:center">Voir le classement</button>
     </div>
+  </div>
+</section>
+
+<!-- CLASSEMENT -->
+<section id="ranking" class="screen" hidden>
+  <div class="wrap">
+    <div>
+      <div class="label">Parties classées · Elo</div>
+      <h2 class="big">Classement</h2>
+    </div>
+    <ol class="lb" id="lbList"><li class="lb-empty">Chargement…</li></ol>
+    <button id="rankBack" class="btn ghost">Retour</button>
   </div>
 </section>
 
@@ -245,7 +304,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 <section id="lobby" class="screen" hidden>
   <div class="wrap">
     <div>
-      <div class="label">Code du salon</div>
+      <div class="label">Code du salon <span class="pill" id="lobbyMode">Entre amis</span></div>
       <p class="code" id="lobbyCode">----</p>
       <div class="share">
         <button id="copyLink" class="btn ghost small">Copier le lien d'invitation</button>
@@ -300,6 +359,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     </div>
     <div class="route" id="resRoute"></div>
     <ol class="podium" id="podium"></ol>
+    <p class="wait" id="rateMsg" hidden></p>
     <p class="record" id="soloRecord" hidden></p>
     <button id="againBtn" class="btn">Nouvelle course</button>
     <button id="retryBtn" class="btn ghost" hidden>Rejouer ce parcours</button>
@@ -353,7 +413,7 @@ const store = {
 function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(); }
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
-function show(id) { ['home', 'lobby', 'race', 'results'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+function show(id) { ['home', 'lobby', 'race', 'results', 'ranking'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ---------- Articles tirés au sort (Wikipédia FR) ---------- */
@@ -428,22 +488,100 @@ const ready = (async () => {
   uid = user ? user.uid : (await auth.signInAnonymously()).user.uid;
   db = firebase.database();
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
+  S.google = !auth.currentUser.isAnonymous;
+  if (S.google) db.ref('users/' + uid).on('value', s => { S.profile = s.val() || {}; renderAccount(); });
+  renderAccount();
 })();
+
+/* ---------- Compte Google ---------- */
+function renderAccount() {
+  const u = firebase.auth().currentUser;
+  $('googleBtn').disabled = false;
+  $('googleBtn').hidden = !!S.google; $('logoutBtn').hidden = !S.google;
+  if (!S.google) { $('accName').textContent = 'Invité'; $('accElo').textContent = 'Connecte-toi pour jouer en classé'; return; }
+  const p = S.profile || {};
+  $('accName').textContent = p.name || (u && u.displayName) || 'Joueur';
+  $('accElo').innerHTML = p.games
+    ? 'Elo <b>' + p.elo + '</b> · ' + p.games + ' partie' + (p.games > 1 ? 's' : '') + ' · ' + (p.wins || 0) + ' victoire' + ((p.wins || 0) > 1 ? 's' : '')
+    : 'Elo <b>1200</b> · aucune partie classée';
+  if (!$('name').value && p.name) $('name').value = p.name;
+}
+$('googleBtn').onclick = async () => {
+  const auth = firebase.auth();
+  const provider = new firebase.auth.GoogleAuthProvider();
+  $('homeErr').textContent = '';
+  try {
+    // Lie le compte invité à Google : même identifiant, rien n'est perdu.
+    const cred = await auth.currentUser.linkWithPopup(provider);
+    const first = String(cred.user.displayName || '').split(' ')[0].slice(0, 16);
+    const snap = await db.ref('users/' + uid + '/name').once('value');
+    if (!snap.exists() && first) await db.ref('users/' + uid + '/name').set(first);
+    location.reload();
+  } catch (e) {
+    if (e.code === 'auth/credential-already-in-use' || e.code === 'auth/email-already-in-use') {
+      // Ce compte Google existe déjà : on s'y connecte (on quitte le compte invité).
+      try { await leave(true); await auth.signInWithCredential(e.credential); location.reload(); }
+      catch (e2) { $('homeErr').textContent = 'Connexion Google impossible : ' + e2.message; }
+    } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+      $('homeErr').textContent = e.code === 'auth/operation-not-allowed'
+        ? 'Active la connexion Google dans Firebase (Authentication > Mode de connexion).'
+        : 'Connexion Google impossible : ' + e.message;
+    }
+  }
+};
+$('logoutBtn').onclick = async () => {
+  await leave(true);
+  await firebase.auth().signOut();
+  location.reload();
+};
+async function saveProfileName(name) {
+  if (S.google) { try { await db.ref('users/' + uid + '/name').set(name); } catch (e) {} }
+}
+
+/* ---------- Classement ---------- */
+$('rankBtn').onclick = async () => {
+  show('ranking');
+  $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
+  try {
+    await ready;
+    const snap = await db.ref('users').orderByChild('elo').limitToLast(50).once('value');
+    const rows = [];
+    snap.forEach(c => { const v = c.val(); if (v && v.games) rows.push(Object.assign({ id: c.key }, v)); });
+    rows.sort((a, b) => b.elo - a.elo);
+    $('lbList').innerHTML = rows.length ? rows.map((r, i) =>
+      '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
+      '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
+      '<small>' + r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : '') + '</small></span>' +
+      '<span class="score">' + r.elo + '</span></li>').join('')
+      : '<li class="lb-empty">Aucune partie classée pour l’instant. Lance la première !</li>';
+  } catch (e) { $('lbList').innerHTML = '<li class="lb-empty">Classement indisponible.</li>'; }
+};
+$('rankBack').onclick = () => show('home');
+
+// Elo des joueurs affichés (mis en cache).
+const eloCache = {};
+function eloOf(id, rerender) {
+  if (id in eloCache) return eloCache[id];
+  eloCache[id] = null;
+  db.ref('users/' + id + '/elo').once('value').then(s => { eloCache[id] = s.val() || 1200; rerender(); }).catch(() => {});
+  return null;
+}
 ready.catch(e => {
   $('homeErr').textContent = e.message === 'config'
     ? "Firebase n'est pas configuré : remplis le fichier firebase-config.js (voir le README)."
     : 'Connexion impossible : ' + (e.code === 'auth/operation-not-allowed' ? "active la connexion « Anonyme » dans Firebase." : e.message);
-  $('create').disabled = true; $('join').disabled = true;
+  $('create').disabled = true; $('join').disabled = true; $('createRanked').disabled = true;
 });
 
 function roomRef(code) { return db.ref('rooms/' + code); }
 
-async function createRoom(name) {
+async function createRoom(name, ranked) {
   await ready;
+  if (ranked && !S.google) throw new Error('Connecte-toi avec Google pour jouer en classé.');
   for (let i = 0; i < 6; i++) {
     const code = makeCode();
     const res = await roomRef(code).transaction(cur => cur ? undefined : {
-      hostId: uid, status: 'lobby', round: 0, createdAt: NOW(),
+      hostId: uid, status: 'lobby', round: 0, createdAt: NOW(), ranked: !!ranked,
       players: { [uid]: { name: name, joinedAt: NOW(), online: true } }
     });
     if (res.committed) return code;
@@ -456,9 +594,11 @@ async function joinRoom(code, name) {
   const r = (await roomRef(code).once('value')).val();
   if (!r) throw new Error('Salon introuvable. Vérifie le code.');
   const players = r.players || {};
+  if (r.ranked && !S.google) throw new Error('Partie classée : connecte-toi avec Google pour la rejoindre.');
   if (!players[uid]) {
     if (r.status === 'playing') throw new Error('Une course est en cours. Attends la fin.');
-    if (Object.keys(players).length >= 8) throw new Error('Salon complet (8 joueurs).');
+    const max = r.ranked ? 2 : 8;
+    if (Object.keys(players).length >= max) throw new Error(r.ranked ? 'Partie classée complète (1 contre 1).' : 'Salon complet (8 joueurs).');
   }
   await roomRef(code).child('players/' + uid).update({ name: name, joinedAt: NOW(), online: true });
 }
@@ -475,7 +615,7 @@ function toState(code, v) {
       path: done ? path : null // chemins révélés seulement à la fin
     };
   }).sort((a, b) => a.joinedAt - b.joinedAt);
-  return { code: code, status: v.status, start: v.start, target: v.target, startedAt: v.startedAt || 0, round: v.round || 0, winnerId: v.winnerId || null, players: players };
+  return { code: code, ranked: v.ranked === true, status: v.status, start: v.start, target: v.target, startedAt: v.startedAt || 0, round: v.round || 0, winnerId: v.winnerId || null, players: players };
 }
 
 async function startRound() {
@@ -570,16 +710,24 @@ function getName() {
 $('create').onclick = async () => {
   const name = getName(); if (!name) return;
   $('create').disabled = true;
-  try { const code = await createRoom(name); enterRoom({ code: code, name: name }); }
+  try { const code = await createRoom(name, false); enterRoom({ code: code, name: name }); }
   catch (e) { $('homeErr').textContent = e.message; }
   finally { $('create').disabled = !CONFIG_OK; }
+};
+$('createRanked').onclick = async () => {
+  if (!S.google) { $('homeErr').textContent = 'Connecte-toi avec Google pour jouer en classé.'; return; }
+  const name = getName(); if (!name) return;
+  $('createRanked').disabled = true;
+  try { await saveProfileName(name); const code = await createRoom(name, true); enterRoom({ code: code, name: name }); }
+  catch (e) { $('homeErr').textContent = e.message; }
+  finally { $('createRanked').disabled = !CONFIG_OK; }
 };
 $('join').onclick = async () => {
   const name = getName(); if (!name) return;
   const code = $('codeIn').value.trim().toUpperCase();
   if (code.length !== 4) { $('homeErr').textContent = 'Le code fait 4 lettres.'; return; }
   $('join').disabled = true;
-  try { await joinRoom(code, name); enterRoom({ code: code, name: name }); }
+  try { await joinRoom(code, name); await saveProfileName(name); enterRoom({ code: code, name: name }); }
   catch (e) { $('homeErr').textContent = e.message; }
   finally { $('join').disabled = !CONFIG_OK; }
 };
@@ -587,6 +735,7 @@ $('codeIn').addEventListener('keydown', e => { if (e.key === 'Enter') $('join').
 
 function enterRoom(me) {
   me.playerId = uid;
+  $('homeErr').textContent = '';
   S.me = me; store.set('wd-session', { code: me.code, name: me.name });
   history.replaceState(null, '', '?salon=' + me.code);
   connect();
@@ -663,8 +812,11 @@ function renderLobby() {
   $('lobbyCode').textContent = S.room.code;
   const url = location.origin + location.pathname + '?salon=' + S.room.code;
   $('shareUrl').textContent = url;
+  $('lobbyMode').textContent = S.room.ranked ? 'Classée · 1 contre 1' : 'Entre amis';
+  $('lobbyMode').className = 'pill' + (S.room.ranked ? ' ranked' : '');
   $('lobbyPlayers').innerHTML = S.room.players.map(p =>
     '<li><span class="dot' + (p.online ? '' : ' off') + '"></span>' + esc(p.name) +
+    (S.room.ranked ? '<span class="elo">' + (eloOf(p.id, renderLobby) || '…') + '</span>' : '') +
     (p.id === S.me.playerId ? ' <span style="color:var(--muted);font-weight:500">(toi)</span>' : '') +
     (p.host ? '<span class="tag">Hôte</span>' : '') + '</li>').join('');
   const host = isHost();
@@ -925,12 +1077,24 @@ function renderResults() {
   $('resRound').textContent = 'Manche ' + room.round;
   $('resTitle').textContent = !winner ? 'Personne n’est arrivé' : (winner.id === S.me.playerId ? 'Victoire !' : winner.name + ' gagne');
   $('resRoute').innerHTML = '<b>' + esc(room.start) + '</b> → <b>' + esc(room.target) + '</b>';
+  // Partie classée : résultat calculé par le serveur (Elo + vérification des chemins).
+  if (room.ranked) watchResults(room);
+  const res = room.ranked && S.results && S.results.round === room.round ? S.results.data : null;
+  const changes = (res && res.changes) || {}, verdicts = (res && res.verdicts) || {};
+  $('rateMsg').hidden = !room.ranked;
+  $('rateMsg').textContent = !res || res.state === 'calcul' ? 'Vérification des chemins et calcul de l’Elo…'
+    : res.state === 'classée' ? 'Chemins vérifiés, classement mis à jour.'
+    : res.state === 'non classée' ? 'Manche non classée : ' + res.reason + '.'
+    : 'Le classement n’a pas pu être calculé.';
   $('podium').innerHTML = ranked.map((p, i) => {
     const score = p.finishedAt ? (fmt(p.finishedAt - room.startedAt) + '<br>' + p.clicks + ' clic' + (p.clicks > 1 ? 's' : '')) : (p.gaveUp ? 'abandon' : 'pas arrivé');
     const path = (p.path || []).map((t, k, arr) => (k === 0 || k === arr.length - 1) ? '<b>' + esc(t) + '</b>' : esc(t)).join(' → ');
+    const c = changes[p.id];
+    const delta = c ? ' <span class="delta ' + (c.delta >= 0 ? 'up' : 'down') + '">' + (c.delta >= 0 ? '+' : '') + c.delta + ' → ' + c.after + '</span>' : '';
+    const bad = verdicts[p.id] && verdicts[p.id].indexOf('invalide') === 0 ? '<div class="verdict">Chemin ' + esc(verdicts[p.id]) + '</div>' : '';
     return '<li class="' + (p.id === room.winnerId ? 'win' : '') + '"><div class="top"><span class="rank">' + (p.finishedAt ? (i + 1) + '.' : '–') + '</span>' +
       esc(p.name) + (p.id === S.me.playerId ? ' <span style="font-weight:500;color:var(--muted)">(toi)</span>' : '') +
-      '<span class="score">' + score + '</span></div><div class="path">' + path + '</div></li>';
+      '<span class="score">' + score + '</span></div>' + (delta ? '<div>' + delta + '</div>' : '') + bad + '<div class="path">' + path + '</div></li>';
   }).join('');
   const host = isHost();
   $('againBtn').hidden = !host; $('againWait').hidden = host;
@@ -950,6 +1114,18 @@ function renderResults() {
       ? (rec.hadOld ? '<strong>Nouveau record !</strong> ' : '<strong>Premier record</strong> sur ce parcours : ') + fmtRec(rec.best)
       : best ? 'Ton record sur ce parcours : ' + fmtRec(best) : 'Pas encore de record sur ce parcours.';
   }
+}
+function watchResults(room) {
+  const key = room.code + '/' + room.round;
+  if (S.resultsKey === key) return;
+  if (S.resultsRef) S.resultsRef.off();
+  S.resultsKey = key; S.results = null;
+  S.resultsRef = db.ref('results/' + key);
+  S.resultsRef.on('value', s => {
+    if (!s.exists()) return;
+    S.results = { round: room.round, data: s.val() };
+    if (S.room && S.room.status === 'done') renderResults();
+  });
 }
 $('againBtn').onclick = async () => {
   if (S.solo) return startSolo();
