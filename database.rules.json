@@ -14,6 +14,25 @@
       }
     },
 
+    "queue": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
+        ".validate": "newData.hasChildren(['name', 'at'])",
+        "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
+        "at": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+        "elo": { ".validate": false },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "matches": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && !newData.exists()"
+      }
+    },
+
     "results": {
       "$code": {
         ".read": "auth != null"
@@ -23,7 +42,7 @@
     "rooms": {
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid && (newData.child('ranked').val() !== true || auth.token.firebase.sign_in_provider !== 'anonymous')) || data.child('hostId').val() === auth.uid)",
+        ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid && newData.child('ranked').val() !== true) || data.child('hostId').val() === auth.uid)",
         "ranked": {
           ".validate": "newData.isBoolean() && (!data.exists() || data.val() === newData.val())"
         },

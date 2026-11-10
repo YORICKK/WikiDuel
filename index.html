@@ -90,6 +90,16 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .delta.down { color: var(--flag); }
 .verdict { font: 600 12px var(--display); color: var(--flag); }
 
+/* File d'attente */
+#queue .wrap { display: grid; gap: 20px; padding-block: 32px; }
+.dots::after { content: ""; animation: dots 1.4s steps(4, end) infinite; }
+@keyframes dots { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75% { content: "..."; } }
+.q-card { display: grid; gap: 14px; justify-items: center; text-align: center; padding: 28px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; }
+.q-timer { font: 700 56px/1 var(--mono); font-variant-numeric: tabular-nums; color: var(--flag); }
+.q-text { margin: 0; color: var(--muted); font: 500 15px/1.45 var(--display); max-width: 34ch; }
+.q-me { display: flex; align-items: baseline; gap: 8px; font: 800 18px var(--display); }
+@media (prefers-reduced-motion: reduce) { .dots::after { animation: none; content: "…"; } }
+
 /* Classement */
 #ranking .wrap { display: grid; gap: 20px; padding-block: 32px; }
 .lb { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -288,6 +298,23 @@ input.field:focus { border-color: var(--ink); outline: none; }
   </div>
 </section>
 
+<!-- FILE D'ATTENTE CLASSÉE -->
+<section id="queue" class="screen" hidden>
+  <div class="wrap">
+    <div>
+      <div class="label">Partie classée <span class="pill ranked">1 contre 1</span></div>
+      <h2 class="big">Recherche d'un adversaire<span class="dots" aria-hidden="true"></span></h2>
+    </div>
+    <div class="q-card">
+      <div class="q-timer" id="qTimer" aria-live="off">0:00</div>
+      <p class="q-text" id="qText">On cherche un joueur d'Elo proche du tien. La course démarre automatiquement dès qu'un adversaire est trouvé.</p>
+      <div class="q-me"><span class="label">Toi</span><strong id="qName"></strong><span class="elo" id="qElo"></span></div>
+    </div>
+    <div class="err" id="qErr" role="alert"></div>
+    <button id="qCancel" class="btn ghost">Annuler la recherche</button>
+  </div>
+</section>
+
 <!-- CLASSEMENT -->
 <section id="ranking" class="screen" hidden>
   <div class="wrap">
@@ -413,7 +440,7 @@ const store = {
 function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(); }
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
-function show(id) { ['home', 'lobby', 'race', 'results', 'ranking'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+function show(id) { ['home', 'lobby', 'race', 'results', 'ranking', 'queue'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ---------- Articles tirés au sort (Wikipédia FR) ---------- */
@@ -594,7 +621,7 @@ async function joinRoom(code, name) {
   const r = (await roomRef(code).once('value')).val();
   if (!r) throw new Error('Salon introuvable. Vérifie le code.');
   const players = r.players || {};
-  if (r.ranked && !S.google) throw new Error('Partie classée : connecte-toi avec Google pour la rejoindre.');
+  if (r.ranked && !players[uid]) throw new Error("Les parties classées se lancent depuis la file d'attente, pas avec un code.");
   if (!players[uid]) {
     if (r.status === 'playing') throw new Error('Une course est en cours. Attends la fin.');
     const max = r.ranked ? 2 : 8;
@@ -717,11 +744,49 @@ $('create').onclick = async () => {
 $('createRanked').onclick = async () => {
   if (!S.google) { $('homeErr').textContent = 'Connecte-toi avec Google pour jouer en classé.'; return; }
   const name = getName(); if (!name) return;
-  $('createRanked').disabled = true;
-  try { await saveProfileName(name); const code = await createRoom(name, true); enterRoom({ code: code, name: name }); }
-  catch (e) { $('homeErr').textContent = e.message; }
-  finally { $('createRanked').disabled = !CONFIG_OK; }
+  enterQueue(name);
 };
+
+/* ---------- File d'attente classée ---------- */
+// Le téléphone s'inscrit dans queue/<uid> ; le serveur apparie deux joueurs,
+// crée le salon et écrit son code dans matches/<uid>.
+async function enterQueue(name) {
+  $('homeErr').textContent = ''; $('qErr').textContent = '';
+  try {
+    await ready;
+    await saveProfileName(name);
+    const qRef = db.ref('queue/' + uid), mRef = db.ref('matches/' + uid);
+    await mRef.remove();                         // efface un ancien appariement
+    await qRef.set({ name: name, at: NOW() });
+    qRef.onDisconnect().remove();                // fermer l'appli = quitter la file
+    S.queue = { name: name, qRef: qRef, mRef: mRef, since: Date.now() };
+    show('queue');
+    $('qName').textContent = name;
+    $('qElo').textContent = (S.profile && S.profile.elo) || 1200;
+    clearInterval(S.qTick);
+    const tick = () => { $('qTimer').textContent = fmt(Date.now() - S.queue.since); };
+    tick(); S.qTick = setInterval(tick, 500);
+    mRef.on('value', s => {
+      const m = s.val();
+      if (!m || !m.code || !S.queue) return;
+      const q = S.queue; stopQueue(false);
+      mRef.remove().catch(() => {});
+      enterRoom({ code: m.code, name: q.name });
+    });
+  } catch (e) {
+    stopQueue(true); show('home');
+    $('homeErr').textContent = 'Impossible de rejoindre la file : ' + e.message;
+  }
+}
+function stopQueue(removeEntry) {
+  clearInterval(S.qTick);
+  const q = S.queue; S.queue = null;
+  if (!q) return;
+  q.mRef.off();
+  q.qRef.onDisconnect().cancel();
+  if (removeEntry) q.qRef.remove().catch(() => {});
+}
+$('qCancel').onclick = () => { stopQueue(true); show('home'); };
 $('join').onclick = async () => {
   const name = getName(); if (!name) return;
   const code = $('codeIn').value.trim().toUpperCase();
@@ -1104,6 +1169,12 @@ function renderResults() {
   $('soloRecord').hidden = !solo;
   $('againBtn').textContent = solo ? 'Nouveau parcours' : 'Nouvelle course';
   $('leaveBtn2').textContent = solo ? 'Retour à l’accueil' : 'Quitter le salon';
+  if (room.ranked) {
+    // Pas d'hôte en classé : chacun retourne dans la file s'il veut rejouer.
+    $('againBtn').hidden = false; $('againWait').hidden = true;
+    $('againBtn').textContent = 'Rejouer en classé';
+    $('leaveBtn2').textContent = 'Retour à l’accueil';
+  }
   if (solo) {
     const me = room.players[0];
     $('resRound').textContent = 'Solo · partie ' + room.round;
@@ -1129,6 +1200,7 @@ function watchResults(room) {
 }
 $('againBtn').onclick = async () => {
   if (S.solo) return startSolo();
+  if (S.room && S.room.ranked) { const name = S.me.name; await leave(true); return enterQueue(name); }
   $('againBtn').disabled = true;
   try { await startRound(); } catch (e) {}
   $('againBtn').disabled = false;
