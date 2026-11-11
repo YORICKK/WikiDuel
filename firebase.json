@@ -10,7 +10,7 @@
     "cleanUrls": true,
     "headers": [
       {
-        "source": "**/*.@(html|js)",
+        "source": "**",
         "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
       }
     ]

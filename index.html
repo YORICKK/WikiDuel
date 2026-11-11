@@ -803,7 +803,8 @@ $('pmBuy').onclick = async () => {
 };
 // Retour depuis Stripe : ?premium=ok (payé) ou ?premium=annule.
 (function handlePaymentReturn() {
-  const st = params.get('premium');
+  // Lecture directe de l'adresse : ce bloc s'exécute avant la déclaration de `params`.
+  const st = new URLSearchParams(location.search).get('premium');
   if (!st) return;
   history.replaceState(null, '', location.pathname);
   if (st === 'annule') { $('homeErr').textContent = 'Paiement annulé : rien n’a été débité.'; return; }
