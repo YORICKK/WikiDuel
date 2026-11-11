@@ -157,6 +157,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .d-date { margin-left: auto; font: 500 12px var(--display); color: var(--muted); }
 .d-route { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font: 700 16px/1.3 var(--display); }
 .d-arrow { color: var(--muted); }
+.daily.mystery .d-route { font-style: italic; color: var(--muted); font-weight: 600; }
+.daily.mystery .d-arrow { display: none; }
 .d-me { font: 500 13px/1.4 var(--display); color: var(--muted); }
 .d-me b { font-family: var(--mono); color: var(--ink); }
 .d-me sup, .challenge-res sup { font-size: .6em; line-height: 0; }
@@ -1130,16 +1132,22 @@ function dateLabel(key) {
 async function loadDaily() {
   try { await ready; } catch (e) { return; }
   const key = zurichDate(serverNow());
-  const snap = await db.ref('daily/' + key).once('value').catch(() => null);
-  const day = snap && snap.val();
-  if (!day) { S.daily = null; $('dailyBox').hidden = true; return; }
-  S.daily = Object.assign({ key: key }, day);
+  const val = p => db.ref('daily/' + key + '/' + p).once('value').then(s => s.val()).catch(() => null);
+  const [opensAt, n] = await Promise.all([val('opensAt'), val('n')]);
+  if (!opensAt || opensAt > serverNow()) { S.daily = null; $('dailyBox').hidden = true; return; }
+  S.daily = { key: key, n: n };
   const [run, score] = await Promise.all([
     db.ref('dailyRuns/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null),
     db.ref('dailyScores/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null)
   ]);
   S.daily.run = run; S.daily.score = score;
+  // Le départ et la cible ne sont lisibles qu'après le lancement (règle de sécurité).
+  if (run && run.startedAt) await revealDaily(S.daily);
   renderDailyCard();
+}
+async function revealDaily(d) {
+  const [start, target] = await Promise.all(['start', 'target'].map(p => db.ref('daily/' + d.key + '/' + p).once('value').then(s => s.val())));
+  d.start = start; d.target = target;
 }
 function refreshDaily() { if (S.dailyLoaded) loadDaily(); }
 function ordinal(n) { return n + '<sup>' + (n === 1 ? 'er' : 'e') + '</sup>'; }
@@ -1148,8 +1156,11 @@ function renderDailyCard() {
   $('dailyBox').hidden = false;
   $('dDate').textContent = dateLabel(d.key);
   $('dNum').textContent = d.n ? '· n°' + d.n : '';
-  $('dStart').textContent = d.start; $('dTarget').textContent = d.target;
   const run = d.run, sc = d.score;
+  const known = !!(d.start && d.target);
+  $('dStart').textContent = known ? d.start : 'Parcours mystère, révélé au lancement';
+  $('dTarget').textContent = known ? d.target : '';
+  $('dailyBox').classList.toggle('mystery', !known);
   const done = run && (run.finishedAt || run.gaveUp);
   $('dPlay').hidden = !!done;
   $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
@@ -1194,6 +1205,7 @@ $('dPlay').onclick = async () => {
       run = (await runRef.once('value')).val();
     }
     d.run = run;
+    await revealDaily(d); // lisible maintenant que le chrono a démarré
     $('homeErr').textContent = '';
     startSolo({ start: d.start, target: d.target }, { daily: d.key, dailyNo: d.n, startedAt: run.startedAt });
   } catch (e) {
@@ -1225,7 +1237,9 @@ function finishDaily(r) {
 async function showDailyBoard(key) {
   show('ranking');
   $('lbLabel').textContent = 'Défi du jour · ' + dateLabel(key);
-  $('lbTitle').textContent = S.daily && S.daily.key === key ? S.daily.start + ' → ' + S.daily.target : 'Classement du jour';
+  // Le parcours n'apparaît que pour qui a déjà lancé le défi.
+  const d = S.daily && S.daily.key === key ? S.daily : null;
+  $('lbTitle').textContent = d && d.start ? d.start + ' → ' + d.target : 'Classement du jour' + (d && d.n ? ' n°' + d.n : '');
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
   try {
     const rows = await dailyScores(key);
@@ -1783,7 +1797,11 @@ function challengeLink(room, me) {
     t: String(Math.max(0, me.finishedAt - room.startedAt)), n: (S.me && S.me.name) || 'Un ami'
   });
   // /defi : page d'aperçu (image + texte pour WhatsApp) qui redirige vers le jeu.
-  if (S.solo && S.solo.daily) { p.set('no', String(S.solo.dailyNo || '')); return location.origin + '/jour?' + p.toString(); }
+  if (S.solo && S.solo.daily) {
+    // Défi du jour : on ne révèle pas le parcours à l'ami, seulement le score à battre.
+    const q = new URLSearchParams({ c: p.get('c'), t: p.get('t'), n: p.get('n'), no: String(S.solo.dailyNo || '') });
+    return location.origin + '/jour?' + q.toString();
+  }
   return location.origin + '/defi?' + p.toString();
 }
 function renderShare(room) {
@@ -1794,8 +1812,8 @@ function renderShare(room) {
   const time = fmtP(me.finishedAt - room.startedAt);
   const clicks = me.clicks + ' clic' + (me.clicks > 1 ? 's' : '');
   S.shareText = S.solo && S.solo.daily
-    ? 'WikiDuel 🗓️ Défi du jour' + (S.solo.dailyNo ? ' n°' + S.solo.dailyNo : '') + ' : « ' + room.start + ' » → « ' + room.target + ' » en ' + clicks + ' et ' + time +
-      '. À toi de jouer : ' + challengeLink(room, me)
+    ? 'WikiDuel 🗓️ Défi du jour' + (S.solo.dailyNo ? ' n°' + S.solo.dailyNo : '') + ' réussi en ' + clicks + ' et ' + time +
+      '. Parcours mystère, une seule tentative : à toi de jouer ! ' + challengeLink(room, me)
     : 'WikiDuel 🏁 J’ai relié « ' + room.start + ' » à « ' + room.target + ' » en ' + clicks + ' et ' + time +
       ' sur Wikipédia. Tu fais mieux ? Relève le défi : ' + challengeLink(room, me);
   $('shareWa').lastChild.textContent = S.solo && S.solo.daily ? ' Partager mon défi du jour' : ' Défier un ami sur WhatsApp';

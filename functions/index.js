@@ -353,9 +353,10 @@ exports.sharePage = onRequest({ region: 'europe-west1' }, (req, res) => {
   let title, desc, target_url;
   if (daily) {
     title = 'Défi du jour WikiDuel' + (q.no ? ' n°' + clip(q.no, 4) : '');
-    desc = start && target
-      ? name + ' a relié « ' + start + ' » à « ' + target + ' »' + (score ? ' en ' + score : '') + '. À toi de jouer !'
-      : 'Un parcours Wikipédia par jour, le même pour tout le monde. À toi de jouer !';
+    // Le parcours du jour reste secret : on ne montre que le score à battre.
+    desc = score
+      ? name + ' a réussi le défi du jour en ' + score + '. Parcours mystère, une seule tentative : à toi de jouer !'
+      : 'Un parcours Wikipédia mystère par jour, le même pour tout le monde. À toi de jouer !';
     target_url = '/';
   } else {
     title = name + ' te défie sur WikiDuel';

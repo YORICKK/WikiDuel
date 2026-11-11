@@ -45,7 +45,11 @@
 
     "daily": {
       "$date": {
-        ".read": "data.child('opensAt').val() <= now"
+        "opensAt": { ".read": true },
+        "closesAt": { ".read": "root.child('daily/' + $date + '/opensAt').val() <= now" },
+        "n": { ".read": "root.child('daily/' + $date + '/opensAt').val() <= now" },
+        "start": { ".read": "auth != null && root.child('dailyRuns/' + $date + '/' + auth.uid + '/startedAt').exists()" },
+        "target": { ".read": "auth != null && root.child('dailyRuns/' + $date + '/' + auth.uid + '/startedAt').exists()" }
       }
     },
 
