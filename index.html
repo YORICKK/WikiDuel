@@ -145,6 +145,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 @keyframes celIn { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .cel-banner { animation: none; } }
 
+/* Suppression de compte */
+.link-btn { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; }
+.btn.danger { background: #c62828; border-color: #c62828; color: #fff; }
+.del-warn { color: var(--flag); font: 600 14px/1.4 var(--display) !important; }
+.del-note { color: var(--muted); font-size: 13px !important; }
+
 /* Mention de licence */
 .credits { margin: 0; text-align: center; font: 500 12px/1.5 var(--display); color: var(--muted); }
 .credits a { color: inherit; }
@@ -424,7 +430,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <button id="premiumBtn" class="btn ghost small premium-btn">Mes parties et stats</button>
       </div>
     </div>
-    <p class="credits">Articles : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a>, contributeurs de Wikipédia, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a>. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br><a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a></p>
+    <p class="credits">Articles : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a>, contributeurs de Wikipédia, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a>. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br><a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a> · <button type="button" class="link-btn" id="delAccBtn">Supprimer mon compte</button></p>
   </div>
 </section>
 
@@ -484,6 +490,21 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <button id="pmBack" class="btn ghost">Retour</button>
   </div>
 </section>
+
+<!-- Suppression du compte (lien en pied de page) -->
+<div class="overlay" id="delSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <h3 id="delTitle" style="margin:0;font-size:22px">Supprimer mon compte</h3>
+    <p>Seront effacés <strong>définitivement</strong> : ton pseudo, ton Elo et ta place au classement, ton historique et tes résultats au défi du jour.</p>
+    <p class="del-warn" id="delPrem" hidden>Ton accès WikiDuel+ sera perdu. Pour un remboursement, écris d'abord à contact@wikiduel.ch.</p>
+    <p class="del-note">Les justificatifs d'achat sont conservés 10 ans, comme l'exige la loi.</p>
+    <label class="label" for="delInput">Tape SUPPRIMER pour confirmer</label>
+    <input id="delInput" class="field" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <div class="err" id="delErr" role="alert"></div>
+    <button type="button" class="btn" id="delCancel">Annuler</button>
+    <button type="button" class="btn danger" id="delConfirm" disabled>Supprimer définitivement</button>
+  </div>
+</div>
 
 <!-- Célébration de victoire (WikiDuel+) -->
 <div class="celebrate" id="celebrate" hidden aria-live="polite">
@@ -591,6 +612,30 @@ input.field:focus { border-color: var(--ink); outline: none; }
   </div>
 </div>
 
+<script>
+// Remontée des erreurs : capturées dès le chargement (avant tout le reste du code),
+// puis envoyées à Firebase dès que la connexion est prête (voir __wdFlush plus bas).
+(function () {
+  var q = window.__wdErr = [], seen = {}, count = 0;
+  function add(msg, src, line, col, stack) {
+    msg = String(msg || 'Erreur inconnue').slice(0, 300);
+    var key = msg + '|' + line;
+    if (seen[key] || count >= 20) return; // pas de doublons, 20 erreurs max par visite
+    seen[key] = 1; count++;
+    q.push({ msg: msg, src: String(src || '').replace(location.origin, '').slice(0, 200), line: +line || 0, col: +col || 0,
+             stack: String(stack || '').slice(0, 1500), clientAt: Date.now() });
+    if (window.__wdFlush) window.__wdFlush();
+  }
+  window.addEventListener('error', function (e) {
+    if (!e.message) return; // image ou script externe introuvable : pas une erreur du jeu
+    add(e.message, e.filename, e.lineno, e.colno, e.error && e.error.stack);
+  });
+  window.addEventListener('unhandledrejection', function (e) {
+    var r = e.reason || {};
+    add('Promesse rejetée : ' + (r.message || r.code || r), '', 0, 0, r.stack);
+  });
+})();
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
@@ -703,6 +748,7 @@ const ready = (async () => {
   const user = await new Promise(res => { const off = auth.onAuthStateChanged(u => { off(); res(u); }); });
   uid = user ? user.uid : (await auth.signInAnonymously()).user.uid;
   db = firebase.database();
+  setupErrorFlush(); // en premier : les erreurs partent même si la suite du démarrage échoue
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
   S.google = !auth.currentUser.isAnonymous;
   // Profil (Elo, statut WikiDuel+) : on attend la première lecture avant de déclarer la page prête.
@@ -1010,6 +1056,24 @@ ready.catch(e => {
     : 'Connexion impossible : ' + (e.code === 'auth/operation-not-allowed' ? "active la connexion « Anonyme » dans Firebase." : e.message);
   $('create').disabled = true; $('join').disabled = true; $('createRanked').disabled = true;
 });
+
+// Envoi des erreurs capturées vers errors/ (lisible seulement dans la console Firebase).
+// Fonction déclarée (donc disponible même si la suite du script plante) et branchée
+// dès que la base est connectée, avant tout le reste du démarrage.
+function setupErrorFlush() {
+  window.__wdFlush = () => {
+    const q = window.__wdErr || [];
+    while (q.length) {
+      const e = q.shift();
+      const shown = Array.prototype.find.call(document.querySelectorAll('.screen'), s => !s.hidden);
+      db.ref('errors').push(Object.assign(e, {
+        uid: uid, ua: navigator.userAgent.slice(0, 200), page: location.pathname,
+        screen: shown ? shown.id : '', at: firebase.database.ServerValue.TIMESTAMP
+      })).catch(() => {});
+    }
+  };
+  window.__wdFlush();
+}
 
 function roomRef(code) { return db.ref('rooms/' + code); }
 
@@ -1898,6 +1962,40 @@ $('againBtn').onclick = async () => {
   try { await startRound(); } catch (e) {}
   $('againBtn').disabled = false;
 };
+
+/* ---------- Suppression du compte ---------- */
+$('delAccBtn').onclick = () => {
+  $('delInput').value = ''; $('delErr').textContent = '';
+  $('delConfirm').disabled = true; $('delConfirm').textContent = 'Supprimer définitivement';
+  $('delPrem').hidden = !isMePremium();
+  $('delSheet').hidden = false;
+  setTimeout(() => $('delInput').focus(), 50);
+};
+$('delInput').addEventListener('input', () => {
+  $('delConfirm').disabled = $('delInput').value.trim().toUpperCase() !== 'SUPPRIMER';
+});
+$('delCancel').onclick = () => { $('delSheet').hidden = true; };
+$('delConfirm').onclick = async () => {
+  if ($('delInput').value.trim().toUpperCase() !== 'SUPPRIMER') return;
+  $('delConfirm').disabled = true; $('delCancel').disabled = true; $('delConfirm').textContent = 'Suppression…';
+  try {
+    await ready;
+    if (S.queue) stopQueue(true);
+    await leave(true);
+    // Le serveur efface toutes les données puis le compte de connexion.
+    await firebase.app().functions('europe-west1').httpsCallable('deleteAccount')({ confirm: 'SUPPRIMER' });
+    ['wd-session', 'wd-name', 'wd-records', 'wd-recent'].forEach(k => store.del(k));
+    await firebase.auth().signOut().catch(() => {});
+    location.replace(location.pathname + '?compte=supprime');
+  } catch (e) {
+    $('delErr').textContent = 'Suppression impossible : ' + (e.message || e.code) + '. Réessaie ou écris à contact@wikiduel.ch.';
+    $('delConfirm').disabled = false; $('delCancel').disabled = false; $('delConfirm').textContent = 'Supprimer définitivement';
+  }
+};
+if (params.get('compte') === 'supprime') {
+  history.replaceState(null, '', location.pathname);
+  $('homeErr').textContent = 'Ton compte et ses données ont été supprimés.';
+}
 
 /* ---------- Reprise de session ---------- */
 const saved = store.get('wd-session');

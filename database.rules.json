@@ -88,6 +88,25 @@
       }
     },
 
+    "errors": {
+      "$id": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['msg', 'uid', 'at']) && newData.child('uid').val() === auth.uid && newData.child('at').val() === now",
+        "msg": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "src": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "line": { ".validate": "newData.isNumber()" },
+        "col": { ".validate": "newData.isNumber()" },
+        "stack": { ".validate": "newData.isString() && newData.val().length <= 1500" },
+        "clientAt": { ".validate": "newData.isNumber()" },
+        "uid": { ".validate": "newData.isString()" },
+        "ua": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "page": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "screen": { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "at": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "purchases": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"

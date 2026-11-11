@@ -1,0 +1,1 @@
+{"name":"wikiduel-tools","private":true,"description":"Outils WikiDuel : défis du jour, image de partage, test avant publication","devDependencies":{"puppeteer-core":"^23.11.1"}}

@@ -2,6 +2,7 @@
   "database": { "rules": "database.rules.json" },
   "functions": { "source": "functions" },
   "hosting": {
+    "predeploy": ["node \"$PROJECT_DIR/tools/smoke-test.js\""],
     "public": ".",
     "ignore": [
       "firebase.json", ".firebaserc", "database.rules.json", "dev-server.js", "README.md",

@@ -388,6 +388,43 @@ exports.sharePage = onRequest({ region: 'europe-west1' }, (req, res) => {
     '</head><body><p><a href="' + escHtml(target_url) + '">Ouvrir WikiDuel</a></p></body></html>');
 });
 
+/* ===================== Erreurs des joueurs ===================== */
+// Chaque erreur envoyée par un téléphone (errors/<id>) est réécrite dans les journaux Google Cloud
+// sous forme d'erreur : elle apparaît dans Error Reporting, qui peut envoyer une alerte par e-mail.
+exports.logClientError = onValueCreated(Object.assign({ ref: '/errors/{id}' }, DB_OPTS), async event => {
+  const e = event.data.val() || {};
+  const err = new Error('[Joueur] ' + String(e.msg || 'Erreur inconnue'));
+  err.stack = '[Joueur] ' + String(e.msg || '') + '\n' + (e.stack || ('    at ' + (e.src || 'page') + ':' + (e.line || 0) + ':' + (e.col || 0)));
+  logger.error(err, { page: e.page, ecran: e.screen, navigateur: e.ua, uid: e.uid, id: event.params.id });
+});
+
+/* ===================== Suppression de compte ===================== */
+// Demandée depuis le pied de page du jeu (confirmation « SUPPRIMER »). Efface toutes les données
+// du joueur, sauf les justificatifs d'achat (10 ans, obligation légale), puis le compte de connexion.
+exports.deleteAccount = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Aucun compte connecté.');
+  if (!req.data || req.data.confirm !== 'SUPPRIMER') throw new HttpsError('invalid-argument', 'Confirmation manquante.');
+  const uid = req.auth.uid;
+  const upd = {
+    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null
+  };
+  // Défis du jour : tentatives et scores, tous les jours.
+  const [runs, scores, rooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms'].map(p => db.ref(p).once('value')));
+  runs.forEach(d => { if (d.hasChild(uid)) upd['dailyRuns/' + d.key + '/' + uid] = null; });
+  scores.forEach(d => { if (d.hasChild(uid)) upd['dailyScores/' + d.key + '/' + uid] = null; });
+  // Salons : on retire le joueur ; un salon entre amis dont il est l'hôte est supprimé.
+  rooms.forEach(r => {
+    const v = r.val() || {};
+    if (v.hostId === uid) { upd['rooms/' + r.key] = null; upd['results/' + r.key] = null; upd['paths/' + r.key] = null; }
+    else if (v.players && v.players[uid]) { upd['rooms/' + r.key + '/players/' + uid] = null; upd['paths/' + r.key + '/' + uid] = null; }
+  });
+  await db.ref().update(upd);
+  await admin.auth().deleteUser(uid).catch(e => { if (e.code !== 'auth/user-not-found') throw e; });
+  logger.info('Compte supprimé à la demande du joueur', { uid, elements: Object.keys(upd).length });
+  return { ok: true };
+});
+
 /* ===================== Nettoyage quotidien (politique de confidentialité) ===================== */
 // Salons, résultats et chemins : supprimés après 30 jours. File d'attente et appariements : après 1 jour.
 exports.cleanup = onSchedule({ schedule: 'every day 04:00', timeZone: 'Europe/Zurich', region: 'europe-west1' }, async () => {
@@ -398,8 +435,10 @@ exports.cleanup = onSchedule({ schedule: 'every day 04:00', timeZone: 'Europe/Zu
   const old = await db.ref('rooms').orderByChild('createdAt').endAt(roomCutoff).limitToFirst(2000).once('value');
   old.forEach(c => { upd['rooms/' + c.key] = null; upd['results/' + c.key] = null; upd['paths/' + c.key] = null; });
   // Résultats ou chemins dont le salon a déjà disparu.
-  const [roomKeys, res, paths, queue, matches] = await Promise.all(['rooms', 'results', 'paths', 'queue', 'matches']
+  const [roomKeys, res, paths, queue, matches, errs] = await Promise.all(['rooms', 'results', 'paths', 'queue', 'matches', 'errors']
     .map(p => db.ref(p).once('value')));
+  // Rapports d'erreurs : gardés 30 jours.
+  errs.forEach(c => { if (((c.val() || {}).at || 0) < roomCutoff) upd['errors/' + c.key] = null; });
   const alive = new Set(); roomKeys.forEach(c => { if (!(('rooms/' + c.key) in upd)) alive.add(c.key); });
   res.forEach(c => { if (!alive.has(c.key)) upd['results/' + c.key] = null; });
   paths.forEach(c => { if (!alive.has(c.key)) upd['paths/' + c.key] = null; });
