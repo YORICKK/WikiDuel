@@ -618,6 +618,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 (function () {
   var q = window.__wdErr = [], seen = {}, count = 0;
   function add(msg, src, line, col, stack) {
+    // Erreurs des extensions installées dans le navigateur (MetaMask, bloqueurs…) : pas des erreurs du jeu.
+    if (/(chrome|moz|safari|safari-web|ms-browser)-extension:\/\//.test(String(src || '') + ' ' + String(stack || ''))) return;
     msg = String(msg || 'Erreur inconnue').slice(0, 300);
     var key = msg + '|' + line;
     if (seen[key] || count >= 20) return; // pas de doublons, 20 erreurs max par visite
