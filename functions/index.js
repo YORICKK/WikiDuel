@@ -335,10 +335,11 @@ exports.verifyDaily = onValueCreated(Object.assign({ ref: '/dailyRuns/{date}/{ui
 // WhatsApp ne lit pas le JavaScript : /defi et /jour renvoient une page avec les balises
 // d'aperçu (titre, texte, image) puis redirigent aussitôt vers le jeu.
 function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function fmtTime(ms) {
+function fmtTime(ms, hundredths) {
   ms = Math.max(0, Number(ms) || 0);
   const s = Math.floor(ms / 1000);
-  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ',' + Math.floor((ms % 1000) / 100);
+  const frac = hundredths ? String(Math.floor((ms % 1000) / 10)).padStart(2, '0') : String(Math.floor((ms % 1000) / 100));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ',' + frac;
 }
 
 exports.sharePage = onRequest({ region: 'europe-west1' }, (req, res) => {
@@ -347,8 +348,9 @@ exports.sharePage = onRequest({ region: 'europe-west1' }, (req, res) => {
   const name = clip(q.n, 16) || 'Un ami';
   const start = clip(q.d, 200), target = clip(q.a, 200);
   const clicks = parseInt(q.c, 10), time = parseInt(q.t, 10);
-  const score = clicks >= 0 && time >= 0 ? clicks + ' clic' + (clicks > 1 ? 's' : '') + ' et ' + fmtTime(time) : '';
   const daily = req.path.indexOf('/jour') === 0;
+  // Défi du jour : centièmes, comme au classement du jour.
+  const score = clicks >= 0 && time >= 0 ? clicks + ' clic' + (clicks > 1 ? 's' : '') + ' et ' + fmtTime(time, daily) : '';
 
   let title, desc, target_url;
   if (daily) {
