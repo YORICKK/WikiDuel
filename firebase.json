@@ -1,4 +1,18 @@
 {
   "database": { "rules": "database.rules.json" },
-  "functions": { "source": "functions" }
+  "functions": { "source": "functions" },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json", ".firebaserc", "database.rules.json", "dev-server.js", "README.md",
+      "**/.*", "**/.*/**", "**/node_modules/**", "functions/**"
+    ],
+    "cleanUrls": true,
+    "headers": [
+      {
+        "source": "**/*.@(html|js)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  }
 }

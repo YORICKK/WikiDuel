@@ -11,7 +11,7 @@ admin.initializeApp();
 let db = null; // connecté au premier appel (l'adresse de la base est fournie par le cloud)
 
 const WIKI = 'https://fr.wikipedia.org/w/api.php';
-const UA = 'WikiDuel/1.0 (https://yorickk.github.io/WikiDuel/)';
+const UA = 'WikiDuel/1.0 (https://wikiduel.ch)';
 const ELO_START = 1200;
 const MAX_STEPS = 60;
 
