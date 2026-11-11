@@ -6,6 +6,7 @@
 const { onValueWritten, onValueCreated } = require('firebase-functions/v2/database');
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { defineSecret } = require('firebase-functions/params');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 
@@ -291,6 +292,28 @@ exports.rateRound = onValueWritten(
     }
   }
 );
+
+/* ===================== Nettoyage quotidien (politique de confidentialité) ===================== */
+// Salons, résultats et chemins : supprimés après 30 jours. File d'attente et appariements : après 1 jour.
+exports.cleanup = onSchedule({ schedule: 'every day 04:00', timeZone: 'Europe/Zurich', region: 'europe-west1' }, async () => {
+  if (!db) db = admin.database();
+  const now = Date.now();
+  const roomCutoff = now - 30 * 864e5, dayCutoff = now - 864e5;
+  const upd = {};
+  const old = await db.ref('rooms').orderByChild('createdAt').endAt(roomCutoff).limitToFirst(2000).once('value');
+  old.forEach(c => { upd['rooms/' + c.key] = null; upd['results/' + c.key] = null; upd['paths/' + c.key] = null; });
+  // Résultats ou chemins dont le salon a déjà disparu.
+  const [roomKeys, res, paths, queue, matches] = await Promise.all(['rooms', 'results', 'paths', 'queue', 'matches']
+    .map(p => db.ref(p).once('value')));
+  const alive = new Set(); roomKeys.forEach(c => { if (!(('rooms/' + c.key) in upd)) alive.add(c.key); });
+  res.forEach(c => { if (!alive.has(c.key)) upd['results/' + c.key] = null; });
+  paths.forEach(c => { if (!alive.has(c.key)) upd['paths/' + c.key] = null; });
+  queue.forEach(c => { if (((c.val() || {}).at || 0) < dayCutoff) upd['queue/' + c.key] = null; });
+  matches.forEach(c => { if (((c.val() || {}).at || 0) < dayCutoff) upd['matches/' + c.key] = null; });
+  const n = Object.keys(upd).length;
+  if (n) await db.ref().update(upd);
+  logger.info('Nettoyage quotidien', { suppressions: n });
+});
 
 /* ===================== WikiDuel+ : paiement Stripe ===================== */
 // Les clés Stripe ne sont jamais dans le code : ce sont des secrets Firebase

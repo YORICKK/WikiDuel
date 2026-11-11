@@ -63,6 +63,7 @@
     },
 
     "rooms": {
+      ".indexOn": ["createdAt"],
       "$code": {
         ".read": "auth != null",
         ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid && newData.child('ranked').val() !== true) || data.child('hostId').val() === auth.uid)",

@@ -77,6 +77,22 @@ Le mode classé demande le forfait **Blaze**, car une Cloud Function vérifie le
    Ensuite, `firebase deploy --only database` suffit pour ne republier que les règles.
 6. Conseillé : dans Google Cloud > **Facturation** > **Budgets et alertes**, crée une alerte à 1 €.
 
+## 4. WikiDuel+ (paiement) et pages légales
+
+- **Prix** : 2 CHF, paiement unique (constante `PREMIUM_PRICE` dans `functions/index.js`).
+- **Paiement** : Stripe Checkout. `createCheckout` crée la page de paiement, puis `stripeWebhook` active `users/<uid>/premium` (et le retire en cas de remboursement).
+- **Secrets** (jamais dans le code), à enregistrer puis redéployer les fonctions :
+  ```bash
+  firebase.cmd functions:secrets:set STRIPE_SECRET_KEY --project wikiduel
+  ```
+  ```bash
+  firebase.cmd functions:secrets:set STRIPE_WEBHOOK_SECRET --project wikiduel
+  ```
+  En mode réel, une clé restreinte `rk_live_` suffit : Checkout Sessions en écriture, PaymentIntents en lecture.
+- **Webhook Stripe** : `https://europe-west1-wikiduel.cloudfunctions.net/stripeWebhook`. Événements : `checkout.session.completed`, `checkout.session.async_payment_succeeded` et `charge.refunded`.
+- **Pages légales** : `cgv.html` (conditions de vente) et `confidentialite.html` (confidentialité), publiées sur `/cgv` et `/confidentialite`.
+- **Nettoyage** : la fonction `cleanup` tourne chaque jour à 4 h. Elle supprime les salons, résultats et chemins de plus de 30 jours, ainsi que la file d'attente et les appariements de plus d'un jour, comme annoncé dans la politique de confidentialité.
+
 ## Tester en local
 
 ```bash
