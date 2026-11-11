@@ -303,6 +303,88 @@ exports.rateRound = onValueWritten(
   }
 );
 
+/* ===================== Défi du jour ===================== */
+// Le temps est mesuré par le serveur (startedAt / finishedAt = horodatage Firebase),
+// le chemin est vérifié auprès de Wikipédia, puis le score entre dans dailyScores/<date>.
+const DAILY_COUNTDOWN = 3000; // le compte à rebours de 3 s n'est pas compté
+
+exports.verifyDaily = onValueCreated(Object.assign({ ref: '/dailyRuns/{date}/{uid}/finishedAt' }, DB_OPTS), async event => {
+  if (!db) db = admin.database();
+  const { date, uid } = event.params;
+  const [daySnap, runSnap, userSnap] = await Promise.all([
+    db.ref('daily/' + date).once('value'), db.ref('dailyRuns/' + date + '/' + uid).once('value'), db.ref('users/' + uid).once('value')
+  ]);
+  const day = daySnap.val(), run = runSnap.val();
+  if (!day || !run || !run.startedAt || !run.finishedAt) return;
+  const path = Array.isArray(run.path) ? run.path : [];
+  let err;
+  try { err = await checkPath(path, day.start, day.target); }
+  catch (e) { err = 'vérification impossible'; logger.error('Défi du jour : vérification échouée', { date, uid, error: e.message }); }
+  const u = userSnap.val() || {};
+  await db.ref('dailyScores/' + date + '/' + uid).set({
+    name: String(run.name || u.name || 'Joueur').slice(0, 16),
+    time: Math.max(0, run.finishedAt - run.startedAt - DAILY_COUNTDOWN),
+    clicks: Math.max(0, path.length - 1),
+    valid: !err, reason: err || null,
+    premium: u.premium === true,
+    at: run.finishedAt
+  });
+});
+
+/* ===================== Aperçus de partage (WhatsApp, etc.) ===================== */
+// WhatsApp ne lit pas le JavaScript : /defi et /jour renvoient une page avec les balises
+// d'aperçu (titre, texte, image) puis redirigent aussitôt vers le jeu.
+function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function fmtTime(ms) {
+  ms = Math.max(0, Number(ms) || 0);
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ',' + Math.floor((ms % 1000) / 100);
+}
+
+exports.sharePage = onRequest({ region: 'europe-west1' }, (req, res) => {
+  const q = req.query || {};
+  const clip = (v, n) => String(v || '').slice(0, n);
+  const name = clip(q.n, 16) || 'Un ami';
+  const start = clip(q.d, 200), target = clip(q.a, 200);
+  const clicks = parseInt(q.c, 10), time = parseInt(q.t, 10);
+  const score = clicks >= 0 && time >= 0 ? clicks + ' clic' + (clicks > 1 ? 's' : '') + ' et ' + fmtTime(time) : '';
+  const daily = req.path.indexOf('/jour') === 0;
+
+  let title, desc, target_url;
+  if (daily) {
+    title = 'Défi du jour WikiDuel' + (q.no ? ' n°' + clip(q.no, 4) : '');
+    desc = start && target
+      ? name + ' a relié « ' + start + ' » à « ' + target + ' »' + (score ? ' en ' + score : '') + '. À toi de jouer !'
+      : 'Un parcours Wikipédia par jour, le même pour tout le monde. À toi de jouer !';
+    target_url = '/';
+  } else {
+    title = name + ' te défie sur WikiDuel';
+    desc = start && target
+      ? '« ' + start + ' » → « ' + target + ' »' + (score ? ' en ' + score : '') + ', uniquement avec les liens de Wikipédia. Tu fais mieux ?'
+      : 'Relie deux pages Wikipédia en cliquant uniquement sur les liens. Tu fais mieux ?';
+    const p = new URLSearchParams({ defi: '1', d: start, a: target, c: String(q.c || ''), t: String(q.t || ''), n: name });
+    target_url = '/?' + p.toString();
+  }
+  const pageUrl = SITE + req.originalUrl;
+  res.set('Cache-Control', 'public, max-age=300');
+  res.status(200).send('<!doctype html><html lang="fr"><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>' + escHtml(title) + '</title>' +
+    '<meta name="description" content="' + escHtml(desc) + '">' +
+    '<meta property="og:type" content="website">' +
+    '<meta property="og:site_name" content="WikiDuel">' +
+    '<meta property="og:title" content="' + escHtml(title) + '">' +
+    '<meta property="og:description" content="' + escHtml(desc) + '">' +
+    '<meta property="og:url" content="' + escHtml(pageUrl) + '">' +
+    '<meta property="og:image" content="' + SITE + '/og.png">' +
+    '<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">' +
+    '<meta property="og:image:alt" content="WikiDuel, la course sur Wikipédia">' +
+    '<meta name="twitter:card" content="summary_large_image">' +
+    '<meta http-equiv="refresh" content="0;url=' + escHtml(target_url) + '">' +
+    '<script>location.replace(' + JSON.stringify(target_url) + ')</script>' +
+    '</head><body><p><a href="' + escHtml(target_url) + '">Ouvrir WikiDuel</a></p></body></html>');
+});
+
 /* ===================== Nettoyage quotidien (politique de confidentialité) ===================== */
 // Salons, résultats et chemins : supprimés après 30 jours. File d'attente et appariements : après 1 jour.
 exports.cleanup = onSchedule({ schedule: 'every day 04:00', timeZone: 'Europe/Zurich', region: 'europe-west1' }, async () => {

@@ -5,9 +5,13 @@
     "public": ".",
     "ignore": [
       "firebase.json", ".firebaserc", "database.rules.json", "dev-server.js", "README.md",
-      "**/.*", "**/.*/**", "**/node_modules/**", "functions/**"
+      "**/.*", "**/.*/**", "**/node_modules/**", "functions/**", "tools/**"
     ],
     "cleanUrls": true,
+    "rewrites": [
+      { "source": "/defi", "function": { "functionId": "sharePage", "region": "europe-west1" } },
+      { "source": "/jour", "function": { "functionId": "sharePage", "region": "europe-west1" } }
+    ],
     "headers": [
       {
         "source": "**",

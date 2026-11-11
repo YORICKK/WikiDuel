@@ -1,0 +1,212 @@
+{
+  "2026-11-11": {
+    "start": "Pizza",
+    "target": "Lune",
+    "opensAt": 1794351600000,
+    "closesAt": 1794438000000,
+    "n": 1
+  },
+  "2026-11-12": {
+    "start": "Chat",
+    "target": "Révolution française",
+    "opensAt": 1794438000000,
+    "closesAt": 1794524400000,
+    "n": 2
+  },
+  "2026-11-13": {
+    "start": "Tour Eiffel",
+    "target": "Japon",
+    "opensAt": 1794524400000,
+    "closesAt": 1794610800000,
+    "n": 3
+  },
+  "2026-11-14": {
+    "start": "Chocolat",
+    "target": "Volcan",
+    "opensAt": 1794610800000,
+    "closesAt": 1794697200000,
+    "n": 4
+  },
+  "2026-11-15": {
+    "start": "Football",
+    "target": "Pharaon",
+    "opensAt": 1794697200000,
+    "closesAt": 1794783600000,
+    "n": 5
+  },
+  "2026-11-16": {
+    "start": "Wolfgang Amadeus Mozart",
+    "target": "Internet",
+    "opensAt": 1794783600000,
+    "closesAt": 1794870000000,
+    "n": 6
+  },
+  "2026-11-17": {
+    "start": "Requin",
+    "target": "Jeux olympiques",
+    "opensAt": 1794870000000,
+    "closesAt": 1794956400000,
+    "n": 7
+  },
+  "2026-11-18": {
+    "start": "Albert Einstein",
+    "target": "Fromage",
+    "opensAt": 1794956400000,
+    "closesAt": 1795042800000,
+    "n": 8
+  },
+  "2026-11-19": {
+    "start": "Vikings",
+    "target": "Café",
+    "opensAt": 1795042800000,
+    "closesAt": 1795129200000,
+    "n": 9
+  },
+  "2026-11-20": {
+    "start": "Bitcoin",
+    "target": "Moyen Âge",
+    "opensAt": 1795129200000,
+    "closesAt": 1795215600000,
+    "n": 10
+  },
+  "2026-11-21": {
+    "start": "Abeille",
+    "target": "Star Wars",
+    "opensAt": 1795215600000,
+    "closesAt": 1795302000000,
+    "n": 11
+  },
+  "2026-11-22": {
+    "start": "Everest",
+    "target": "Tennis",
+    "opensAt": 1795302000000,
+    "closesAt": 1795388400000,
+    "n": 12
+  },
+  "2026-11-23": {
+    "start": "Harry Potter",
+    "target": "Pétrole",
+    "opensAt": 1795388400000,
+    "closesAt": 1795474800000,
+    "n": 13
+  },
+  "2026-11-24": {
+    "start": "Titanic",
+    "target": "Bouddhisme",
+    "opensAt": 1795474800000,
+    "closesAt": 1795561200000,
+    "n": 14
+  },
+  "2026-11-25": {
+    "start": "Kangourou",
+    "target": "Napoléon Ier",
+    "opensAt": 1795561200000,
+    "closesAt": 1795647600000,
+    "n": 15
+  },
+  "2026-11-26": {
+    "start": "Guitare",
+    "target": "Antarctique",
+    "opensAt": 1795647600000,
+    "closesAt": 1795734000000,
+    "n": 16
+  },
+  "2026-11-27": {
+    "start": "Sushi",
+    "target": "Charles de Gaulle",
+    "opensAt": 1795734000000,
+    "closesAt": 1795820400000,
+    "n": 17
+  },
+  "2026-11-28": {
+    "start": "Licorne",
+    "target": "Électricité",
+    "opensAt": 1795820400000,
+    "closesAt": 1795906800000,
+    "n": 18
+  },
+  "2026-11-29": {
+    "start": "Lego",
+    "target": "Égypte antique",
+    "opensAt": 1795906800000,
+    "closesAt": 1795993200000,
+    "n": 19
+  },
+  "2026-11-30": {
+    "start": "Samouraï",
+    "target": "Brésil",
+    "opensAt": 1795993200000,
+    "closesAt": 1796079600000,
+    "n": 20
+  },
+  "2026-12-01": {
+    "start": "Vampire",
+    "target": "Mars (planète)",
+    "opensAt": 1796079600000,
+    "closesAt": 1796166000000,
+    "n": 21
+  },
+  "2026-12-02": {
+    "start": "Tomate",
+    "target": "Léonard de Vinci",
+    "opensAt": 1796166000000,
+    "closesAt": 1796252400000,
+    "n": 22
+  },
+  "2026-12-03": {
+    "start": "Échecs",
+    "target": "Baleine bleue",
+    "opensAt": 1796252400000,
+    "closesAt": 1796338800000,
+    "n": 23
+  },
+  "2026-12-04": {
+    "start": "Pokémon",
+    "target": "Rome",
+    "opensAt": 1796338800000,
+    "closesAt": 1796425200000,
+    "n": 24
+  },
+  "2026-12-05": {
+    "start": "Jazz",
+    "target": "Dinosauria",
+    "opensAt": 1796425200000,
+    "closesAt": 1796511600000,
+    "n": 25
+  },
+  "2026-12-06": {
+    "start": "Robot",
+    "target": "Vin",
+    "opensAt": 1796511600000,
+    "closesAt": 1796598000000,
+    "n": 26
+  },
+  "2026-12-07": {
+    "start": "Ski alpin",
+    "target": "Pablo Picasso",
+    "opensAt": 1796598000000,
+    "closesAt": 1796684400000,
+    "n": 27
+  },
+  "2026-12-08": {
+    "start": "Croissant (viennoiserie)",
+    "target": "Australie",
+    "opensAt": 1796684400000,
+    "closesAt": 1796770800000,
+    "n": 28
+  },
+  "2026-12-09": {
+    "start": "Tsunami",
+    "target": "The Beatles",
+    "opensAt": 1796770800000,
+    "closesAt": 1796857200000,
+    "n": 29
+  },
+  "2026-12-10": {
+    "start": "Lion",
+    "target": "Cinéma",
+    "opensAt": 1796857200000,
+    "closesAt": 1796943600000,
+    "n": 30
+  }
+}

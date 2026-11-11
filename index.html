@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#14213d">
 <title>WikiDuel</title>
+<meta name="description" content="Relie deux pages Wikipédia en cliquant uniquement sur les liens. Défi du jour, parties classées et duels entre amis.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WikiDuel">
+<meta property="og:title" content="WikiDuel, la course sur Wikipédia">
+<meta property="og:description" content="Même départ, même cible : relie deux pages Wikipédia en cliquant uniquement sur les liens. Défi du jour, parties classées et duels entre amis.">
+<meta property="og:url" content="https://wikiduel.ch/">
+<meta property="og:image" content="https://wikiduel.ch/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="WikiDuel, la course sur Wikipédia">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
@@ -137,6 +148,24 @@ input.field:focus { border-color: var(--ink); outline: none; }
 /* Mention de licence */
 .credits { margin: 0; text-align: center; font: 500 12px/1.5 var(--display); color: var(--muted); }
 .credits a { color: inherit; }
+
+/* Défi du jour */
+/* Discret : carte neutre, petite, sous les boutons de jeu */
+.daily { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.d-head { display: flex; align-items: baseline; gap: 8px; }
+.d-num { color: var(--muted); }
+.d-date { margin-left: auto; font: 500 12px var(--display); color: var(--muted); }
+.d-route { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font: 700 16px/1.3 var(--display); }
+.d-arrow { color: var(--muted); }
+.d-me { font: 500 13px/1.4 var(--display); color: var(--muted); }
+.d-me b { font-family: var(--mono); color: var(--ink); }
+.d-me sup, .challenge-res sup { font-size: .6em; line-height: 0; }
+.d-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+.daily .btn.small { min-height: 34px; padding: 0 16px; }
+.daily .btn:disabled { opacity: .55; }
+.d-link { background: none; border: 0; padding: 0; font: 600 13px var(--display); color: var(--link); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lb .meta-time { font: 700 16px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.lb .meta-time small { display: block; font: 500 11px var(--display); color: var(--muted); }
 
 /* Défis WhatsApp */
 .share-box { display: grid; gap: 10px; justify-items: center; }
@@ -376,6 +405,18 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <div class="or">ou t'entraîner seul</div>
       <button id="solo" class="btn ghost">Jouer en solo</button>
       <div id="homeErr" class="err" role="alert"></div>
+      <div class="daily" id="dailyBox" hidden>
+        <div class="d-head">
+          <span class="label">Défi du jour <span class="d-num" id="dNum"></span></span>
+          <span class="d-date" id="dDate"></span>
+        </div>
+        <div class="d-route"><span id="dStart"></span><span class="d-arrow" aria-hidden="true">→</span><span id="dTarget"></span></div>
+        <div class="d-me" id="dMe">Même parcours pour tous, une seule tentative.</div>
+        <div class="d-actions">
+          <button id="dPlay" class="btn small">Jouer</button>
+          <button id="dBoard" class="d-link">Classement du jour</button>
+        </div>
+      </div>
       <div class="home-links">
         <button id="rankBtn" class="btn ghost small">Voir le classement</button>
         <button id="premiumBtn" class="btn ghost small premium-btn">Mes parties et stats</button>
@@ -452,8 +493,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 <section id="ranking" class="screen" hidden>
   <div class="wrap">
     <div>
-      <div class="label">Parties classées · Elo</div>
-      <h2 class="big">Classement</h2>
+      <div class="label" id="lbLabel">Parties classées · Elo</div>
+      <h2 class="big" id="lbTitle">Classement</h2>
     </div>
     <ol class="lb" id="lbList"><li class="lb-empty">Chargement…</li></ol>
     <button id="rankBack" class="btn ghost">Retour</button>
@@ -582,7 +623,11 @@ const store = {
 function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(); }
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
-function show(id) { ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+function show(id) {
+  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium'].forEach(s => $(s).hidden = s !== id);
+  window.scrollTo(0, 0);
+  if (id === 'home') refreshDaily(); // met à jour la carte du défi du jour au retour à l'accueil
+}
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ---------- Articles tirés au sort (Wikipédia FR) ---------- */
@@ -711,6 +756,7 @@ async function saveProfileName(name) {
 /* ---------- Classement ---------- */
 $('rankBtn').onclick = async () => {
   show('ranking');
+  $('lbLabel').textContent = 'Parties classées · Elo'; $('lbTitle').textContent = 'Classement';
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
   try {
     await ready;
@@ -1034,11 +1080,15 @@ function soloEmit() {
     players: [{ id: 'me', name: S.me.name, host: true, clicks: p.path.length - 1, finishedAt: p.finishedAt, gaveUp: p.gaveUp, online: true, path: r.status === 'done' ? p.path : null }]
   });
 }
-function startSolo(pair) {
+function startSolo(pair, opts) {
   pair = pair || pickPair();
+  opts = opts || {};
   const round = S.solo ? S.solo.round + 1 : 1;
   S.me = { playerId: 'me', name: (store.get('wd-name') || 'Toi') };
-  S.solo = { status: 'playing', start: pair.start, target: pair.target, startedAt: serverNow() + 3000, round: round,
+  S.solo = { status: 'playing', start: pair.start, target: pair.target, round: round,
+             // Défi du jour : départ = horodatage du serveur + compte à rebours (non compté).
+             startedAt: opts.startedAt != null ? opts.startedAt + 3000 : serverNow() + 3000,
+             daily: opts.daily || null, dailyNo: opts.dailyNo || null,
              me: { path: [pair.start], finishedAt: null, gaveUp: false } };
   soloEmit();
 }
@@ -1047,6 +1097,7 @@ function soloEnd() {
   S.solo.status = 'done';
   S.solo.rec = p.finishedAt ? saveSoloRecord(S.solo, p.finishedAt - S.solo.startedAt, p.path.length - 1) : null;
   saveSoloHistory(S.solo);
+  if (S.solo.daily) finishDaily(S.solo);
   soloEmit();
 }
 
@@ -1061,8 +1112,130 @@ function saveSoloHistory(r) {
     clicks: Math.max(0, p.path.length - 1), path: p.path.slice(0, 60)
   };
   if (p.finishedAt) entry.time = Math.max(0, p.finishedAt - r.startedAt);
-  if (c) { entry.opponents = [c.name]; entry.challengeTime = c.time; }
+  if (c && !r.daily) { entry.opponents = [c.name]; entry.challengeTime = c.time; }
+  if (r.daily) entry.daily = r.daily;
   db.ref('history/' + uid).push(entry).catch(e => console.warn('Historique solo non enregistré', e.code || e));
+}
+
+/* ---------- Défi du jour ---------- */
+// Même parcours pour tout le monde, une tentative par compte. Chrono et vérification côté serveur.
+function zurichDate(t) {
+  // AAAA-MM-JJ à l'heure suisse (le défi change à minuit, heure de Zurich).
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
+}
+function dateLabel(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+}
+async function loadDaily() {
+  try { await ready; } catch (e) { return; }
+  const key = zurichDate(serverNow());
+  const snap = await db.ref('daily/' + key).once('value').catch(() => null);
+  const day = snap && snap.val();
+  if (!day) { S.daily = null; $('dailyBox').hidden = true; return; }
+  S.daily = Object.assign({ key: key }, day);
+  const [run, score] = await Promise.all([
+    db.ref('dailyRuns/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null),
+    db.ref('dailyScores/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null)
+  ]);
+  S.daily.run = run; S.daily.score = score;
+  renderDailyCard();
+}
+function refreshDaily() { if (S.dailyLoaded) loadDaily(); }
+function ordinal(n) { return n + '<sup>' + (n === 1 ? 'er' : 'e') + '</sup>'; }
+function renderDailyCard() {
+  const d = S.daily; if (!d) return;
+  $('dailyBox').hidden = false;
+  $('dDate').textContent = dateLabel(d.key);
+  $('dNum').textContent = d.n ? '· n°' + d.n : '';
+  $('dStart').textContent = d.start; $('dTarget').textContent = d.target;
+  const run = d.run, sc = d.score;
+  const done = run && (run.finishedAt || run.gaveUp);
+  $('dPlay').hidden = !!done;
+  $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
+  if (!done) {
+    $('dMe').textContent = 'Même parcours pour tous, une seule tentative.';
+  } else if (run.gaveUp) {
+    $('dMe').innerHTML = 'Tu as abandonné aujourd’hui. Nouveau défi demain à minuit !';
+  } else if (!sc) {
+    $('dMe').innerHTML = 'Arrivé ! Vérification de ton chemin…';
+  } else if (!sc.valid) {
+    $('dMe').innerHTML = 'Chemin refusé (' + esc(sc.reason || 'invalide') + ').';
+  } else {
+    $('dMe').innerHTML = 'Ton résultat : <b>' + fmtP(sc.time) + '</b> · ' + sc.clicks + ' clic' + (sc.clicks > 1 ? 's' : '') + (d.rank ? ' · <b>' + ordinal(d.rank) + '</b> sur ' + d.total : '');
+    dailyRank(d.key).then(r => { if (r && S.daily === d && !d.rank) { d.rank = r.rank; d.total = r.total; renderDailyCard(); } });
+  }
+}
+// Classement du jour : scores valides triés par temps, puis par clics.
+async function dailyScores(key) {
+  const snap = await db.ref('dailyScores/' + key).orderByChild('time').limitToFirst(500).once('value');
+  const rows = [];
+  snap.forEach(c => { const v = c.val(); if (v && v.valid) rows.push(Object.assign({ id: c.key }, v)); });
+  rows.sort((a, b) => a.time - b.time || a.clicks - b.clicks);
+  return rows;
+}
+async function dailyRank(key) {
+  try {
+    const rows = await dailyScores(key);
+    const i = rows.findIndex(r => r.id === uid);
+    return i < 0 ? null : { rank: i + 1, total: rows.length };
+  } catch (e) { return null; }
+}
+$('dPlay').onclick = async () => {
+  const name = getName(); if (!name) return;
+  const d = S.daily; if (!d) return;
+  $('dPlay').disabled = true;
+  try {
+    const runRef = db.ref('dailyRuns/' + d.key + '/' + uid);
+    let run = (await runRef.once('value')).val();
+    if (run && (run.finishedAt || run.gaveUp)) { d.run = run; renderDailyCard(); return; }
+    if (!run || !run.startedAt) {
+      await runRef.update({ name: name, startedAt: NOW() });
+      run = (await runRef.once('value')).val();
+    }
+    d.run = run;
+    $('homeErr').textContent = '';
+    startSolo({ start: d.start, target: d.target }, { daily: d.key, dailyNo: d.n, startedAt: run.startedAt });
+  } catch (e) {
+    $('homeErr').textContent = 'Défi du jour indisponible : ' + (e.code || e.message);
+  } finally { $('dPlay').disabled = false; }
+};
+$('dBoard').onclick = () => { if (S.daily) showDailyBoard(S.daily.key); };
+
+// Fin de partie : le serveur horodate l'arrivée (ou l'abandon) et vérifie le chemin.
+function finishDaily(r) {
+  const ref = db.ref('dailyRuns/' + r.daily + '/' + uid);
+  const upd = { path: r.me.path.slice(0, 60) };
+  if (r.me.finishedAt) upd.finishedAt = NOW(); else upd.gaveUp = true;
+  S.dailyResult = { key: r.daily, state: r.me.finishedAt ? 'wait' : 'gaveup' };
+  ref.update(upd).then(() => {
+    if (!r.me.finishedAt) return;
+    const sRef = db.ref('dailyScores/' + r.daily + '/' + uid);
+    const off = setTimeout(() => sRef.off(), 60000);
+    sRef.on('value', async s => {
+      const sc = s.val(); if (!sc) return;
+      clearTimeout(off); sRef.off();
+      S.dailyResult = { key: r.daily, state: sc.valid ? 'ok' : 'bad', score: sc };
+      if (sc.valid) Object.assign(S.dailyResult, await dailyRank(r.daily) || {});
+      if (S.solo && S.solo.daily === r.daily && !$('results').hidden) renderResults();
+    });
+  }).catch(e => { S.dailyResult = { key: r.daily, state: 'error', error: e.code || e.message }; if (!$('results').hidden) renderResults(); });
+}
+
+async function showDailyBoard(key) {
+  show('ranking');
+  $('lbLabel').textContent = 'Défi du jour · ' + dateLabel(key);
+  $('lbTitle').textContent = S.daily && S.daily.key === key ? S.daily.start + ' → ' + S.daily.target : 'Classement du jour';
+  $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
+  try {
+    const rows = await dailyScores(key);
+    $('lbList').innerHTML = rows.length ? rows.slice(0, 100).map((r, i) =>
+      '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
+      '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
+      '<small>' + r.clicks + ' clic' + (r.clicks > 1 ? 's' : '') + '</small></span>' +
+      '<span class="meta-time">' + fmtP(r.time) + '</span></li>').join('')
+      : '<li class="lb-empty">Personne n’a encore réussi le défi du jour. Sois le premier !</li>';
+  } catch (e) { $('lbList').innerHTML = '<li class="lb-empty">Classement du jour indisponible.</li>'; }
 }
 function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }
 $('solo').onclick = async () => { $('homeErr').textContent = ''; S.solo = null; await poolReady; startSolo(); };
@@ -1606,10 +1779,12 @@ function fmtP(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); retur
 // Lien de défi : même départ et même cible, avec le score à battre dans l'adresse.
 function challengeLink(room, me) {
   const p = new URLSearchParams({
-    defi: '1', d: room.start, a: room.target, c: String(me.clicks),
+    d: room.start, a: room.target, c: String(me.clicks),
     t: String(Math.max(0, me.finishedAt - room.startedAt)), n: (S.me && S.me.name) || 'Un ami'
   });
-  return location.origin + location.pathname + '?' + p.toString();
+  // /defi : page d'aperçu (image + texte pour WhatsApp) qui redirige vers le jeu.
+  if (S.solo && S.solo.daily) { p.set('no', String(S.solo.dailyNo || '')); return location.origin + '/jour?' + p.toString(); }
+  return location.origin + '/defi?' + p.toString();
 }
 function renderShare(room) {
   const me = room.players.find(p => p.id === S.me.playerId);
@@ -1618,8 +1793,12 @@ function renderShare(room) {
   if (!ok) return;
   const time = fmtP(me.finishedAt - room.startedAt);
   const clicks = me.clicks + ' clic' + (me.clicks > 1 ? 's' : '');
-  S.shareText = 'WikiDuel 🏁 J’ai relié « ' + room.start + ' » à « ' + room.target + ' » en ' + clicks + ' et ' + time +
-    ' sur Wikipédia. Tu fais mieux ? Relève le défi : ' + challengeLink(room, me);
+  S.shareText = S.solo && S.solo.daily
+    ? 'WikiDuel 🗓️ Défi du jour' + (S.solo.dailyNo ? ' n°' + S.solo.dailyNo : '') + ' : « ' + room.start + ' » → « ' + room.target + ' » en ' + clicks + ' et ' + time +
+      '. À toi de jouer : ' + challengeLink(room, me)
+    : 'WikiDuel 🏁 J’ai relié « ' + room.start + ' » à « ' + room.target + ' » en ' + clicks + ' et ' + time +
+      ' sur Wikipédia. Tu fais mieux ? Relève le défi : ' + challengeLink(room, me);
+  $('shareWa').lastChild.textContent = S.solo && S.solo.daily ? ' Partager mon défi du jour' : ' Défier un ami sur WhatsApp';
   // wa.me ouvre WhatsApp (appli ou web) avec le message prêt : on choisit ensuite le contact.
   $('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(S.shareText);
 }
@@ -1653,6 +1832,20 @@ $('chGo').onclick = () => {
 };
 function renderChallengeResult(room) {
   const c = S.challenge, box = $('challengeRes');
+  if (S.solo && S.solo.daily) {
+    // Défi du jour : pas de « Rejouer ce parcours », résultat officiel du serveur.
+    $('retryBtn').hidden = true;
+    $('resRound').textContent = 'Défi du jour' + (S.solo.dailyNo ? ' n°' + S.solo.dailyNo : '');
+    const dr = S.dailyResult && S.dailyResult.key === S.solo.daily ? S.dailyResult : { state: 'wait' };
+    box.hidden = false;
+    box.className = 'challenge-res' + (dr.state === 'ok' ? ' won' : dr.state === 'bad' || dr.state === 'error' ? ' lost' : '');
+    box.innerHTML = dr.state === 'gaveup' ? 'Abandon enregistré. Nouveau défi demain à minuit !'
+      : dr.state === 'ok' ? 'Temps officiel <b>' + fmtP(dr.score.time) + '</b>' + (dr.rank ? ' · <b>' + ordinal(dr.rank) + '</b> sur ' + dr.total : '') + ' au classement du jour.'
+      : dr.state === 'bad' ? 'Chemin refusé : ' + esc(dr.score.reason || 'invalide') + '.'
+      : dr.state === 'error' ? 'Résultat non enregistré (' + esc(dr.error) + ').'
+      : 'Vérification de ton chemin et calcul du temps officiel…';
+    return;
+  }
   const active = !!(S.solo && c && norm(c.start) === norm(room.start) && norm(c.target) === norm(room.target));
   box.hidden = !active;
   if (!active) return;
@@ -1690,6 +1883,8 @@ $('againBtn').onclick = async () => {
 const saved = store.get('wd-session');
 if (!S.paymentReturn) show('home');
 if (CONFIG_OK && saved && saved.code && (!params.get('salon') || params.get('salon').toUpperCase() === saved.code)) { S.me = saved; connect(); }
+// Défi du jour : chargé dès que Firebase est prêt, puis à chaque retour à l'accueil.
+if (CONFIG_OK) ready.then(() => { S.dailyLoaded = true; loadDaily(); }).catch(() => {});
 </script>
 </body>
 </html>

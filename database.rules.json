@@ -43,6 +43,47 @@
       }
     },
 
+    "daily": {
+      "$date": {
+        ".read": "data.child('opensAt').val() <= now"
+      }
+    },
+
+    "dailyRuns": {
+      "$date": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          "name": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('daily/' + $date + '/opensAt').val() <= now && now < root.child('daily/' + $date + '/closesAt').val()",
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          },
+          "startedAt": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('daily/' + $date + '/opensAt').val() <= now && now < root.child('daily/' + $date + '/closesAt').val()",
+            ".validate": "newData.val() === now"
+          },
+          "finishedAt": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('dailyRuns/' + $date + '/' + $uid + '/startedAt').exists() && !root.child('dailyRuns/' + $date + '/' + $uid + '/gaveUp').exists()",
+            ".validate": "newData.val() === now"
+          },
+          "gaveUp": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('dailyRuns/' + $date + '/' + $uid + '/startedAt').exists() && !root.child('dailyRuns/' + $date + '/' + $uid + '/finishedAt').exists()",
+            ".validate": "newData.val() === true"
+          },
+          "path": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('dailyRuns/' + $date + '/' + $uid + '/startedAt').exists()",
+            ".validate": "newData.hasChildren()"
+          }
+        }
+      }
+    },
+
+    "dailyScores": {
+      "$date": {
+        ".read": true,
+        ".indexOn": ["time"]
+      }
+    },
+
     "purchases": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"
@@ -68,6 +109,7 @@
           "gaveUp": { ".validate": "newData.isBoolean()" },
           "opponents": { ".validate": "newData.hasChildren()" },
           "challengeTime": { ".validate": "newData.isNumber()" },
+          "daily": { ".validate": "newData.isString() && newData.val().length === 10" },
           "$other": { ".validate": false }
         }
       }
