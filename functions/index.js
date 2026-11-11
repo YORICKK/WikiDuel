@@ -298,10 +298,11 @@ exports.rateRound = onValueWritten(
 const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
 const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
 const SITE = 'https://wikiduel.ch';
-const PREMIUM_PRICE = 400;          // en centimes : 4,00 CHF, paiement unique
+const PREMIUM_PRICE = 200;          // en centimes : 2,00 CHF, paiement unique
 const PREMIUM_CURRENCY = 'chf';
 
-function stripeClient() { return require('stripe')(STRIPE_SECRET_KEY.value()); }
+// .trim() : un espace ou un retour à la ligne collé avec la clé suffit à tout faire échouer.
+function stripeClient() { return require('stripe')(STRIPE_SECRET_KEY.value().trim()); }
 
 // Appelée par le jeu : crée une page de paiement Stripe pour le joueur connecté avec Google.
 exports.createCheckout = onCall({ region: 'europe-west1', secrets: [STRIPE_SECRET_KEY] }, async req => {
@@ -339,7 +340,7 @@ exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SEC
   if (!db) db = admin.database();
   let event;
   try {
-    event = stripeClient().webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET.value());
+    event = stripeClient().webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET.value().trim());
   } catch (e) {
     logger.warn('Webhook Stripe refusé (signature invalide)', { error: e.message });
     res.status(400).send('Signature invalide');

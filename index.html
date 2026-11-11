@@ -414,7 +414,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <li>Le diamant à côté de ton pseudo, même dans le classement</li>
       </ul>
       <p id="pmLockText">Tes parties sont déjà enregistrées : elles apparaîtront dès que tu passeras à WikiDuel+.</p>
-      <button id="pmBuy" class="btn premium-buy">Passer à WikiDuel+ · 4 CHF</button>
+      <button id="pmBuy" class="btn premium-buy">Passer à WikiDuel+ · 2 CHF</button>
       <p class="buy-note">Paiement unique et sécurisé par Stripe, débloqué à vie sur ton compte Google.</p>
       <div class="err" id="pmBuyErr" role="alert"></div>
     </div>
@@ -764,7 +764,7 @@ $('premiumBtn').onclick = async () => {
     $('pmLockText').textContent = S.google
       ? 'Tes parties en ligne sont déjà enregistrées : elles apparaîtront dès que tu passeras à WikiDuel+.'
       : 'WikiDuel+ est lié à ton compte Google, pour le garder sur tous tes appareils. Connecte-toi d’abord avec Google sur l’accueil.';
-    $('pmBuy').textContent = S.google ? 'Passer à WikiDuel+ · 4 CHF' : 'Se connecter avec Google';
+    $('pmBuy').textContent = S.google ? 'Passer à WikiDuel+ · 2 CHF' : 'Se connecter avec Google';
     $('pmBuyErr').textContent = ''; $('pmBuy').disabled = false;
     $('pmLocked').hidden = false;
     return;
@@ -798,7 +798,7 @@ $('pmBuy').onclick = async () => {
     location.href = r.data.url;
   } catch (e) {
     $('pmBuyErr').textContent = e.code === 'functions/already-exists' ? 'Ton compte est déjà WikiDuel+.' : 'Paiement indisponible : ' + e.message;
-    $('pmBuy').disabled = false; $('pmBuy').textContent = 'Passer à WikiDuel+ · 4 CHF';
+    $('pmBuy').disabled = false; $('pmBuy').textContent = 'Passer à WikiDuel+ · 2 CHF';
   }
 };
 // Retour depuis Stripe : ?premium=ok (payé) ou ?premium=annule.
