@@ -4,6 +4,8 @@
 'use strict';
 
 const { onValueWritten, onValueCreated } = require('firebase-functions/v2/database');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const admin = require('firebase-admin');
 
@@ -289,3 +291,88 @@ exports.rateRound = onValueWritten(
     }
   }
 );
+
+/* ===================== WikiDuel+ : paiement Stripe ===================== */
+// Les clés Stripe ne sont jamais dans le code : ce sont des secrets Firebase
+// (firebase functions:secrets:set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET).
+const STRIPE_SECRET_KEY = defineSecret('STRIPE_SECRET_KEY');
+const STRIPE_WEBHOOK_SECRET = defineSecret('STRIPE_WEBHOOK_SECRET');
+const SITE = 'https://wikiduel.ch';
+const PREMIUM_PRICE = 400;          // en centimes : 4,00 CHF, paiement unique
+const PREMIUM_CURRENCY = 'chf';
+
+function stripeClient() { return require('stripe')(STRIPE_SECRET_KEY.value()); }
+
+// Appelée par le jeu : crée une page de paiement Stripe pour le joueur connecté avec Google.
+exports.createCheckout = onCall({ region: 'europe-west1', secrets: [STRIPE_SECRET_KEY] }, async req => {
+  if (!db) db = admin.database();
+  const auth = req.auth;
+  if (!auth || auth.token.firebase.sign_in_provider === 'anonymous') {
+    throw new HttpsError('unauthenticated', 'Connecte-toi avec Google pour acheter WikiDuel+.');
+  }
+  const uid = auth.uid;
+  if ((await db.ref('users/' + uid + '/premium').once('value')).val() === true) {
+    throw new HttpsError('already-exists', 'Ton compte est déjà WikiDuel+.');
+  }
+  const session = await stripeClient().checkout.sessions.create({
+    mode: 'payment',
+    line_items: [{
+      quantity: 1,
+      price_data: {
+        currency: PREMIUM_CURRENCY, unit_amount: PREMIUM_PRICE,
+        product_data: { name: 'WikiDuel+', description: 'Historique, statistiques, diamant et animation de victoire. Paiement unique, à vie.' }
+      }
+    }],
+    client_reference_id: uid,
+    metadata: { uid },
+    payment_intent_data: { metadata: { uid } }, // retrouve le joueur en cas de remboursement
+    customer_email: auth.token.email || undefined,
+    locale: 'fr',
+    success_url: SITE + '/?premium=ok',
+    cancel_url: SITE + '/?premium=annule'
+  });
+  return { url: session.url };
+});
+
+// Appelée par Stripe : seule source de vérité pour activer (ou retirer) WikiDuel+.
+exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET] }, async (req, res) => {
+  if (!db) db = admin.database();
+  let event;
+  try {
+    event = stripeClient().webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET.value());
+  } catch (e) {
+    logger.warn('Webhook Stripe refusé (signature invalide)', { error: e.message });
+    res.status(400).send('Signature invalide');
+    return;
+  }
+  try {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+      const s = event.data.object;
+      const uid = (s.metadata && s.metadata.uid) || s.client_reference_id;
+      if (uid && s.payment_status === 'paid') {
+        await db.ref().update({
+          ['users/' + uid + '/premium']: true,
+          ['purchases/' + uid + '/' + s.id]: {
+            at: admin.database.ServerValue.TIMESTAMP, amount: s.amount_total, currency: s.currency,
+            paymentIntent: s.payment_intent || null, livemode: !!event.livemode
+          }
+        });
+        logger.info('WikiDuel+ activé', { uid, session: s.id, livemode: event.livemode });
+      }
+    } else if (event.type === 'charge.refunded') {
+      const charge = event.data.object;
+      if (charge.refunded && charge.payment_intent) {
+        const pi = await stripeClient().paymentIntents.retrieve(charge.payment_intent);
+        const uid = pi.metadata && pi.metadata.uid;
+        if (uid) {
+          await db.ref('users/' + uid + '/premium').remove();
+          logger.info('WikiDuel+ retiré après remboursement', { uid });
+        }
+      }
+    }
+    res.json({ received: true });
+  } catch (e) {
+    logger.error('Erreur de traitement du webhook', { type: event.type, error: e.message });
+    res.status(500).send('Erreur');
+  }
+});

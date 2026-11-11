@@ -2,9 +2,12 @@
   "name": "wikiduel-functions",
   "private": true,
   "main": "index.js",
-  "engines": { "node": "22" },
+  "engines": {
+    "node": "22"
+  },
   "dependencies": {
     "firebase-admin": "^12.7.0",
-    "firebase-functions": "^6.1.0"
+    "firebase-functions": "^6.1.0",
+    "stripe": "^17.7.0"
   }
 }

@@ -43,6 +43,12 @@
       }
     },
 
+    "purchases": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+
     "history": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid && root.child('users/' + $uid + '/premium').val() === true",
