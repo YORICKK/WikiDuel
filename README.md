@@ -2,7 +2,9 @@
 
 Course Wikipédia en versus sur mobile. Tous les joueurs partent du même article et doivent atteindre le même article cible en cliquant uniquement sur les liens des pages. Le premier arrivé gagne.
 
-- **Page web statique** : `index.html`, hébergée sur GitHub Pages.
+**En ligne : https://wikiduel.ch** (adresse de secours : https://wikiduel.web.app)
+
+- **Page web statique** : `index.html`, hébergée sur Firebase Hosting avec le domaine `wikiduel.ch`, enregistré chez Infomaniak.
 - **Salons en temps réel** : Firebase Realtime Database avec connexion anonyme.
 - **Articles** : chargés directement depuis fr.wikipedia.org par le téléphone de chaque joueur.
 
@@ -21,23 +23,27 @@ Course Wikipédia en versus sur mobile. Tous les joueurs partent du même articl
 2. **Authentication** > **Commencer** > onglet **Mode de connexion** : active **Anonyme**.
 3. **Realtime Database** > **Créer une base de données** : choisis l'emplacement **Belgique (europe-west1)**, puis **Démarrer en mode verrouillé**.
 4. Dans Realtime Database, onglet **Règles** : remplace tout le contenu par celui de `database.rules.json`, puis clique sur **Publier**.
-5. **Paramètres du projet** (roue dentée) > **Général** > **Vos applications** : clique sur l'icône Web `</>` et donne-lui le nom « WikiDuel ». N'active pas Firebase Hosting.
+5. **Paramètres du projet** (roue dentée) > **Général** > **Vos applications** : clique sur l'icône Web `</>` et donne-lui le nom « WikiDuel ».
 6. Firebase affiche un objet `firebaseConfig`. Copie ses valeurs dans `firebase-config.js` : `apiKey`, `authDomain`, `databaseURL`, `projectId` et `appId`.
    - Si `databaseURL` n'apparaît pas, copie l'URL affichée en haut de la page Realtime Database.
 
 Ces valeurs ne sont pas des secrets : elles finissent dans la page publique de toute façon. La protection vient des règles de l'étape 4.
 
-## 2. Publier sur GitHub Pages
+## 2. Publier le site (Firebase Hosting)
 
-1. Crée un dépôt sur https://github.com/new, par exemple `wikiduel`, en **Public**. GitHub Pages gratuit exige un dépôt public.
-2. Envoie les fichiers :
+Le code est stocké sur GitHub (https://github.com/YORICKK/WikiDuel), mais la page est servie par **Firebase Hosting**. Contrairement à GitHub Pages, l'usage commercial y est autorisé.
+
+1. Publie la page :
    ```bash
-   git remote add origin https://github.com/TON-PSEUDO/wikiduel.git
-   git push -u origin main
+   firebase deploy --only hosting
    ```
-3. Sur GitHub : **Settings** > **Pages** > Source : **Deploy from a branch**, branche **main**, dossier **/ (root)**, puis **Save**.
-4. Après une à deux minutes, le jeu est en ligne à l'adresse `https://TON-PSEUDO.github.io/wikiduel/`.
-5. Dans Firebase, **Authentication** > **Paramètres** > **Domaines autorisés** : ajoute `TON-PSEUDO.github.io`.
+   Seuls `index.html` et `firebase-config.js` sont publiés (voir `ignore` dans `firebase.json`).
+2. Pour le domaine personnalisé : Firebase > **Hosting** > **Ajouter un domaine personnalisé**, puis saisis les enregistrements affichés dans la zone DNS du registrar. Pour `wikiduel.ch`, chez Infomaniak :
+   - **A** (racine) : `199.36.158.100`
+   - **TXT** (racine) : `hosting-site=wikiduel`
+3. Dans Firebase, **Authentication** > **Paramètres** > **Domaines autorisés** : ajoute le domaine.
+
+Sur Windows, si PowerShell refuse `firebase` (scripts désactivés), utilise `firebase.cmd` à la place.
 
 ## 3. Parties classées (Google + Elo)
 
