@@ -33,6 +33,23 @@
       }
     },
 
+    "paths": {
+      "$code": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/players/' + $uid).exists() && root.child('rooms/' + $code + '/status').val() === 'playing'",
+          ".validate": "newData.hasChildren()"
+        }
+      }
+    },
+
+    "history": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid && root.child('users/' + $uid + '/premium').val() === true",
+        ".indexOn": ["at"]
+      }
+    },
+
     "results": {
       "$code": {
         ".read": "auth != null"
@@ -63,7 +80,8 @@
             "gaveUp": { ".validate": "newData.isBoolean()" },
             "finishedAt": { ".validate": "newData.isNumber()" },
             "joinedAt": { ".validate": "newData.isNumber()" },
-            "path": { ".validate": "newData.hasChildren() || newData.isString()" }
+            "clicks": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+            "path": { ".validate": "(newData.hasChildren() || newData.isString()) && root.child('rooms/' + $code + '/ranked').val() !== true" }
           }
         }
       }

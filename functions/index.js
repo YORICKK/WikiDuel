@@ -162,7 +162,8 @@ exports.matchmake = onValueCreated(Object.assign({ ref: '/queue/{uid}' }, DB_OPT
   if (!code) { logger.error('Aucun code de salon libre'); return; }
 
   const players = {};
-  pair.forEach(p => { players[p.uid] = { name: String(p.name || 'Joueur').slice(0, 16), joinedAt: now, online: false, path: [start] }; });
+  // En classé, le chemin de chaque joueur est privé (paths/<code>/<uid>) : le salon ne montre que le nombre de clics.
+  pair.forEach(p => { players[p.uid] = { name: String(p.name || 'Joueur').slice(0, 16), joinedAt: now, online: false, clicks: 0 }; });
   const updates = {};
   updates['rooms/' + code] = {
     hostId: 'server', ranked: true, status: 'playing', round: 1, start, target,
@@ -173,7 +174,41 @@ exports.matchmake = onValueCreated(Object.assign({ ref: '/queue/{uid}' }, DB_OPT
   logger.info('Partie classée créée', { code, players: pair.map(p => p.uid + ':' + (p.elo || ELO_START)) });
 });
 
-/* ===================== Notation des manches ===================== */
+/* ===================== Fin de manche : notation + historique ===================== */
+
+const HISTORY_MAX = 200; // parties gardées par joueur
+
+// Archive la manche dans history/<uid> pour chaque participant (lisible seulement par les comptes premium).
+async function archiveRound(code, room, entries, extra) {
+  const now = Date.now();
+  const updates = {};
+  entries.forEach(p => {
+    const others = entries.filter(o => o.uid !== p.uid).map(o => String(o.name || 'Joueur').slice(0, 16));
+    const ch = extra.changes && extra.changes[p.uid];
+    const key = db.ref('history/' + p.uid).push().key;
+    updates['history/' + p.uid + '/' + key] = {
+      at: now, mode: room.ranked ? 'classée' : 'amis', code, round: room.round,
+      start: room.start, target: room.target,
+      won: extra.winnerId === p.uid, finished: !!p.finishedAt, gaveUp: !!p.gaveUp,
+      clicks: Math.max(0, p.path.length - 1),
+      time: p.finishedAt ? Math.max(0, p.finishedAt - room.startedAt) : null,
+      path: p.path.slice(0, MAX_STEPS), opponents: others,
+      verdict: (extra.verdicts && extra.verdicts[p.uid]) || null,
+      eloDelta: ch ? ch.delta : null, eloAfter: ch ? ch.after : null
+    };
+  });
+  await db.ref().update(updates);
+  // Ne garde que les HISTORY_MAX parties les plus récentes de chaque joueur.
+  await Promise.all(entries.map(async p => {
+    const snap = await db.ref('history/' + p.uid).orderByChild('at').once('value');
+    const n = snap.numChildren();
+    if (n <= HISTORY_MAX) return;
+    const drop = {};
+    let i = 0;
+    snap.forEach(c => { if (i++ < n - HISTORY_MAX) drop[c.key] = null; });
+    await db.ref('history/' + p.uid).update(drop);
+  }));
+}
 
 exports.rateRound = onValueWritten(
   { ref: '/rooms/{code}/status', region: 'europe-west1', instance: 'wikiduel-default-rtdb' },
@@ -182,19 +217,33 @@ exports.rateRound = onValueWritten(
     if (!db) db = admin.database();
     const code = event.params.code;
     const room = (await db.ref('rooms/' + code).once('value')).val();
-    if (!room || room.ranked !== true || !room.round) return;
+    if (!room || !room.round) return;
     const round = room.round;
 
-    // Verrou : une manche n'est notée qu'une seule fois.
+    // Verrou : une manche n'est traitée qu'une seule fois.
     const lock = await db.ref('results/' + code + '/' + round + '/state').transaction(cur => cur ? undefined : 'calcul');
     if (!lock.committed) return;
 
     try {
-      // Participants : joueurs dont le chemin de cette manche part bien du départ.
+      // Chemins : privés en classé (paths/), dans le salon entre amis.
+      const privatePaths = room.ranked ? ((await db.ref('paths/' + code).once('value')).val() || {}) : {};
       const entries = Object.keys(room.players || {})
-        .map(uid => Object.assign({ uid }, room.players[uid]))
+        .map(uid => {
+          const p = room.players[uid];
+          const path = room.ranked ? (Array.isArray(privatePaths[uid]) ? privatePaths[uid] : [room.start]) : p.path;
+          return Object.assign({ uid }, p, { path });
+        })
+        // Participants : chemin de cette manche (il part du départ).
         .filter(p => Array.isArray(p.path) && norm(p.path[0]) === norm(room.start));
 
+      if (!room.ranked) {
+        await archiveRound(code, room, entries, { winnerId: room.winnerId });
+        await db.ref('results/' + code + '/' + round).set({ state: 'archivée' });
+        return;
+      }
+
+      const paths = {};
+      entries.forEach(p => { paths[p.uid] = p.path; });
       const verdicts = {};
       for (const p of entries) {
         if (!p.finishedAt) { verdicts[p.uid] = p.gaveUp ? 'abandon' : 'pas arrivé'; continue; }
@@ -204,7 +253,8 @@ exports.rateRound = onValueWritten(
 
       const winners = entries.filter(p => verdicts[p.uid] === 'ok').sort((a, b) => a.finishedAt - b.finishedAt);
       if (entries.length < 2 || winners.length === 0) {
-        await db.ref('results/' + code + '/' + round).set({ state: 'non classée', reason: entries.length < 2 ? 'moins de 2 joueurs' : 'personne n\'est arrivé', verdicts });
+        await db.ref('results/' + code + '/' + round).set({ state: 'non classée', reason: entries.length < 2 ? 'moins de 2 joueurs' : 'personne n\'est arrivé', verdicts, paths });
+        await archiveRound(code, room, entries, { winnerId: null, verdicts });
         return;
       }
 
@@ -228,9 +278,11 @@ exports.rateRound = onValueWritten(
         if (!userSnaps[rated.indexOf(p)].child('name').exists()) updates['users/' + p.uid + '/name'] = String(p.name || 'Joueur').slice(0, 16);
         changes[p.uid] = { before: p.elo, after, delta: after - p.elo, rank: p.rank };
       });
-      updates['results/' + code + '/' + round] = { state: 'classée', changes, verdicts, at: admin.database.ServerValue.TIMESTAMP };
+      // Les chemins sont révélés à la fin, via les résultats.
+      updates['results/' + code + '/' + round] = { state: 'classée', changes, verdicts, paths, at: admin.database.ServerValue.TIMESTAMP };
       await db.ref().update(updates);
       logger.info('Manche notée', { code, round, changes });
+      await archiveRound(code, room, entries, { winnerId: winners[0].uid, verdicts, changes });
     } catch (e) {
       logger.error('Échec de la notation', { code, round, error: e.message });
       await db.ref('results/' + code + '/' + round).set({ state: 'erreur', reason: e.message });

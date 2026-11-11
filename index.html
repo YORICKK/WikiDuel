@@ -90,6 +90,42 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .delta.down { color: var(--flag); }
 .verdict { font: 600 12px var(--display); color: var(--flag); }
 
+/* WikiDuel+ */
+.home-links { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.premium-btn { border-color: #3fb8ff; }
+#premium .wrap { display: grid; gap: 20px; padding-block: 32px; }
+.locked { display: grid; gap: 10px; padding: 18px; background: var(--card); border: 2px solid #3fb8ff; border-radius: 16px; font: 500 15px/1.45 var(--display); }
+.locked strong { font: 800 18px var(--display); }
+.locked ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.locked p { margin: 0; color: var(--muted); font-size: 14px; }
+.pm-content { display: grid; gap: 18px; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.stat-tile { padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 2px; min-width: 0; }
+.stat-tile b { font: 700 22px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
+.stat-tile span { font: 500 12px/1.3 var(--display); color: var(--muted); }
+.elo-chart { padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 6px; }
+.elo-chart svg { width: 100%; height: 110px; display: block; }
+.hist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hist li { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 6px; min-width: 0; }
+.hist .h-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hist .h-date { font: 500 12px var(--mono); color: var(--muted); }
+.hist .h-res { margin-left: auto; font: 800 14px var(--display); }
+.hist .h-res.win { color: var(--ok); }
+.hist .h-res.lose { color: var(--flag); }
+.hist .h-route { font: 700 15px/1.3 var(--display); overflow-wrap: anywhere; }
+.hist .h-meta { font: 500 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.hist details summary { cursor: pointer; font: 600 13px var(--display); color: var(--link); }
+.hist details p { margin: 6px 0 0; font: 500 12px/1.6 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.hist-empty { text-align: center; color: var(--muted); font: 500 15px var(--display); }
+
+/* Célébration de victoire */
+.celebrate { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: grid; place-items: center; }
+.celebrate canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cel-banner { position: relative; padding: 14px 22px; border-radius: 16px; background: var(--ink); color: var(--paper); font: 800 22px/1.2 var(--display); text-align: center; box-shadow: 0 20px 60px rgba(10,20,50,.35); animation: celIn .5s cubic-bezier(.2,1.4,.4,1) both; max-width: calc(100% - 32px); }
+.cel-banner .dia { color: #3fb8ff; }
+@keyframes celIn { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cel-banner { animation: none; } }
+
 /* Mention de licence */
 .credits { margin: 0; text-align: center; font: 500 12px/1.5 var(--display); color: var(--muted); }
 .credits a { color: inherit; }
@@ -159,6 +195,11 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .rival { flex: none; display: flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.1); font: 600 13px var(--display); }
 .rival.me { background: rgba(255,255,255,.22); }
 .rival .n { font: 700 12px var(--mono); }
+.rival .pg { font: 500 12px var(--display); opacity: .85; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rival .pg::before { content: "· "; }
+/* Diamant WikiDuel+ */
+.dia { display: inline-block; width: .95em; height: .95em; margin-left: .3em; vertical-align: -.08em; color: #3fb8ff; flex: none; }
+.plus { font: 700 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: #3fb8ff; vertical-align: .15em; }
 .rival.done { background: var(--ok); color: #fff; }
 .rival.out { opacity: .5; text-decoration: line-through; }
 .trail { display: flex; gap: 4px; align-items: center; overflow-x: auto; scrollbar-width: none; font: 500 12px var(--mono); opacity: .75; white-space: nowrap; }
@@ -327,7 +368,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <div class="or">ou t'entraîner seul</div>
       <button id="solo" class="btn ghost">Jouer en solo</button>
       <div id="homeErr" class="err" role="alert"></div>
-      <button id="rankBtn" class="btn ghost small" style="justify-self:center">Voir le classement</button>
+      <div class="home-links">
+        <button id="rankBtn" class="btn ghost small">Voir le classement</button>
+        <button id="premiumBtn" class="btn ghost small premium-btn">Mes parties et stats</button>
+      </div>
     </div>
     <p class="credits">Articles : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a>, contributeurs de Wikipédia, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a>. WikiDuel n'est pas affilié à la Wikimedia Foundation.</p>
   </div>
@@ -349,6 +393,39 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <button id="qCancel" class="btn ghost">Annuler la recherche</button>
   </div>
 </section>
+
+<!-- WIKIDUEL+ : HISTORIQUE ET STATISTIQUES -->
+<section id="premium" class="screen" hidden>
+  <div class="wrap">
+    <div>
+      <div class="label">WikiDuel+ <span id="pmDia"></span></div>
+      <h2 class="big">Mes parties</h2>
+    </div>
+    <div class="locked" id="pmLocked" hidden>
+      <strong id="pmLockTitle">Réservé aux comptes WikiDuel+</strong>
+      <ul>
+        <li>Historique de toutes tes parties en ligne, avec les chemins</li>
+        <li>Statistiques : victoires, temps, clics, courbe d'Elo</li>
+        <li>Animation de victoire visible par tes adversaires</li>
+        <li>Le diamant à côté de ton pseudo, même dans le classement</li>
+      </ul>
+      <p id="pmLockText">Tes parties sont déjà enregistrées : elles apparaîtront dès que tu passeras à WikiDuel+. L'achat sera bientôt disponible.</p>
+    </div>
+    <div id="pmContent" class="pm-content" hidden>
+      <div class="stats" id="pmStats"></div>
+      <div class="elo-chart" id="pmElo" hidden></div>
+      <div class="label">Historique</div>
+      <ol class="hist" id="pmHist"></ol>
+    </div>
+    <button id="pmBack" class="btn ghost">Retour</button>
+  </div>
+</section>
+
+<!-- Célébration de victoire (WikiDuel+) -->
+<div class="celebrate" id="celebrate" hidden aria-live="polite">
+  <canvas id="confetti"></canvas>
+  <div class="cel-banner"><span id="celText"></span></div>
+</div>
 
 <!-- CLASSEMENT -->
 <section id="ranking" class="screen" hidden>
@@ -483,7 +560,7 @@ const store = {
 function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(); }
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
-function show(id) { ['home', 'lobby', 'race', 'results', 'ranking', 'queue'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+function show(id) { ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium'].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ---------- Articles tirés au sort (Wikipédia FR) ---------- */
@@ -559,7 +636,8 @@ const ready = (async () => {
   db = firebase.database();
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
   S.google = !auth.currentUser.isAnonymous;
-  if (S.google) db.ref('users/' + uid).on('value', s => { S.profile = s.val() || {}; renderAccount(); });
+  // Profil (Elo, statut WikiDuel+) : on attend la première lecture avant de déclarer la page prête.
+  if (S.google) await new Promise(res => db.ref('users/' + uid).on('value', s => { S.profile = s.val() || {}; renderAccount(); res(); }, () => res()));
   renderAccount();
 })();
 
@@ -570,7 +648,7 @@ function renderAccount() {
   $('googleBtn').hidden = !!S.google; $('logoutBtn').hidden = !S.google;
   if (!S.google) { $('accName').textContent = 'Invité'; $('accElo').textContent = 'Connecte-toi pour jouer en classé'; return; }
   const p = S.profile || {};
-  $('accName').textContent = p.name || (u && u.displayName) || 'Joueur';
+  $('accName').innerHTML = esc(p.name || (u && u.displayName) || 'Joueur') + (p.premium === true ? DIA + ' <span class="plus">WikiDuel+</span>' : '');
   $('accElo').innerHTML = p.games
     ? 'Elo <b>' + p.elo + '</b> · ' + p.games + ' partie' + (p.games > 1 ? 's' : '') + ' · ' + (p.wins || 0) + ' victoire' + ((p.wins || 0) > 1 ? 's' : '')
     : 'Elo <b>1200</b> · aucune partie classée';
@@ -620,7 +698,7 @@ $('rankBtn').onclick = async () => {
     rows.sort((a, b) => b.elo - a.elo);
     $('lbList').innerHTML = rows.length ? rows.map((r, i) =>
       '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
-      '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
+      '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium === true ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
       '<small>' + r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : '') + '</small></span>' +
       '<span class="score">' + r.elo + '</span></li>').join('')
       : '<li class="lb-empty">Aucune partie classée pour l’instant. Lance la première !</li>';
@@ -629,12 +707,169 @@ $('rankBtn').onclick = async () => {
 $('rankBack').onclick = () => show('home');
 
 // Elo des joueurs affichés (mis en cache).
-const eloCache = {};
-function eloOf(id, rerender) {
-  if (id in eloCache) return eloCache[id];
-  eloCache[id] = null;
-  db.ref('users/' + id + '/elo').once('value').then(s => { eloCache[id] = s.val() || 1200; rerender(); }).catch(() => {});
+// Profil public des joueurs affichés (Elo + statut WikiDuel+), mis en cache.
+const userCache = {};
+function infoOf(id, rerender) {
+  if (id in userCache) return userCache[id];
+  userCache[id] = null;
+  if (!db || id === 'me') return null;
+  db.ref('users/' + id).once('value').then(s => {
+    const v = s.val() || {};
+    userCache[id] = { elo: v.elo || 1200, premium: v.premium === true };
+    rerender();
+  }).catch(() => {});
   return null;
+}
+function eloOf(id, rerender) { const i = infoOf(id, rerender); return i ? i.elo : null; }
+function isPremium(id, rerender) {
+  if (id === uid || id === 'me') return isMePremium();
+  const i = infoOf(id, rerender); return !!(i && i.premium);
+}
+function isMePremium() { return !!(S.google && S.profile && S.profile.premium === true); }
+
+/* ---------- WikiDuel+ : diamant ---------- */
+const DIA = '<svg class="dia" viewBox="0 0 16 16" role="img" aria-label="WikiDuel+"><title>WikiDuel+</title>' +
+  '<path d="M4.2 2h7.6L15 6.1 8 14.5 1 6.1z" fill="currentColor"/>' +
+  '<path d="M1 6.1h14M5.6 2 4.9 6.1 8 14.5l3.1-8.4L10.4 2" fill="none" stroke="#fff" stroke-width=".7" opacity=".55"/></svg>';
+function dia(id, rerender) { return isPremium(id, rerender) ? DIA : ''; }
+// Re-dessine un écran seulement s'il est encore affiché (les profils arrivent en différé).
+const redraw = {
+  lobby: () => { if (S.room && !$('lobby').hidden) renderLobby(); },
+  hud: () => { if (S.room && !$('race').hidden) renderHud(); },
+  results: () => { if (S.room && !$('results').hidden) renderResults(); }
+};
+
+/* ---------- WikiDuel+ : historique et statistiques ---------- */
+$('pmDia').innerHTML = DIA;
+$('premiumBtn').innerHTML = DIA + ' Mes parties et stats';
+$('pmBack').onclick = () => show('home');
+$('premiumBtn').onclick = async () => {
+  show('premium');
+  $('pmContent').hidden = true; $('pmLocked').hidden = true;
+  try { await ready; } catch (e) { return; }
+  if (!isMePremium()) {
+    $('pmLockTitle').textContent = 'Réservé aux comptes WikiDuel+';
+    $('pmLockText').textContent = S.google
+      ? 'Tes parties en ligne sont déjà enregistrées : elles apparaîtront dès que tu passeras à WikiDuel+. L’achat sera bientôt disponible.'
+      : 'Connecte-toi avec Google pour garder tes parties d’un téléphone à l’autre. L’achat de WikiDuel+ sera bientôt disponible.';
+    $('pmLocked').hidden = false;
+    return;
+  }
+  $('pmContent').hidden = false;
+  $('pmStats').innerHTML = ''; $('pmElo').hidden = true;
+  $('pmHist').innerHTML = '<li class="hist-empty">Chargement…</li>';
+  try {
+    const snap = await db.ref('history/' + uid).orderByChild('at').limitToLast(200).once('value');
+    const games = [];
+    snap.forEach(c => { games.push(c.val()); });
+    renderStats(games);
+    renderEloChart(games);
+    games.reverse();
+    $('pmHist').innerHTML = games.length ? games.map(histItem).join('')
+      : '<li class="hist-empty">Aucune partie en ligne pour l’instant. Joue entre amis ou en classé !</li>';
+  } catch (e) {
+    $('pmHist').innerHTML = '<li class="hist-empty">Historique indisponible (' + esc(e.code || e.message) + ').</li>';
+  }
+};
+
+function renderStats(games) {
+  const n = games.length;
+  const wins = games.filter(g => g.won).length;
+  const done = games.filter(g => g.finished && g.time != null);
+  const avg = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const best = done.length ? Math.min.apply(null, done.map(g => g.time)) : null;
+  const fewest = done.length ? Math.min.apply(null, done.map(g => g.clicks)) : null;
+  let streak = 0; for (let i = n - 1; i >= 0 && games[i].won; i--) streak++;
+  const ranked = games.filter(g => g.mode === 'classée');
+  const elos = ranked.filter(g => g.eloAfter).map(g => g.eloAfter);
+  const tiles = [
+    [n, 'parties jouées'],
+    [n ? Math.round(wins / n * 100) + ' %' : '–', 'de victoires (' + wins + ')'],
+    [done.length ? fmt(avg(done.map(g => g.time))) : '–', 'temps moyen à l’arrivée'],
+    [best != null ? fmtP(best) : '–', 'meilleur temps'],
+    [done.length ? avg(done.map(g => g.clicks)).toFixed(1).replace('.', ',') : '–', 'clics en moyenne'],
+    [fewest != null ? fewest : '–', 'clics, record'],
+    [streak, 'victoires d’affilée'],
+    [elos.length ? Math.max.apply(null, elos) : '–', 'meilleur Elo']
+  ];
+  $('pmStats').innerHTML = tiles.map(t => '<div class="stat-tile"><b>' + t[0] + '</b><span>' + t[1] + '</span></div>').join('');
+}
+
+// Courbe d'Elo des parties classées (au moins 2 points).
+function renderEloChart(games) {
+  const pts = games.filter(g => g.mode === 'classée' && g.eloAfter).map(g => g.eloAfter);
+  if (pts.length < 2) return;
+  const W = 300, H = 100, P = 8;
+  const lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts), span = Math.max(1, hi - lo);
+  const x = i => P + i * (W - 2 * P) / (pts.length - 1);
+  const y = v => H - P - (v - lo) * (H - 2 * P) / span;
+  const line = pts.map((v, i) => x(i).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+  const area = 'M' + x(0) + ',' + (H - P) + ' L' + line.replace(/ /g, ' L') + ' L' + x(pts.length - 1) + ',' + (H - P) + ' Z';
+  const last = pts[pts.length - 1];
+  $('pmElo').innerHTML = '<div class="label">Évolution de l’Elo · ' + pts.length + ' parties classées</div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-label="Elo de ' + pts[0] + ' à ' + last + '">' +
+    '<path d="' + area + '" fill="var(--flag)" opacity=".12"/>' +
+    '<polyline points="' + line + '" fill="none" stroke="var(--flag)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+    '<circle cx="' + x(pts.length - 1) + '" cy="' + y(last) + '" r="3.5" fill="var(--flag)"/></svg>' +
+    '<div class="h-meta">min ' + lo + ' · max ' + hi + ' · actuel ' + last + '</div>';
+  $('pmElo').hidden = false;
+}
+
+function histItem(g) {
+  const d = new Date(g.at);
+  const date = d.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
+  const res = g.won ? ['win', 'Victoire'] : g.gaveUp ? ['lose', 'Abandon'] : g.finished ? ['lose', 'Arrivé, battu'] : ['lose', 'Défaite'];
+  const meta = [g.clicks + ' clic' + (g.clicks > 1 ? 's' : '')];
+  if (g.time != null) meta.push(fmtP(g.time));
+  if (g.eloDelta != null) meta.push('Elo ' + (g.eloDelta >= 0 ? '+' : '') + g.eloDelta + ' → ' + g.eloAfter);
+  const vs = (g.opponents || []).length ? 'contre ' + g.opponents.map(esc).join(', ') : '';
+  return '<li><div class="h-top"><span class="pill' + (g.mode === 'classée' ? ' ranked' : '') + '">' + (g.mode === 'classée' ? 'Classée' : 'Entre amis') + '</span>' +
+    '<span class="h-date">' + date + '</span><span class="h-res ' + res[0] + '">' + res[1] + '</span></div>' +
+    '<div class="h-route">' + esc(g.start) + ' → ' + esc(g.target) + '</div>' +
+    '<div class="h-meta">' + meta.join(' · ') + (vs ? ' · ' + vs : '') + '</div>' +
+    ((g.path || []).length > 1 ? '<details><summary>Voir mon chemin</summary><p>' + g.path.map(esc).join(' → ') + '</p></details>' : '') + '</li>';
+}
+
+/* ---------- WikiDuel+ : animation de victoire ---------- */
+// Visible par tous les joueurs de la partie quand le vainqueur est WikiDuel+.
+function celebrate(name) {
+  const box = $('celebrate'), cv = $('confetti');
+  $('celText').innerHTML = 'Victoire de ' + esc(name) + DIA;
+  box.hidden = false;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  clearTimeout(S.celTimer);
+  S.celTimer = setTimeout(() => { box.hidden = true; }, reduce ? 2200 : 3600);
+  if (reduce) return;
+  const ctx = cv.getContext('2d'), dpr = window.devicePixelRatio || 1;
+  cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; ctx.scale(dpr, dpr);
+  const colors = ['#3fb8ff', '#ff5a36', '#ffd23f', '#1f9d63', '#ffffff'];
+  const bits = Array.from({ length: 140 }, () => ({
+    x: innerWidth / 2 + (Math.random() - .5) * 80, y: innerHeight * .45,
+    vx: (Math.random() - .5) * 14, vy: -Math.random() * 15 - 4,
+    r: Math.random() * Math.PI, vr: (Math.random() - .5) * .4,
+    w: 5 + Math.random() * 6, h: 8 + Math.random() * 8, c: colors[Math.floor(Math.random() * colors.length)]
+  }));
+  const t0 = performance.now();
+  (function frame(t) {
+    const k = (t - t0) / 3400;
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    bits.forEach(b => {
+      b.vy += .35; b.vx *= .99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k); ctx.translate(b.x, b.y); ctx.rotate(b.r);
+      ctx.fillStyle = b.c; ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); ctx.restore();
+    });
+    if (k < 1 && !box.hidden) requestAnimationFrame(frame); else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  })(t0);
+}
+function maybeCelebrate(room) {
+  const key = room.code + '/' + room.round;
+  if (S.celebrated === key) return;
+  const winner = room.players.find(p => p.id === room.winnerId);
+  if (!winner) return;
+  const prem = isPremium(winner.id, () => maybeCelebrate(room));
+  if (!prem) { if (userCache[winner.id] !== null) S.celebrated = key; return; }
+  S.celebrated = key;
+  celebrate(winner.id === S.me.playerId ? (S.me.name || 'toi') : winner.name);
 }
 ready.catch(e => {
   $('homeErr').textContent = e.message === 'config'
@@ -676,13 +911,17 @@ async function joinRoom(code, name) {
 // Convertit les données Firebase dans le format utilisé par l'interface.
 function toState(code, v) {
   const done = v.status === 'done';
+  const ranked = v.ranked === true;
   const players = Object.keys(v.players || {}).map(id => {
     const p = v.players[id], path = p.path || [];
     return {
       id: id, name: p.name || 'Joueur', host: id === v.hostId,
-      clicks: Math.max(0, path.length - 1), finishedAt: p.finishedAt || null, gaveUp: !!p.gaveUp,
+      // En classé, seul le nombre de clics est public : le chemin reste privé jusqu'à la fin.
+      clicks: ranked ? (p.clicks || 0) : Math.max(0, path.length - 1),
+      finishedAt: p.finishedAt || null, gaveUp: !!p.gaveUp,
       online: p.online !== false, joinedAt: p.joinedAt || 0,
-      path: done ? path : null // chemins révélés seulement à la fin
+      current: !ranked && path.length ? path[path.length - 1] : null, // page actuelle (entre amis)
+      path: done && !ranked ? path : null
     };
   }).sort((a, b) => a.joinedAt - b.joinedAt);
   return { code: code, ranked: v.ranked === true, status: v.status, start: v.start, target: v.target, startedAt: v.startedAt || 0, round: v.round || 0, winnerId: v.winnerId || null, players: players };
@@ -745,8 +984,16 @@ async function recordMove(title, reached) {
     if (reached) { p.finishedAt = serverNow(); soloEnd(); } else soloEmit();
     return;
   }
-  const mine = (S.raw && S.raw.players && S.raw.players[uid]) || {};
-  const upd = { path: (mine.path || [S.room.start]).concat(title) };
+  let upd;
+  if (S.room.ranked) {
+    // Classé : chemin privé dans paths/<code>/<uid>, seul le nombre de clics va dans le salon.
+    S.myPath = (S.myPath || [S.room.start]).concat(title);
+    await db.ref('paths/' + S.room.code + '/' + uid).set(S.myPath);
+    upd = { clicks: S.myPath.length - 1 };
+  } else {
+    const mine = (S.raw && S.raw.players && S.raw.players[uid]) || {};
+    upd = { path: (mine.path || [S.room.start]).concat(title) };
+  }
   if (reached) upd.finishedAt = NOW();
   await S.ref.child('players/' + uid).update(upd);
   if (reached) {
@@ -923,8 +1170,8 @@ function renderLobby() {
   $('lobbyMode').textContent = S.room.ranked ? 'Classée · 1 contre 1' : 'Entre amis';
   $('lobbyMode').className = 'pill' + (S.room.ranked ? ' ranked' : '');
   $('lobbyPlayers').innerHTML = S.room.players.map(p =>
-    '<li><span class="dot' + (p.online ? '' : ' off') + '"></span>' + esc(p.name) +
-    (S.room.ranked ? '<span class="elo">' + (eloOf(p.id, renderLobby) || '…') + '</span>' : '') +
+    '<li><span class="dot' + (p.online ? '' : ' off') + '"></span>' + esc(p.name) + dia(p.id, redraw.lobby) +
+    (S.room.ranked ? '<span class="elo">' + (eloOf(p.id, redraw.lobby) || '…') + '</span>' : '') +
     (p.id === S.me.playerId ? ' <span style="color:var(--muted);font-weight:500">(toi)</span>' : '') +
     (p.host ? '<span class="tag">Hôte</span>' : '') + '</li>').join('');
   const host = isHost();
@@ -948,6 +1195,12 @@ async function beginRound() {
   const room = S.room;
   S.round = room.round; S.finished = false; S.current = null;
   S.targetKey = norm(room.target);
+  S.celebrated = null;
+  if (room.ranked && !S.solo) {
+    // Reprend son chemin privé (utile après un rechargement de la page).
+    S.myPath = [room.start];
+    db.ref('paths/' + room.code + '/' + uid).once('value').then(s => { if (Array.isArray(s.val())) S.myPath = s.val(); }).catch(() => {});
+  }
   show('race');
   $('targetName').textContent = room.target;
   $('artTitle').textContent = ''; $('artBody').innerHTML = ''; $('artErr').textContent = '';
@@ -1018,7 +1271,9 @@ function renderHud() {
   $('rivals').innerHTML = room.players.map(p => {
     const cls = 'rival' + (p.id === S.me.playerId ? ' me' : '') + (p.finishedAt ? ' done' : '') + (p.gaveUp ? ' out' : '');
     const label = p.finishedAt ? '✓' : (p.clicks + ' clic' + (p.clicks > 1 ? 's' : ''));
-    return '<span class="' + cls + '">' + esc(p.id === S.me.playerId ? 'Toi' : p.name) + ' <span class="n">' + label + '</span></span>';
+    // Entre amis : la page où se trouve chaque adversaire est visible.
+    const page = p.current && p.id !== S.me.playerId && !p.finishedAt && !p.gaveUp ? ' <span class="pg">' + esc(p.current) + '</span>' : '';
+    return '<span class="' + cls + '">' + esc(p.id === S.me.playerId ? 'Toi' : p.name) + dia(p.id, redraw.hud) + ' <span class="n">' + label + '</span>' + page + '</span>';
   }).join('');
   if (me && (me.finishedAt || me.gaveUp)) {
     $('giveupBtn').hidden = true;
@@ -1206,12 +1461,13 @@ function renderResults() {
     : 'Le classement n’a pas pu être calculé.';
   $('podium').innerHTML = ranked.map((p, i) => {
     const score = p.finishedAt ? (fmt(p.finishedAt - room.startedAt) + '<br>' + p.clicks + ' clic' + (p.clicks > 1 ? 's' : '')) : (p.gaveUp ? 'abandon' : 'pas arrivé');
-    const path = (p.path || []).map((t, k, arr) => (k === 0 || k === arr.length - 1) ? '<b>' + esc(t) + '</b>' : esc(t)).join(' → ');
+    const pth = room.ranked ? ((res && res.paths && res.paths[p.id]) || []) : (p.path || []);
+    const path = pth.map((t, k, arr) => (k === 0 || k === arr.length - 1) ? '<b>' + esc(t) + '</b>' : esc(t)).join(' → ');
     const c = changes[p.id];
     const delta = c ? ' <span class="delta ' + (c.delta >= 0 ? 'up' : 'down') + '">' + (c.delta >= 0 ? '+' : '') + c.delta + ' → ' + c.after + '</span>' : '';
     const bad = verdicts[p.id] && verdicts[p.id].indexOf('invalide') === 0 ? '<div class="verdict">Chemin ' + esc(verdicts[p.id]) + '</div>' : '';
     return '<li class="' + (p.id === room.winnerId ? 'win' : '') + '"><div class="top"><span class="rank">' + (p.finishedAt ? (i + 1) + '.' : '–') + '</span>' +
-      esc(p.name) + (p.id === S.me.playerId ? ' <span style="font-weight:500;color:var(--muted)">(toi)</span>' : '') +
+      esc(p.name) + dia(p.id, redraw.results) + (p.id === S.me.playerId ? ' <span style="font-weight:500;color:var(--muted)">(toi)</span>' : '') +
       '<span class="score">' + score + '</span></div>' + (delta ? '<div>' + delta + '</div>' : '') + bad + '<div class="path">' + path + '</div></li>';
   }).join('');
   const host = isHost();
@@ -1240,6 +1496,7 @@ function renderResults() {
   }
   renderChallengeResult(room);
   renderShare(room);
+  maybeCelebrate(room);
 }
 
 /* ---------- Défis WhatsApp ---------- */
