@@ -103,6 +103,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .thanks { display: grid; gap: 6px; padding: 16px; border-radius: 14px; border: 2px solid var(--ok); background: var(--card); font: 500 15px/1.4 var(--display); }
 .thanks strong { font: 800 18px var(--display); color: var(--ok); }
 .pm-content { display: grid; gap: 18px; }
+.seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.seg button { border: 0; background: none; border-radius: 9px; padding: 8px 4px; font: 700 14px var(--display); color: var(--muted); cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--paper); }
+.seg button:focus-visible { outline: 2px solid var(--flag); outline-offset: 1px; }
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .stat-tile { padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 2px; min-width: 0; }
 .stat-tile b { font: 700 22px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
@@ -408,7 +412,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div class="locked" id="pmLocked" hidden>
       <strong id="pmLockTitle">Réservé aux comptes WikiDuel+</strong>
       <ul>
-        <li>Historique de toutes tes parties en ligne, avec les chemins</li>
+        <li>Historique de toutes tes parties (solo, amis, classées), avec les chemins</li>
         <li>Statistiques : victoires, temps, clics, courbe d'Elo</li>
         <li>Animation de victoire visible par tes adversaires</li>
         <li>Le diamant à côté de ton pseudo, même dans le classement</li>
@@ -423,6 +427,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <span id="pmThanksText">Paiement reçu, activation de WikiDuel+ en cours…</span>
     </div>
     <div id="pmContent" class="pm-content" hidden>
+      <div class="seg" id="pmFilter" role="tablist" aria-label="Filtrer les parties">
+        <button data-f="all" class="on" role="tab" aria-selected="true">Tout</button>
+        <button data-f="solo" role="tab" aria-selected="false">Solo</button>
+        <button data-f="amis" role="tab" aria-selected="false">Amis</button>
+        <button data-f="classée" role="tab" aria-selected="false">Classé</button>
+      </div>
       <div class="stats" id="pmStats"></div>
       <div class="elo-chart" id="pmElo" hidden></div>
       <div class="label">Historique</div>
@@ -762,7 +772,7 @@ $('premiumBtn').onclick = async () => {
   if (!isMePremium()) {
     $('pmLockTitle').textContent = 'Réservé aux comptes WikiDuel+';
     $('pmLockText').textContent = S.google
-      ? 'Tes parties en ligne sont déjà enregistrées : elles apparaîtront dès que tu passeras à WikiDuel+.'
+      ? 'Tes parties sont déjà enregistrées : elles apparaîtront dès que tu passeras à WikiDuel+.'
       : 'WikiDuel+ est lié à ton compte Google, pour le garder sur tous tes appareils. Connecte-toi d’abord avec Google sur l’accueil.';
     $('pmBuy').textContent = S.google ? 'Passer à WikiDuel+ · 2 CHF' : 'Se connecter avec Google';
     $('pmBuyErr').textContent = ''; $('pmBuy').disabled = false;
@@ -776,11 +786,8 @@ $('premiumBtn').onclick = async () => {
     const snap = await db.ref('history/' + uid).orderByChild('at').limitToLast(200).once('value');
     const games = [];
     snap.forEach(c => { games.push(c.val()); });
-    renderStats(games);
-    renderEloChart(games);
-    games.reverse();
-    $('pmHist').innerHTML = games.length ? games.map(histItem).join('')
-      : '<li class="hist-empty">Aucune partie en ligne pour l’instant. Joue entre amis ou en classé !</li>';
+    S.pmGames = games;
+    renderPm();
   } catch (e) {
     $('pmHist').innerHTML = '<li class="hist-empty">Historique indisponible (' + esc(e.code || e.message) + ').</li>';
   }
@@ -824,6 +831,27 @@ $('pmBuy').onclick = async () => {
     }
   }, 1000);
 })();
+
+// Filtre Tout / Solo / Amis / Classé : s'applique aux statistiques et à la liste.
+S.pmFilter = 'all';
+function renderPm() {
+  const all = S.pmGames || [];
+  const games = S.pmFilter === 'all' ? all : all.filter(g => (g.mode || 'amis') === S.pmFilter);
+  $('pmFilter').querySelectorAll('button').forEach(b => {
+    const on = b.dataset.f === S.pmFilter; b.classList.toggle('on', on); b.setAttribute('aria-selected', on);
+  });
+  renderStats(games);
+  $('pmElo').hidden = true;
+  if (S.pmFilter === 'all' || S.pmFilter === 'classée') renderEloChart(all);
+  const list = games.slice().reverse();
+  const empty = { all: 'Aucune partie pour l’instant. Lance une partie solo, entre amis ou classée !',
+    solo: 'Aucune partie solo enregistrée.', amis: 'Aucune partie entre amis enregistrée.', 'classée': 'Aucune partie classée enregistrée.' };
+  $('pmHist').innerHTML = list.length ? list.map(histItem).join('') : '<li class="hist-empty">' + empty[S.pmFilter] + '</li>';
+}
+$('pmFilter').addEventListener('click', e => {
+  const b = e.target.closest('button[data-f]'); if (!b) return;
+  S.pmFilter = b.dataset.f; renderPm();
+});
 
 function renderStats(games) {
   const n = games.length;
@@ -871,12 +899,16 @@ function renderEloChart(games) {
 function histItem(g) {
   const d = new Date(g.at);
   const date = d.toLocaleDateString('fr-CH', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' + d.toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' });
-  const res = g.won ? ['win', 'Victoire'] : g.gaveUp ? ['lose', 'Abandon'] : g.finished ? ['lose', 'Arrivé, battu'] : ['lose', 'Défaite'];
+  const solo = g.mode === 'solo';
+  let res = g.won ? ['win', solo ? 'Arrivé' : 'Victoire'] : g.gaveUp ? ['lose', 'Abandon'] : g.finished ? ['lose', 'Arrivé, battu'] : ['lose', 'Défaite'];
+  // Défi WhatsApp joué en solo : battu ou non ?
+  if (solo && g.challengeTime != null && g.finished) res = g.time < g.challengeTime ? ['win', 'Défi relevé'] : ['lose', 'Défi raté'];
   const meta = [g.clicks + ' clic' + (g.clicks > 1 ? 's' : '')];
   if (g.time != null) meta.push(fmtP(g.time));
   if (g.eloDelta != null) meta.push('Elo ' + (g.eloDelta >= 0 ? '+' : '') + g.eloDelta + ' → ' + g.eloAfter);
-  const vs = (g.opponents || []).length ? 'contre ' + g.opponents.map(esc).join(', ') : '';
-  return '<li><div class="h-top"><span class="pill' + (g.mode === 'classée' ? ' ranked' : '') + '">' + (g.mode === 'classée' ? 'Classée' : 'Entre amis') + '</span>' +
+  const vs = (g.opponents || []).length ? (solo ? 'défi de ' : 'contre ') + g.opponents.map(esc).join(', ') + (g.challengeTime != null ? ' (' + fmtP(g.challengeTime) + ')' : '') : '';
+  const label = g.mode === 'classée' ? 'Classée' : solo ? 'Solo' : 'Entre amis';
+  return '<li><div class="h-top"><span class="pill' + (g.mode === 'classée' ? ' ranked' : '') + '">' + label + '</span>' +
     '<span class="h-date">' + date + '</span><span class="h-res ' + res[0] + '">' + res[1] + '</span></div>' +
     '<div class="h-route">' + esc(g.start) + ' → ' + esc(g.target) + '</div>' +
     '<div class="h-meta">' + meta.join(' · ') + (vs ? ' · ' + vs : '') + '</div>' +
@@ -1014,7 +1046,23 @@ function soloEnd() {
   const p = S.solo.me;
   S.solo.status = 'done';
   S.solo.rec = p.finishedAt ? saveSoloRecord(S.solo, p.finishedAt - S.solo.startedAt, p.path.length - 1) : null;
+  saveSoloHistory(S.solo);
   soloEmit();
+}
+
+// Partie solo -> historique en ligne (visible avec WikiDuel+ ; gardée même sans, pour plus tard).
+function saveSoloHistory(r) {
+  if (!db || !uid) return;
+  const p = r.me;
+  const c = S.challenge && norm(S.challenge.start) === norm(r.start) && norm(S.challenge.target) === norm(r.target) ? S.challenge : null;
+  const entry = {
+    at: NOW(), mode: 'solo', start: r.start, target: r.target,
+    finished: !!p.finishedAt, won: !!p.finishedAt, gaveUp: !!p.gaveUp,
+    clicks: Math.max(0, p.path.length - 1), path: p.path.slice(0, 60)
+  };
+  if (p.finishedAt) entry.time = Math.max(0, p.finishedAt - r.startedAt);
+  if (c) { entry.opponents = [c.name]; entry.challengeTime = c.time; }
+  db.ref('history/' + uid).push(entry).catch(e => console.warn('Historique solo non enregistré', e.code || e));
 }
 function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }
 $('solo').onclick = async () => { $('homeErr').textContent = ''; S.solo = null; await poolReady; startSolo(); };

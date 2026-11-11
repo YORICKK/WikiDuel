@@ -52,7 +52,24 @@
     "history": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid && root.child('users/' + $uid + '/premium').val() === true",
-        ".indexOn": ["at"]
+        ".indexOn": ["at"],
+        "$key": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.child('mode').val() === 'solo'",
+          ".validate": "newData.hasChildren(['at', 'mode', 'start', 'target', 'clicks', 'path', 'finished'])",
+          "at": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+          "mode": { ".validate": "newData.val() === 'solo'" },
+          "start": { ".validate": "newData.isString() && newData.val().length <= 300" },
+          "target": { ".validate": "newData.isString() && newData.val().length <= 300" },
+          "clicks": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200" },
+          "time": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+          "path": { ".validate": "newData.hasChildren()" },
+          "finished": { ".validate": "newData.isBoolean()" },
+          "won": { ".validate": "newData.isBoolean()" },
+          "gaveUp": { ".validate": "newData.isBoolean()" },
+          "opponents": { ".validate": "newData.hasChildren()" },
+          "challengeTime": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        }
       }
     },
 

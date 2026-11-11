@@ -201,17 +201,27 @@ async function archiveRound(code, room, entries, extra) {
     };
   });
   await db.ref().update(updates);
-  // Ne garde que les HISTORY_MAX parties les plus récentes de chaque joueur.
-  await Promise.all(entries.map(async p => {
-    const snap = await db.ref('history/' + p.uid).orderByChild('at').once('value');
-    const n = snap.numChildren();
-    if (n <= HISTORY_MAX) return;
-    const drop = {};
-    let i = 0;
-    snap.forEach(c => { if (i++ < n - HISTORY_MAX) drop[c.key] = null; });
-    await db.ref('history/' + p.uid).update(drop);
-  }));
+  await Promise.all(entries.map(p => pruneHistory(p.uid)));
 }
+
+// Ne garde que les HISTORY_MAX parties les plus récentes d'un joueur.
+async function pruneHistory(uid) {
+  const snap = await db.ref('history/' + uid).orderByChild('at').once('value');
+  const n = snap.numChildren();
+  if (n <= HISTORY_MAX) return;
+  const drop = {};
+  let i = 0;
+  snap.forEach(c => { if (i++ < n - HISTORY_MAX) drop[c.key] = null; });
+  await db.ref('history/' + uid).update(drop);
+}
+
+// Les parties solo sont écrites par le téléphone : on applique la même limite de 200.
+exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{key}' }, DB_OPTS), async event => {
+  if (!db) db = admin.database();
+  const v = event.data.val();
+  if (!v || v.mode !== 'solo') return;
+  await pruneHistory(event.params.uid);
+});
 
 exports.rateRound = onValueWritten(
   { ref: '/rooms/{code}/status', region: 'europe-west1', instance: 'wikiduel-default-rtdb' },
