@@ -5,7 +5,7 @@
 
     "users": {
       ".read": true,
-      ".indexOn": ["elo"],
+      ".indexOn": ["elo", "soloDone"],
       "$uid": {
         "name": {
           ".write": "auth != null && auth.uid === $uid && auth.token.firebase.sign_in_provider !== 'anonymous'",
@@ -48,8 +48,8 @@
         "opensAt": { ".read": true },
         "closesAt": { ".read": "root.child('daily/' + $date + '/opensAt').val() <= now" },
         "n": { ".read": "root.child('daily/' + $date + '/opensAt').val() <= now" },
-        "start": { ".read": "auth != null && root.child('dailyRuns/' + $date + '/' + auth.uid + '/startedAt').exists()" },
-        "target": { ".read": "auth != null && root.child('dailyRuns/' + $date + '/' + auth.uid + '/startedAt').exists()" }
+        "start": { ".read": "root.child('daily/' + $date + '/closesAt').val() <= now || (auth != null && root.child('dailyRuns/' + $date + '/' + auth.uid + '/startedAt').exists())" },
+        "target": { ".read": "root.child('daily/' + $date + '/closesAt').val() <= now || (auth != null && root.child('dailyRuns/' + $date + '/' + auth.uid + '/startedAt').exists())" }
       }
     },
 
@@ -133,6 +133,7 @@
           "opponents": { ".validate": "newData.hasChildren()" },
           "challengeTime": { ".validate": "newData.isNumber()" },
           "daily": { ".validate": "newData.isString() && newData.val().length === 10" },
+          "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
           "$other": { ".validate": false }
         }
       }

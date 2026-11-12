@@ -461,7 +461,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div class="locked" id="pmLocked" hidden>
       <strong id="pmLockTitle">Réservé aux comptes WikiDuel+</strong>
       <ul>
-        <li>Historique de toutes tes parties (solo, amis, classées), avec les chemins</li>
+        <li>Historique de tes 10 dernières parties (solo, amis, classées), avec les chemins</li>
         <li>Statistiques : victoires, temps, clics, courbe d'Elo</li>
         <li>Animation de victoire visible par tes adversaires</li>
         <li>Le diamant à côté de ton pseudo, même dans le classement</li>
@@ -518,6 +518,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div>
       <div class="label" id="lbLabel">Parties classées · Elo</div>
       <h2 class="big" id="lbTitle">Classement</h2>
+    </div>
+    <div class="seg" id="lbTabs" role="tablist" aria-label="Choisir le classement">
+      <button type="button" class="on" role="tab" aria-selected="true">Classé (Elo)</button>
     </div>
     <ol class="lb" id="lbList"><li class="lb-empty">Chargement…</li></ol>
     <button id="rankBack" class="btn ghost">Retour</button>
@@ -804,24 +807,43 @@ async function saveProfileName(name) {
 }
 
 /* ---------- Classement ---------- */
-$('rankBtn').onclick = async () => {
+// Onglets en haut de l'écran Classement (Elo / Solo, ou Aujourd'hui / Hier pour le défi du jour).
+function setLbTabs(tabs, active, onPick) {
+  $('lbTabs').style.gridTemplateColumns = 'repeat(' + tabs.length + ', minmax(0, 1fr))';
+  $('lbTabs').innerHTML = tabs.map(t => '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === active) + '"' + (t[0] === active ? ' class="on"' : '') + '>' + t[1] + '</button>').join('');
+  $('lbTabs').onclick = e => { const b = e.target.closest('button[data-t]'); if (b && b.dataset.t !== active) onPick(b.dataset.t); };
+}
+function lbRow(r, i, small, score) {
+  return '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
+    '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium === true ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
+    '<small>' + small + '</small></span>' + score + '</li>';
+}
+async function showGeneralBoard(tab) {
   show('ranking');
-  $('lbLabel').textContent = 'Parties classées · Elo'; $('lbTitle').textContent = 'Classement';
+  setLbTabs([['elo', 'Classé (Elo)'], ['solo', 'Solo']], tab, showGeneralBoard);
+  $('lbLabel').textContent = tab === 'solo' ? 'Parties solo terminées' : 'Parties classées · Elo';
+  $('lbTitle').textContent = 'Classement';
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
   try {
     await ready;
-    const snap = await db.ref('users').orderByChild('elo').limitToLast(50).once('value');
+    const field = tab === 'solo' ? 'soloDone' : 'elo';
+    const snap = await db.ref('users').orderByChild(field).limitToLast(50).once('value');
     const rows = [];
-    snap.forEach(c => { const v = c.val(); if (v && v.games) rows.push(Object.assign({ id: c.key }, v)); });
-    rows.sort((a, b) => b.elo - a.elo);
-    $('lbList').innerHTML = rows.length ? rows.map((r, i) =>
-      '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
-      '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium === true ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
-      '<small>' + r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : '') + '</small></span>' +
-      '<span class="score">' + r.elo + '</span></li>').join('')
-      : '<li class="lb-empty">Aucune partie classée pour l’instant. Lance la première !</li>';
+    snap.forEach(c => { const v = c.val(); if (v && (tab === 'solo' ? v.soloDone : v.games)) rows.push(Object.assign({ id: c.key }, v)); });
+    rows.sort((a, b) => b[field] - a[field]);
+    if (tab === 'solo') {
+      $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i, 'parcours réussis en solo',
+        '<span class="score">' + r.soloDone + '</span>')).join('')
+        : '<li class="lb-empty">Aucune partie solo terminée pour l’instant.</li>';
+    } else {
+      $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i,
+        r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : ''),
+        '<span class="score">' + r.elo + '</span>')).join('')
+        : '<li class="lb-empty">Aucune partie classée pour l’instant. Lance la première !</li>';
+    }
   } catch (e) { $('lbList').innerHTML = '<li class="lb-empty">Classement indisponible.</li>'; }
-};
+}
+$('rankBtn').onclick = () => showGeneralBoard('elo');
 $('rankBack').onclick = () => show('home');
 
 // Elo des joueurs affichés (mis en cache).
@@ -879,7 +901,7 @@ $('premiumBtn').onclick = async () => {
   $('pmStats').innerHTML = ''; $('pmElo').hidden = true;
   $('pmHist').innerHTML = '<li class="hist-empty">Chargement…</li>';
   try {
-    const snap = await db.ref('history/' + uid).orderByChild('at').limitToLast(200).once('value');
+    const snap = await db.ref('history/' + uid).orderByChild('at').limitToLast(10).once('value');
     const games = [];
     snap.forEach(c => { games.push(c.val()); });
     S.pmGames = games;
@@ -1182,6 +1204,7 @@ function saveSoloHistory(r) {
   if (p.finishedAt) entry.time = Math.max(0, p.finishedAt - r.startedAt);
   if (c && !r.daily) { entry.opponents = [c.name]; entry.challengeTime = c.time; }
   if (r.daily) entry.daily = r.daily;
+  if (S.me && S.me.name) entry.name = String(S.me.name).slice(0, 16); // nom affiché au classement Solo
   db.ref('history/' + uid).push(entry).catch(e => console.warn('Historique solo non enregistré', e.code || e));
 }
 
@@ -1300,21 +1323,30 @@ function finishDaily(r) {
   }).catch(e => { S.dailyResult = { key: r.daily, state: 'error', error: e.code || e.message }; if (!$('results').hidden) renderResults(); });
 }
 
+// Classement du défi du jour, avec un onglet pour celui de la veille.
 async function showDailyBoard(key) {
   show('ranking');
+  const today = zurichDate(serverNow());
+  const yesterday = zurichDate(serverNow() - 864e5);
+  setLbTabs([[today, 'Aujourd’hui'], [yesterday, 'Hier']], key, showDailyBoard);
+  const isToday = key === today;
   $('lbLabel').textContent = 'Défi du jour · ' + dateLabel(key);
-  // Le parcours n'apparaît que pour qui a déjà lancé le défi.
-  const d = S.daily && S.daily.key === key ? S.daily : null;
-  $('lbTitle').textContent = d && d.start ? d.start + ' → ' + d.target : 'Classement du jour' + (d && d.n ? ' n°' + d.n : '');
+  $('lbTitle').textContent = 'Classement du jour';
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
   try {
+    await ready;
+    // Titre : n° du défi, et le parcours s'il est connu (aujourd'hui après avoir joué, ou défi terminé).
+    const d = S.daily && S.daily.key === key ? S.daily : {};
+    const val = p => db.ref('daily/' + key + '/' + p).once('value').then(s => s.val()).catch(() => null);
+    const n = d.n || await val('n');
+    let start = d.start, target = d.target;
+    if (!isToday && !start) { start = await val('start'); target = await val('target'); }
+    $('lbTitle').textContent = start ? start + ' → ' + target : 'Classement du jour' + (n ? ' n°' + n : '');
+    if (!isToday) $('lbLabel').textContent = 'Défi d’hier' + (n ? ' n°' + n : '') + ' · ' + dateLabel(key);
     const rows = await dailyScores(key);
-    $('lbList').innerHTML = rows.length ? rows.slice(0, 100).map((r, i) =>
-      '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
-      '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
-      '<small>' + r.clicks + ' clic' + (r.clicks > 1 ? 's' : '') + '</small></span>' +
-      '<span class="meta-time">' + fmtC(r.time) + '</span></li>').join('')
-      : '<li class="lb-empty">Personne n’a encore réussi le défi du jour. Sois le premier !</li>';
+    $('lbList').innerHTML = rows.length ? rows.slice(0, 100).map((r, i) => lbRow(r, i,
+      r.clicks + ' clic' + (r.clicks > 1 ? 's' : ''), '<span class="meta-time">' + fmtC(r.time) + '</span>')).join('')
+      : '<li class="lb-empty">' + (isToday ? 'Personne n’a encore réussi le défi du jour. Sois le premier !' : 'Personne n’a réussi le défi d’hier.') + '</li>';
   } catch (e) { $('lbList').innerHTML = '<li class="lb-empty">Classement du jour indisponible.</li>'; }
 }
 function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }

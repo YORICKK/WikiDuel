@@ -113,7 +113,18 @@ function step(name, ok, detail) {
     });
     step('Fenêtre Supprimer mon compte', del.open && del.lockedBefore && del.unlocked && del.closed, 'bouton bloqué tant que SUPPRIMER n’est pas tapé');
 
-    // 6. Pages légales
+    // 6. Classements : Elo, Solo, défi du jour (aujourd'hui et hier)
+    const boards = [];
+    for (const [label, open, tab] of [['Elo', 'showGeneralBoard("elo")', null], ['Solo', 'showGeneralBoard("solo")', null], ['Défi du jour', 'showDailyBoard(zurichDate(serverNow()))', null], ['Défi d’hier', 'showDailyBoard(zurichDate(serverNow() - 864e5))', null]]) {
+      await page.evaluate(open);
+      await page.waitForFunction(() => !/Chargement/.test(document.getElementById('lbList').innerText), { timeout: 15000 }).catch(() => {});
+      const txt = await page.evaluate(() => document.getElementById('lbList').innerText);
+      boards.push(label + (/indisponible|Chargement/.test(txt) ? ' KO' : ''));
+    }
+    await page.evaluate(() => show('home'));
+    step('Classements Elo, Solo, du jour et d’hier', !boards.some(b => / KO$/.test(b)), boards.join(', '));
+
+    // 7. Pages légales
     for (const p of ['/cgv', '/confidentialite']) {
       const r = await page.goto(base + p, { waitUntil: 'domcontentloaded', timeout: 15000 });
       const txt = await page.content();
