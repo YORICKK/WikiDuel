@@ -11,7 +11,8 @@
     "cleanUrls": true,
     "rewrites": [
       { "source": "/defi", "function": { "functionId": "sharePage", "region": "europe-west1" } },
-      { "source": "/jour", "function": { "functionId": "sharePage", "region": "europe-west1" } }
+      { "source": "/jour", "function": { "functionId": "sharePage", "region": "europe-west1" } },
+      { "source": "/defis", "function": { "functionId": "defisPage", "region": "europe-west1" } }
     ],
     "headers": [
       {

@@ -30,3 +30,14 @@ table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 0 0 14p
 th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid var(--line); }
 th { font: 700 14px var(--display); }
 footer { margin-top: 40px; font: 500 13px var(--display); color: var(--muted); }
+/* Pages de présentation (comment jouer, wikirace, défis passés) */
+.lead-p { font-size: 19px; color: var(--muted); }
+.cta { display: inline-block; margin: 8px 0 18px; padding: 14px 22px; border-radius: 14px; background: var(--flag); color: #fff; text-decoration: none; font: 800 18px var(--display); }
+.route { font: 700 15px var(--mono); }
+.route b { color: var(--flag); }
+.mode { display: grid; gap: 4px; }
+.mode strong { font: 800 17px var(--display); }
+nav.pages { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 12px; font: 600 14px var(--display); }
+details.faq { border-top: 1px solid var(--line); padding: 10px 0; }
+details.faq summary { cursor: pointer; font: 700 17px var(--display); }
+details.faq p { margin: 8px 0 0; }

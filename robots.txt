@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+# Pages de partage (redirections avec paramètres) : inutiles dans Google
+Disallow: /defi?
+Disallow: /jour
+Allow: /defis
+
+Sitemap: https://wikiduel.ch/sitemap.xml

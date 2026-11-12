@@ -598,6 +598,55 @@ exports.sharePage = onRequest({ region: 'europe-west1' }, (req, res) => {
     '</head><body><p><a href="' + escHtml(target_url) + '">Ouvrir WikiDuel</a></p></body></html>');
 });
 
+/* ===================== Page « Défis passés et solutions » (référencement) ===================== */
+// Générée par le serveur pour que Google la lise : uniquement les défis TERMINÉS (jamais celui du jour).
+exports.defisPage = onRequest({ region: 'europe-west1' }, async (req, res) => {
+  if (!db) db = admin.database();
+  const now = Date.now();
+  const [daily, scores, runs] = await Promise.all(['daily', 'dailyScores', 'dailyRuns'].map(p => db.ref(p).once('value').then(s => s.val() || {})));
+  const dateFr = k => { const [y, m, d] = k.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }); };
+  const current = Object.keys(daily).find(k => daily[k].opensAt <= now && now < daily[k].closesAt);
+  const done = Object.keys(daily).filter(k => daily[k].closesAt <= now).sort().reverse();
+  const route = p => p.map((t, i) => (i === 0 || i === p.length - 1) ? '<b>' + escHtml(t) + '</b>' : escHtml(t)).join(' → ');
+  const items = done.map(k => {
+    const d = daily[k];
+    const ok = Object.keys(scores[k] || {}).map(uid => Object.assign({ uid }, scores[k][uid])).filter(s => s.valid);
+    const fastest = ok.slice().sort((a, b) => a.time - b.time || a.clicks - b.clicks)[0];
+    const shortest = ok.slice().sort((a, b) => a.clicks - b.clicks || a.time - b.time)[0];
+    const pathOf = s => s && runs[k] && runs[k][s.uid] && Array.isArray(runs[k][s.uid].path) ? runs[k][s.uid].path : null;
+    let body = '<p class="route"><b>' + escHtml(d.start) + '</b> → <b>' + escHtml(d.target) + '</b></p>';
+    if (!ok.length) body += '<p>Personne n’a réussi ce défi.</p>';
+    else {
+      body += '<p>' + ok.length + ' joueur' + (ok.length > 1 ? 's ont' : ' a') + ' réussi. ';
+      body += 'Meilleur temps : <strong>' + escHtml(fastest.name || 'Joueur') + '</strong> en ' + fmtTime(fastest.time, true) + ' (' + fastest.clicks + ' clic' + (fastest.clicks > 1 ? 's' : '') + ').</p>';
+      const ps = pathOf(shortest);
+      if (ps) body += '<p>Chemin le plus court trouvé (' + shortest.clicks + ' clic' + (shortest.clicks > 1 ? 's' : '') + ') :<br><span class="route">' + route(ps) + '</span></p>';
+      const pf = pathOf(fastest);
+      if (pf && fastest !== shortest) body += '<p>Chemin du plus rapide :<br><span class="route">' + route(pf) + '</span></p>';
+    }
+    return '<section id="defi-' + k + '"><h2>Défi du jour n°' + (d.n || '') + ' · ' + escHtml(dateFr(k)) + '</h2>' + body + '</section>';
+  }).join('');
+  const desc = 'Solutions et classements des défis du jour WikiDuel : parcours, meilleurs temps et chemins les plus courts entre deux articles Wikipédia.';
+  res.set('Cache-Control', 'public, max-age=600');
+  res.status(200).send('<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+    '<title>Défis du jour passés et solutions | WikiDuel</title>' +
+    '<meta name="description" content="' + escHtml(desc) + '">' +
+    '<link rel="canonical" href="' + SITE + '/defis">' +
+    '<meta property="og:type" content="article"><meta property="og:site_name" content="WikiDuel">' +
+    '<meta property="og:title" content="Défis du jour passés et solutions"><meta property="og:description" content="' + escHtml(desc) + '">' +
+    '<meta property="og:url" content="' + SITE + '/defis"><meta property="og:image" content="' + SITE + '/og.png"><meta name="twitter:card" content="summary_large_image">' +
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">' +
+    '<link rel="stylesheet" href="/legal.css"></head><body><main class="wrap">' +
+    '<a class="back" href="/">← Jouer à WikiDuel</a><div class="logo">Wiki<span>Duel</span></div>' +
+    '<nav class="pages" aria-label="Pages"><a href="/comment-jouer">Comment jouer</a><a href="/wikirace">Wikirace</a><a href="/defis">Défis passés et solutions</a></nav>' +
+    '<h1>Défis du jour passés et solutions</h1>' +
+    '<p class="lead-p">Chaque jour, un parcours mystère entre deux articles Wikipédia, le même pour tout le monde. Voici les défis terminés, avec le meilleur temps et le chemin le plus court trouvé par les joueurs.</p>' +
+    (current ? '<div class="box"><p><strong>Le défi du jour n°' + (daily[current].n || '') + ' est en cours.</strong> Son parcours reste secret jusqu’à ce que tu le lances.</p><a class="cta" href="/">Jouer le défi du jour</a></div>' : '<a class="cta" href="/">Jouer à WikiDuel</a>') +
+    (items || '<p>Aucun défi terminé pour l’instant.</p>') +
+    '<footer>WikiDuel · <a href="/comment-jouer">Comment jouer</a> · <a href="/wikirace">Wikirace</a> · <a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a></footer>' +
+    '</main></body></html>');
+});
+
 /* ===================== Erreurs des joueurs ===================== */
 // Chaque erreur envoyée par un téléphone (errors/<id>) est réécrite dans les journaux Google Cloud
 // sous forme d'erreur : elle apparaît dans Error Reporting, qui peut envoyer une alerte par e-mail.
