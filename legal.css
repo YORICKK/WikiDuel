@@ -30,7 +30,7 @@ table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 0 0 14p
 th, td { text-align: left; vertical-align: top; padding: 8px; border-bottom: 1px solid var(--line); }
 th { font: 700 14px var(--display); }
 footer { margin-top: 40px; font: 500 13px var(--display); color: var(--muted); }
-/* Pages de présentation (comment jouer, wikirace, défis passés) */
+/* Pages de présentation (comment jouer, course Wikipédia, défis passés) */
 .lead-p { font-size: 19px; color: var(--muted); }
 .cta { display: inline-block; margin: 8px 0 18px; padding: 14px 22px; border-radius: 14px; background: var(--flag); color: #fff; text-decoration: none; font: 800 18px var(--display); }
 .route { font: 700 15px var(--mono); }

@@ -638,12 +638,12 @@ exports.defisPage = onRequest({ region: 'europe-west1' }, async (req, res) => {
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">' +
     '<link rel="stylesheet" href="/legal.css"></head><body><main class="wrap">' +
     '<a class="back" href="/">← Jouer à WikiDuel</a><div class="logo">Wiki<span>Duel</span></div>' +
-    '<nav class="pages" aria-label="Pages"><a href="/comment-jouer">Comment jouer</a><a href="/wikirace">Wikirace</a><a href="/defis">Défis passés et solutions</a></nav>' +
+    '<nav class="pages" aria-label="Pages"><a href="/comment-jouer">Comment jouer</a><a href="/course-wikipedia">Course Wikipédia</a><a href="/defis">Défis passés et solutions</a></nav>' +
     '<h1>Défis du jour passés et solutions</h1>' +
     '<p class="lead-p">Chaque jour, un parcours mystère entre deux articles Wikipédia, le même pour tout le monde. Voici les défis terminés, avec le meilleur temps et le chemin le plus court trouvé par les joueurs.</p>' +
     (current ? '<div class="box"><p><strong>Le défi du jour n°' + (daily[current].n || '') + ' est en cours.</strong> Son parcours reste secret jusqu’à ce que tu le lances.</p><a class="cta" href="/">Jouer le défi du jour</a></div>' : '<a class="cta" href="/">Jouer à WikiDuel</a>') +
     (items || '<p>Aucun défi terminé pour l’instant.</p>') +
-    '<footer>WikiDuel · <a href="/comment-jouer">Comment jouer</a> · <a href="/wikirace">Wikirace</a> · <a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a></footer>' +
+    '<footer>WikiDuel · <a href="/comment-jouer">Comment jouer</a> · <a href="/course-wikipedia">Course Wikipédia</a> · <a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a></footer>' +
     '</main></body></html>');
 });
 

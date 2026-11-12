@@ -125,7 +125,7 @@ function step(name, ok, detail) {
     step('Classements Elo, Solo, du jour et d’hier', !boards.some(b => / KO$/.test(b)), boards.join(', '));
 
     // 7. Pages légales
-    for (const p of ['/cgv', '/confidentialite', '/comment-jouer', '/wikirace']) {
+    for (const p of ['/cgv', '/confidentialite', '/comment-jouer', '/course-wikipedia']) {
       const r = await page.goto(base + p, { waitUntil: 'domcontentloaded', timeout: 15000 });
       const txt = await page.content();
       step('Page ' + p, r.status() === 200 && (txt.includes('contact@wikiduel.ch') || txt.includes('wikiduel.ch/')), 'HTTP ' + r.status());

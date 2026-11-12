@@ -9,6 +9,9 @@
       "**/.*", "**/.*/**", "**/node_modules/**", "functions/**", "tools/**", "marketing/**"
     ],
     "cleanUrls": true,
+    "redirects": [
+      { "source": "/wikirace", "destination": "/course-wikipedia", "type": 301 }
+    ],
     "rewrites": [
       { "source": "/defi", "function": { "functionId": "sharePage", "region": "europe-west1" } },
       { "source": "/jour", "function": { "functionId": "sharePage", "region": "europe-west1" } },
