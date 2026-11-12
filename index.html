@@ -1256,6 +1256,7 @@ async function loadDaily() {
     db.ref('dailyScores/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null)
   ]);
   S.daily.run = run; S.daily.score = score;
+  await loadStreak(key);
   // Le départ et la cible ne sont lisibles qu'après le lancement (règle de sécurité).
   if (run && run.startedAt) await revealDaily(S.daily);
   renderDailyCard();
@@ -1265,6 +1266,19 @@ async function revealDaily(d) {
   d.start = start; d.target = target;
 }
 function refreshDaily() { if (S.dailyLoaded) loadDaily(); }
+// Série de jours (tenue par le serveur) : active si le dernier défi réussi est celui d'aujourd'hui ou d'hier.
+async function loadStreak(todayKey) {
+  try {
+    const u = (await db.ref('users/' + uid).once('value')).val() || {};
+    const yest = zurichDate(serverNow() - 864e5);
+    S.streak = u.dailyLast === todayKey || u.dailyLast === yest ? (u.dailyStreak || 0) : 0;
+    S.streakToday = u.dailyLast === todayKey;
+  } catch (e) { S.streak = 0; S.streakToday = false; }
+}
+function streakText() {
+  if (!S.streak) return '';
+  return '🔥 ' + S.streak + ' jour' + (S.streak > 1 ? 's' : '') + ' d’affilée' + (S.streakToday ? '' : ' : joue aujourd’hui pour continuer !');
+}
 function ordinal(n) { return n + '<sup>' + (n === 1 ? 'er' : 'e') + '</sup>'; }
 function renderDailyCard() {
   const d = S.daily; if (!d) return;
@@ -1280,7 +1294,7 @@ function renderDailyCard() {
   $('dPlay').hidden = !!done;
   $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
   if (!done) {
-    $('dMe').textContent = 'Même parcours pour tous, une seule tentative.';
+    $('dMe').textContent = S.streak ? streakText() : 'Même parcours pour tous, une seule tentative.';
   } else if (run.gaveUp) {
     $('dMe').innerHTML = 'Tu as abandonné aujourd’hui. Nouveau défi demain à minuit !';
   } else if (!sc) {
@@ -1288,7 +1302,8 @@ function renderDailyCard() {
   } else if (!sc.valid) {
     $('dMe').innerHTML = 'Chemin refusé (' + esc(sc.reason || 'invalide') + ').';
   } else {
-    $('dMe').innerHTML = 'Ton résultat : <b>' + fmtC(sc.time) + '</b> · ' + sc.clicks + ' clic' + (sc.clicks > 1 ? 's' : '') + (d.rank ? ' · <b>' + ordinal(d.rank) + '</b> sur ' + d.total : '');
+    $('dMe').innerHTML = 'Ton résultat : <b>' + fmtC(sc.time) + '</b> · ' + sc.clicks + ' clic' + (sc.clicks > 1 ? 's' : '') + (d.rank ? ' · <b>' + ordinal(d.rank) + '</b> sur ' + d.total : '') +
+      (S.streak > 1 ? '<br>' + esc(streakText()) : '');
     dailyRank(d.key).then(r => { if (r && S.daily === d && !d.rank) { d.rank = r.rank; d.total = r.total; renderDailyCard(); } });
   }
 }
@@ -1344,7 +1359,11 @@ function finishDaily(r) {
       const sc = s.val(); if (!sc) return;
       clearTimeout(off); sRef.off();
       S.dailyResult = { key: r.daily, state: sc.valid ? 'ok' : 'bad', score: sc };
-      if (sc.valid) Object.assign(S.dailyResult, await dailyRank(r.daily) || {});
+      if (sc.valid) {
+        Object.assign(S.dailyResult, await dailyRank(r.daily) || {});
+        await new Promise(res => setTimeout(res, 1500)); // le serveur met la série à jour juste après le score
+        await loadStreak(r.daily);
+      }
       if (S.solo && S.solo.daily === r.daily && !$('results').hidden) renderResults();
     });
   }).catch(e => { S.dailyResult = { key: r.daily, state: 'error', error: e.code || e.message }; if (!$('results').hidden) renderResults(); });
@@ -1982,18 +2001,36 @@ function challengeLink(room, me) {
   }
   return location.origin + '/defi?' + p.toString();
 }
+// 🟦🟦🟦🏁 : une case par clic (12 max, puis « +n »), le drapeau à l'arrivée.
+function clickBar(n) {
+  const shown = Math.min(n - 1, 12);
+  return '🟦'.repeat(Math.max(0, shown)) + (n - 1 > 12 ? '+' + (n - 1 - 12) : '') + '🏁';
+}
+function medal(rank) { return rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank <= 10 ? '🏅' : '🎯'; }
 function renderShare(room) {
   const me = room.players.find(p => p.id === S.me.playerId);
   const ok = !!(me && me.finishedAt);
   $('shareBox').hidden = !ok;
   if (!ok) return;
-  const time = (S.solo && S.solo.daily ? fmtC : fmtP)(me.finishedAt - room.startedAt);
+  const daily = !!(S.solo && S.solo.daily);
+  const time = (daily ? fmtC : fmtP)(me.finishedAt - room.startedAt);
   const clicks = me.clicks + ' clic' + (me.clicks > 1 ? 's' : '');
-  S.shareText = S.solo && S.solo.daily
-    ? 'WikiDuel 🗓️ Défi du jour' + (S.solo.dailyNo ? ' n°' + S.solo.dailyNo : '') + ' réussi en ' + clicks + ' et ' + time +
-      '. Parcours mystère, une seule tentative : à toi de jouer ! ' + challengeLink(room, me)
-    : 'WikiDuel 🏁 J’ai relié « ' + room.start + ' » à « ' + room.target + ' » en ' + clicks + ' et ' + time +
-      ' sur Wikipédia. Tu fais mieux ? Relève le défi : ' + challengeLink(room, me);
+  // Message visuel, façon Wordle : une case par clic, sans rien révéler du chemin.
+  const bar = clickBar(me.clicks);
+  if (daily) {
+    const dr = S.dailyResult && S.dailyResult.key === S.solo.daily ? S.dailyResult : {};
+    // Temps officiel du serveur dès qu'il est connu (celui du classement), sinon celui du téléphone.
+    const official = dr.score && dr.score.valid ? fmtC(dr.score.time) : time;
+    const lines = ['WikiDuel 🗓️ Défi du jour' + (S.solo.dailyNo ? ' n°' + S.solo.dailyNo : ''), bar, '⏱️ ' + official + ' · ' + clicks];
+    if (dr.rank) lines.push(medal(dr.rank) + ' ' + dr.rank + (dr.rank === 1 ? 'er' : 'e') + ' sur ' + dr.total);
+    const st = S.streak || 0;
+    if (st > 1) lines.push('🔥 ' + st + ' jours d’affilée');
+    lines.push('Parcours mystère, une seule tentative : à toi ! ' + challengeLink(room, me));
+    S.shareText = lines.join('\n');
+  } else {
+    S.shareText = ['WikiDuel 🏁 ' + room.start + ' → ' + room.target, bar, '⏱️ ' + time + ' · ' + clicks,
+      'Tu fais mieux ? Relève le défi : ' + challengeLink(room, me)].join('\n');
+  }
   $('shareWa').lastChild.textContent = S.solo && S.solo.daily ? ' Partager mon défi du jour' : ' Défier un ami sur WhatsApp';
   // wa.me ouvre WhatsApp (appli ou web) avec le message prêt : on choisit ensuite le contact.
   $('shareWa').href = 'https://wa.me/?text=' + encodeURIComponent(S.shareText);
@@ -2036,7 +2073,8 @@ function renderChallengeResult(room) {
     box.hidden = false;
     box.className = 'challenge-res' + (dr.state === 'ok' ? ' won' : dr.state === 'bad' || dr.state === 'error' ? ' lost' : '');
     box.innerHTML = dr.state === 'gaveup' ? 'Abandon enregistré. Nouveau défi demain à minuit !'
-      : dr.state === 'ok' ? 'Temps officiel <b>' + fmtC(dr.score.time) + '</b>' + (dr.rank ? ' · <b>' + ordinal(dr.rank) + '</b> sur ' + dr.total : '') + ' au classement du jour.'
+      : dr.state === 'ok' ? 'Temps officiel <b>' + fmtC(dr.score.time) + '</b>' + (dr.rank ? ' · <b>' + ordinal(dr.rank) + '</b> sur ' + dr.total : '') + ' au classement du jour.' +
+        (S.streak > 1 ? '<br>🔥 ' + S.streak + ' jours d’affilée' : '')
       : dr.state === 'bad' ? 'Chemin refusé : ' + esc(dr.score.reason || 'invalide') + '.'
       : dr.state === 'error' ? 'Résultat non enregistré (' + esc(dr.error) + ').'
       : 'Vérification de ton chemin et calcul du temps officiel…';

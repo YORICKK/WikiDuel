@@ -496,6 +496,20 @@ exports.verifyDaily = onValueCreated(Object.assign({ ref: '/dailyRuns/{date}/{ui
     at: run.finishedAt
   });
   // Pas de fantôme ici : le défi du jour en cours n'est jamais proposé (voir dailyGhosts, après minuit).
+  // Série de jours : +1 si le défi d'hier a aussi été réussi, sinon on repart à 1.
+  if (!err) {
+    const [y, m, d] = date.split('-').map(Number);
+    const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+    await db.ref('users/' + uid).transaction(p => {
+      p = p || {};
+      if (p.dailyLast === date) return p;
+      p.dailyStreak = (p.dailyLast === yesterday ? (p.dailyStreak || 0) : 0) + 1;
+      p.dailyBest = Math.max(p.dailyBest || 0, p.dailyStreak);
+      p.dailyLast = date;
+      if (!p.name && run.name) p.name = String(run.name).slice(0, 16);
+      return p;
+    });
+  }
 });
 
 // Après minuit : la meilleure course valide de chaque défi terminé rejoint la réserve de fantômes.
