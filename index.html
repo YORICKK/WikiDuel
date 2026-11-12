@@ -195,6 +195,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .q-text { margin: 0; color: var(--muted); font: 500 15px/1.45 var(--display); max-width: 34ch; }
 .q-me { display: flex; align-items: baseline; gap: 8px; font: 800 18px var(--display); }
 @media (prefers-reduced-motion: reduce) { .dots::after { animation: none; content: "…"; } }
+.ghost-offer { display: grid; gap: 8px; padding: 16px; border: 2px dashed var(--muted); border-radius: 16px; background: var(--card); font: 500 15px/1.4 var(--display); }
+.ghost-offer strong { font: 800 20px/1.2 var(--display); }
+.ghost-offer strong::before { content: "👻 "; }
+.ghost-offer small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+.rival.ghost { border: 1px dashed rgba(255,255,255,.5); background: transparent; }
+.rival.ghost::before { content: "👻"; }
 
 /* Classement */
 #ranking .wrap { display: grid; gap: 20px; padding-block: 32px; }
@@ -445,6 +451,13 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <div class="q-timer" id="qTimer" aria-live="off">0:00</div>
       <p class="q-text" id="qText">On cherche un joueur d'Elo proche du tien. La course démarre automatiquement dès qu'un adversaire est trouvé.</p>
       <div class="q-me"><span class="label">Toi</span><strong id="qName"></strong><span class="elo" id="qElo"></span></div>
+    </div>
+    <div class="ghost-offer" id="ghostOffer" hidden>
+      <span class="label">Personne n'est disponible pour l'instant</span>
+      <strong id="ghostName"></strong>
+      <span id="ghostText"></span>
+      <button id="ghostGo" class="btn">Affronter le fantôme</button>
+      <small>Tant que tu n'acceptes pas, tu restes dans la file : un vrai joueur peut encore arriver. Contre un fantôme, l'Elo compte à moitié.</small>
     </div>
     <div class="err" id="qErr" role="alert"></div>
     <button id="qCancel" class="btn ghost">Annuler la recherche</button>
@@ -862,6 +875,7 @@ function infoOf(id, rerender) {
 }
 function eloOf(id, rerender) { const i = infoOf(id, rerender); return i ? i.elo : null; }
 function isPremium(id, rerender) {
+  if (id === 'ghost') return false;
   if (id === uid || id === 'me') return isMePremium();
   const i = infoOf(id, rerender); return !!(i && i.premium);
 }
@@ -1025,7 +1039,7 @@ function histItem(g) {
   if (g.time != null) meta.push(fmtP(g.time));
   if (g.eloDelta != null) meta.push('Elo ' + (g.eloDelta >= 0 ? '+' : '') + g.eloDelta + ' → ' + g.eloAfter);
   const vs = (g.opponents || []).length ? (solo ? 'défi de ' : 'contre ') + g.opponents.map(esc).join(', ') + (g.challengeTime != null ? ' (' + fmtP(g.challengeTime) + ')' : '') : '';
-  const label = g.mode === 'classée' ? 'Classée' : solo ? 'Solo' : 'Entre amis';
+  const label = g.mode === 'classée' ? (g.ghost ? 'Classée · fantôme' : 'Classée') : solo ? 'Solo' : 'Entre amis';
   return '<li><div class="h-top"><span class="pill' + (g.mode === 'classée' ? ' ranked' : '') + '">' + label + '</span>' +
     '<span class="h-date">' + date + '</span><span class="h-res ' + res[0] + '">' + res[1] + '</span></div>' +
     '<div class="h-route">' + esc(g.start) + ' → ' + esc(g.target) + '</div>' +
@@ -1145,7 +1159,19 @@ function toState(code, v) {
       path: done && !ranked ? path : null
     };
   }).sort((a, b) => a.joinedAt - b.joinedAt);
-  return { code: code, ranked: v.ranked === true, status: v.status, start: v.start, target: v.target, startedAt: v.startedAt || 0, round: v.round || 0, winnerId: v.winnerId || null, players: players };
+  let winnerId = v.winnerId || null;
+  if (ranked && v.ghost) {
+    // Fantôme : adversaire virtuel dont les clics suivent le rythme de sa vraie course.
+    const g = v.ghost, start = v.startedAt || 0, el = serverNow() - start;
+    const arrived = done || el >= g.time;
+    players.push({ id: 'ghost', ghost: true, name: 'Fantôme de ' + g.name, host: false,
+      clicks: arrived ? g.clicks : (g.steps || []).filter(s => s <= el).length,
+      finishedAt: arrived ? start + g.time : null, gaveUp: false, online: true, joinedAt: Infinity, current: null, path: null });
+    // Vainqueur : le joueur s'il arrive avant le temps du fantôme, sinon le fantôme dès qu'il arrive.
+    const me = players.find(p => !p.ghost);
+    winnerId = me && me.finishedAt && me.finishedAt - start < g.time ? me.id : (arrived ? 'ghost' : null);
+  }
+  return { code: code, ranked: v.ranked === true, ghost: v.ghost || null, status: v.status, start: v.start, target: v.target, startedAt: v.startedAt || 0, round: v.round || 0, winnerId: winnerId, players: players };
 }
 
 async function startRound() {
@@ -1307,6 +1333,7 @@ $('dBoard').onclick = () => { if (S.daily) showDailyBoard(S.daily.key); };
 function finishDaily(r) {
   const ref = db.ref('dailyRuns/' + r.daily + '/' + uid);
   const upd = { path: r.me.path.slice(0, 60) };
+  if (r.me.times && r.me.times.length) upd.times = r.me.times.slice(0, 60);
   if (r.me.finishedAt) upd.finishedAt = NOW(); else upd.gaveUp = true;
   S.dailyResult = { key: r.daily, state: r.me.finishedAt ? 'wait' : 'gaveup' };
   ref.update(upd).then(() => {
@@ -1367,6 +1394,7 @@ async function recordMove(title, reached) {
   if (S.solo) {
     const p = S.solo.me;
     p.path.push(title);
+    p.times = (p.times || []).concat(Math.max(0, Math.round(serverNow() - S.solo.startedAt))); // rythme (fantômes du défi du jour)
     if (reached) { p.finishedAt = serverNow(); soloEnd(); } else soloEmit();
     return;
   }
@@ -1374,7 +1402,10 @@ async function recordMove(title, reached) {
   if (S.room.ranked) {
     // Classé : chemin privé dans paths/<code>/<uid>, seul le nombre de clics va dans le salon.
     S.myPath = (S.myPath || [S.room.start]).concat(title);
+    // Rythme des clics (ms depuis le départ) : sert à rejouer la course en fantôme.
+    S.myTimes = (S.myTimes || []).concat(Math.max(0, Math.round(serverNow() - S.room.startedAt)));
     await db.ref('paths/' + S.room.code + '/' + uid).set(S.myPath);
+    db.ref('pathTimes/' + S.room.code + '/' + uid).set(S.myTimes).catch(() => {});
     upd = { clicks: S.myPath.length - 1 };
   } else {
     const mine = (S.raw && S.raw.players && S.raw.players[uid]) || {};
@@ -1394,6 +1425,12 @@ function maybeEndRound() {
   if (S.solo) return;
   const r = S.room;
   if (r.status !== 'playing') return;
+  if (r.ghost) {
+    // Contre un fantôme : fin dès que le joueur arrive ou abandonne, ou que le fantôme arrive.
+    const me = r.players.find(p => !p.ghost);
+    if (r.winnerId || (me && (me.finishedAt || me.gaveUp))) S.ref.child('status').set('done').catch(() => {});
+    return;
+  }
   const active = r.players.filter(p => p.online);
   const allOver = active.length > 0 && active.every(p => p.finishedAt || p.gaveUp);
   if (r.winnerId || allOver) S.ref.child('status').set('done').catch(() => {});
@@ -1449,12 +1486,47 @@ async function enterQueue(name) {
       mRef.remove().catch(() => {});
       enterRoom({ code: m.code, name: q.name });
     });
+    // Après 25 s sans adversaire : proposition d'un fantôme (le joueur reste dans la file).
+    S.qGhostTimer = setTimeout(askGhost, 25000);
   } catch (e) {
     stopQueue(true); show('home');
     $('homeErr').textContent = 'Impossible de rejoindre la file : ' + e.message;
   }
 }
+// Fantôme : une vraie course déjà jouée par un joueur d'Elo proche, sur un parcours inédit pour toi.
+async function askGhost() {
+  if (!S.queue) return;
+  try {
+    const r = await firebase.app().functions('europe-west1').httpsCallable('findGhost')();
+    if (!S.queue) return;
+    if (r.data && r.data.found) {
+      const g = S.ghostOffer = r.data;
+      $('ghostName').textContent = 'Fantôme de ' + g.name;
+      $('ghostText').textContent = 'Elo ' + g.elo + ' · a réussi un parcours mystère en ' + g.clicks + ' clic' + (g.clicks > 1 ? 's' : '') + ' et ' + fmtP(g.time) + '. Arrive avant lui pour gagner !';
+      $('ghostGo').disabled = false; $('ghostGo').textContent = 'Affronter le fantôme';
+      $('ghostOffer').hidden = false;
+    } else {
+      S.qGhostTimer = setTimeout(askGhost, 30000); // pas de fantôme disponible : on réessaie plus tard
+    }
+  } catch (e) {
+    if (S.queue) S.qGhostTimer = setTimeout(askGhost, 30000);
+  }
+}
+$('ghostGo').onclick = async () => {
+  if (!S.queue || !S.ghostOffer) return;
+  $('ghostGo').disabled = true; $('ghostGo').textContent = 'Préparation de la course…'; $('qErr').textContent = '';
+  try {
+    // Le serveur retire le joueur de la file et crée la course ; l'arrivée dans matches/ lance la partie.
+    await firebase.app().functions('europe-west1').httpsCallable('startGhost')({ ghostId: S.ghostOffer.id });
+  } catch (e) {
+    $('ghostOffer').hidden = true; S.ghostOffer = null;
+    $('qErr').textContent = e.message || 'Fantôme indisponible.';
+    if (S.queue) S.qGhostTimer = setTimeout(askGhost, 15000);
+  }
+};
+
 function stopQueue(removeEntry) {
+  clearTimeout(S.qGhostTimer); S.ghostOffer = null; $('ghostOffer').hidden = true;
   clearInterval(S.qTick);
   const q = S.queue; S.queue = null;
   if (!q) return;
@@ -1584,8 +1656,9 @@ async function beginRound() {
   S.celebrated = null;
   if (room.ranked && !S.solo) {
     // Reprend son chemin privé (utile après un rechargement de la page).
-    S.myPath = [room.start];
+    S.myPath = [room.start]; S.myTimes = [];
     db.ref('paths/' + room.code + '/' + uid).once('value').then(s => { if (Array.isArray(s.val())) S.myPath = s.val(); }).catch(() => {});
+    db.ref('pathTimes/' + room.code + '/' + uid).once('value').then(s => { if (Array.isArray(s.val())) S.myTimes = s.val(); }).catch(() => {});
   }
   show('race');
   $('targetName').textContent = room.target;
@@ -1644,6 +1717,11 @@ $('sheetClose').onclick = () => $('overlay').hidden = true;
 function startTick() { stopTick(); S.tick = setInterval(renderTimer, 250); renderTimer(); }
 function stopTick() { clearInterval(S.tick); clearInterval(S.countTimer); }
 function renderTimer() {
+  // Course contre un fantôme : sa progression avance avec le temps, sans écriture en base.
+  if (S.room && S.room.ghost && S.raw && S.room.status === 'playing' && !S.solo && !$('race').hidden) {
+    S.room = toState(S.room.code, S.raw);
+    renderHud(); maybeEndRound();
+  }
   const me = S.room && S.room.players.find(p => p.id === S.me.playerId);
   const end = me && me.finishedAt ? me.finishedAt : serverNow();
   $('timer').textContent = fmt(end - S.room.startedAt);
@@ -1655,7 +1733,7 @@ function renderHud() {
   $('clicks').textContent = me ? me.clicks : 0;
   $('rivals').hidden = !!S.solo; // pas d'adversaires en solo
   $('rivals').innerHTML = room.players.map(p => {
-    const cls = 'rival' + (p.id === S.me.playerId ? ' me' : '') + (p.finishedAt ? ' done' : '') + (p.gaveUp ? ' out' : '');
+    const cls = 'rival' + (p.ghost ? ' ghost' : '') + (p.id === S.me.playerId ? ' me' : '') + (p.finishedAt ? ' done' : '') + (p.gaveUp ? ' out' : '');
     const label = p.finishedAt ? '✓' : (p.clicks + ' clic' + (p.clicks > 1 ? 's' : ''));
     // Entre amis : la page où se trouve chaque adversaire est visible.
     const page = p.current && p.id !== S.me.playerId && !p.finishedAt && !p.gaveUp ? ' <span class="pg">' + esc(p.current) + '</span>' : '';
@@ -1842,7 +1920,7 @@ function renderResults() {
   const changes = (res && res.changes) || {}, verdicts = (res && res.verdicts) || {};
   $('rateMsg').hidden = !room.ranked;
   $('rateMsg').textContent = !res || res.state === 'calcul' ? 'Vérification des chemins et calcul de l’Elo…'
-    : res.state === 'classée' ? 'Chemins vérifiés, classement mis à jour.'
+    : res.state === 'classée' ? (res.ghost ? 'Course contre un fantôme : l’Elo compte à moitié.' : 'Chemins vérifiés, classement mis à jour.')
     : res.state === 'non classée' ? 'Manche non classée : ' + res.reason + '.'
     : 'Le classement n’a pas pu être calculé.';
   $('podium').innerHTML = ranked.map((p, i) => {

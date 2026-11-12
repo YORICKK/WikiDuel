@@ -195,7 +195,8 @@ async function archiveRound(code, room, entries, extra) {
       won: extra.winnerId === p.uid, finished: !!p.finishedAt, gaveUp: !!p.gaveUp,
       clicks: Math.max(0, p.path.length - 1),
       time: p.finishedAt ? Math.max(0, p.finishedAt - room.startedAt) : null,
-      path: p.path.slice(0, MAX_STEPS), opponents: others,
+      path: p.path.slice(0, MAX_STEPS), opponents: extra.opponents || others,
+      ghost: room.ghost ? true : null,
       verdict: (extra.verdicts && extra.verdicts[p.uid]) || null,
       eloDelta: ch ? ch.delta : null, eloAfter: ch ? ch.after : null
     };
@@ -261,8 +262,9 @@ exports.rateRound = onValueWritten(
     if (!lock.committed) return;
 
     try {
-      // Chemins : privés en classé (paths/), dans le salon entre amis.
+      // Chemins : privés en classé (paths/), dans le salon entre amis. Rythme des clics : pathTimes/.
       const privatePaths = room.ranked ? ((await db.ref('paths/' + code).once('value')).val() || {}) : {};
+      const pathTimes = room.ranked ? ((await db.ref('pathTimes/' + code).once('value')).val() || {}) : {};
       const entries = Object.keys(room.players || {})
         .map(uid => {
           const p = room.players[uid];
@@ -277,6 +279,8 @@ exports.rateRound = onValueWritten(
         await db.ref('results/' + code + '/' + round).set({ state: 'archivée' });
         return;
       }
+
+      if (room.ghost) { await rateGhostRound(code, room, entries, pathTimes); return; }
 
       const paths = {};
       entries.forEach(p => { paths[p.uid] = p.path; });
@@ -319,12 +323,151 @@ exports.rateRound = onValueWritten(
       await db.ref().update(updates);
       logger.info('Manche notée', { code, round, changes });
       await archiveRound(code, room, entries, { winnerId: winners[0].uid, verdicts, changes });
+      // Chaque course valide rejoint la réserve de fantômes.
+      for (const p of entries) {
+        if (verdicts[p.uid] !== 'ok') continue;
+        const r = rated.find(x => x.uid === p.uid);
+        await addGhost({ uid: p.uid, name: r.name, elo: r.elo, start: room.start, target: room.target, path: p.path,
+          time: p.finishedAt - room.startedAt, steps: pathTimes[p.uid], src: 'classée' });
+      }
     } catch (e) {
       logger.error('Échec de la notation', { code, round, error: e.message });
       await db.ref('results/' + code + '/' + round).set({ state: 'erreur', reason: e.message });
     }
   }
 );
+
+/* ===================== Fantômes (classé quand personne n'est disponible) ===================== */
+// Un fantôme = une vraie course déjà jouée et vérifiée : parcours, temps et rythme des clics.
+// Les fantômes ne sont lisibles que par le serveur (le parcours reste secret jusqu'au départ).
+const GHOST_WAIT_ELO_SPAN = 400;
+
+async function addGhost(g) {
+  if (!g || !(g.time > 0) || !Array.isArray(g.path) || g.path.length < 2) return;
+  const clicks = g.path.length - 1;
+  // Heure de chaque clic (ms depuis le départ). À défaut, clics répartis régulièrement.
+  let steps = Array.isArray(g.steps) ? g.steps.map(Number).filter(x => x >= 0).sort((a, b) => a - b) : [];
+  if (steps.length !== clicks) steps = Array.from({ length: clicks }, (_, i) => Math.round(g.time * (i + 1) / clicks));
+  steps = steps.map(x => Math.min(x, g.time));
+  steps[clicks - 1] = g.time; // le dernier clic = l'arrivée
+  await db.ref('ghosts').push({
+    uid: g.uid, name: String(g.name || 'Joueur').slice(0, 16), elo: Math.round(g.elo || ELO_START),
+    start: g.start, target: g.target, time: Math.round(g.time), clicks, steps, src: g.src || '', at: Date.now()
+  });
+}
+
+// Parcours déjà joués par un joueur (historique + défis du jour) : jamais proposés en fantôme.
+async function playedPrints(uid) {
+  const [hist, runs] = await Promise.all([db.ref('history/' + uid).once('value'), db.ref('dailyRuns').once('value')]);
+  const set = new Set();
+  hist.forEach(c => { const v = c.val() || {}; if (v.start && v.target) set.add(pairPrint(v.start, v.target)); });
+  const days = [];
+  runs.forEach(d => { if (d.hasChild(uid)) days.push(d.key); });
+  const daySnaps = await Promise.all(days.map(k => db.ref('daily/' + k).once('value')));
+  daySnaps.forEach(s => { const v = s.val(); if (v && v.start) set.add(pairPrint(v.start, v.target)); });
+  return set;
+}
+
+function requireGoogle(req) {
+  if (!req.auth || req.auth.token.firebase.sign_in_provider === 'anonymous') {
+    throw new HttpsError('unauthenticated', 'Connecte-toi avec Google pour jouer en classé.');
+  }
+  return req.auth.uid;
+}
+
+// Appelé par le jeu après 25 s de file : propose un fantôme (sans révéler le parcours).
+exports.findGhost = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  const uid = requireGoogle(req);
+  if (!(await db.ref('queue/' + uid).once('value')).exists()) throw new HttpsError('failed-precondition', 'Tu n’es plus dans la file d’attente.');
+  const [userSnap, ghostsSnap, played] = await Promise.all([db.ref('users/' + uid).once('value'), db.ref('ghosts').once('value'), playedPrints(uid)]);
+  const myElo = (userSnap.val() || {}).elo || ELO_START;
+  // Le parcours du défi du jour en cours n'est jamais proposé en fantôme.
+  const today = (await db.ref('daily/' + new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date())).once('value')).val();
+  if (today && today.start) played.add(pairPrint(today.start, today.target));
+  const list = [];
+  ghostsSnap.forEach(c => {
+    const g = c.val();
+    if (!g || g.uid === uid || played.has(pairPrint(g.start, g.target))) return;
+    list.push(Object.assign({ id: c.key, gap: Math.abs((g.elo || ELO_START) - myElo) }, g));
+  });
+  if (!list.length) return { found: false };
+  list.sort((a, b) => a.gap - b.gap);
+  // Un peu de variété parmi les plus proches (même écart d'Elo maximal).
+  const close = list.filter(g => g.gap <= Math.max(list[0].gap, GHOST_WAIT_ELO_SPAN / 4)).slice(0, 5);
+  const g = close[Math.floor(Math.random() * close.length)];
+  return { found: true, id: g.id, name: g.name, elo: g.elo, clicks: g.clicks, time: g.time };
+});
+
+// Le joueur accepte : on le retire de la file et on crée la course contre le fantôme.
+exports.startGhost = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  const uid = requireGoogle(req);
+  const id = String((req.data && req.data.ghostId) || '');
+  if (!/^[-\w]{10,40}$/.test(id)) throw new HttpsError('invalid-argument', 'Fantôme inconnu.');
+  const g = (await db.ref('ghosts/' + id).once('value')).val();
+  if (!g || g.uid === uid) throw new HttpsError('not-found', 'Ce fantôme n’est plus disponible.');
+  if ((await playedPrints(uid)).has(pairPrint(g.start, g.target))) throw new HttpsError('failed-precondition', 'Tu as déjà joué ce parcours.');
+  const todayDaily = (await db.ref('daily/' + new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date())).once('value')).val();
+  if (todayDaily && pairPrint(todayDaily.start, todayDaily.target) === pairPrint(g.start, g.target)) {
+    throw new HttpsError('failed-precondition', 'Ce parcours est celui du défi du jour.');
+  }
+  // Retrait de la file (si un vrai adversaire l'a déjà apparié, on s'arrête là).
+  let entry = null;
+  await db.ref('queue/' + uid).transaction(cur => { entry = cur; return null; });
+  if (!entry) throw new HttpsError('failed-precondition', 'Un adversaire vient d’être trouvé, ou tu as quitté la file.');
+  let code = null;
+  for (let i = 0; i < 8 && !code; i++) {
+    const c = makeCode();
+    const r = await db.ref('rooms/' + c).transaction(cur => cur ? undefined : { hostId: 'server' });
+    if (r.committed) code = c;
+  }
+  if (!code) throw new HttpsError('unavailable', 'Aucun salon libre, réessaie.');
+  const now = Date.now();
+  await db.ref().update({
+    ['rooms/' + code]: {
+      hostId: 'server', ranked: true, status: 'playing', round: 1, start: g.start, target: g.target,
+      startedAt: now + COUNTDOWN, createdAt: now,
+      ghost: { id, name: g.name, elo: g.elo, time: g.time, clicks: g.clicks, steps: g.steps },
+      players: { [uid]: { name: String(entry.name || 'Joueur').slice(0, 16), joinedAt: now, online: false, clicks: 0 } }
+    },
+    ['matches/' + uid]: { code, at: now }
+  });
+  logger.info('Course contre un fantôme', { code, uid, fantome: id });
+  return { code };
+});
+
+// Notation d'une course contre un fantôme : gagnée si arrivée valide avant le temps du fantôme.
+// Elo compté à moitié ; le joueur que représente le fantôme n'est pas touché.
+async function rateGhostRound(code, room, entries, pathTimes) {
+  const g = room.ghost, round = room.round;
+  const p = entries[0] || (() => { const uid = Object.keys(room.players || {})[0]; return uid ? Object.assign({ uid, path: [room.start] }, room.players[uid]) : null; })();
+  if (!p) { await db.ref('results/' + code + '/' + round).set({ state: 'non classée', reason: 'aucun joueur' }); return; }
+  let verdict = !p.finishedAt ? (p.gaveUp ? 'abandon' : 'pas arrivé') : null;
+  if (!verdict) { const err = await checkPath(p.path, room.start, room.target); verdict = err ? 'invalide : ' + err : 'ok'; }
+  const myTime = p.finishedAt ? p.finishedAt - room.startedAt : null;
+  const won = verdict === 'ok' && myTime < g.time;
+  const u = (await db.ref('users/' + p.uid).once('value')).val() || {};
+  const me = { uid: p.uid, elo: u.elo || ELO_START, games: u.games || 0, rank: won ? 1 : 2 };
+  const ghost = { uid: '__ghost', elo: g.elo || ELO_START, games: 99, rank: won ? 2 : 1 };
+  const delta = Math.round(eloDeltas([me, ghost])[p.uid] / 2);
+  const after = Math.max(100, me.elo + delta);
+  const changes = { [p.uid]: { before: me.elo, after, delta: after - me.elo, rank: me.rank } };
+  const verdicts = { [p.uid]: verdict };
+  await db.ref().update({
+    ['users/' + p.uid + '/elo']: after,
+    ['users/' + p.uid + '/games']: me.games + 1,
+    ['users/' + p.uid + '/wins']: (u.wins || 0) + (won ? 1 : 0),
+    ['results/' + code + '/' + round]: { state: 'classée', ghost: { name: g.name, time: g.time, clicks: g.clicks, won: !won },
+      changes, verdicts, paths: { [p.uid]: p.path }, at: admin.database.ServerValue.TIMESTAMP }
+  });
+  logger.info('Course contre fantôme notée', { code, uid: p.uid, gagnee: won, delta: after - me.elo });
+  await archiveRound(code, room, [p], { winnerId: won ? p.uid : null, verdicts, changes, opponents: ['Fantôme de ' + g.name] });
+  if (verdict === 'ok') {
+    await addGhost({ uid: p.uid, name: u.name || p.name, elo: me.elo, start: room.start, target: room.target, path: p.path,
+      time: myTime, steps: pathTimes[p.uid], src: 'fantôme' });
+  }
+}
 
 /* ===================== Défi du jour ===================== */
 // Le temps est mesuré par le serveur (startedAt / finishedAt = horodatage Firebase),
@@ -352,6 +495,36 @@ exports.verifyDaily = onValueCreated(Object.assign({ ref: '/dailyRuns/{date}/{ui
     premium: u.premium === true,
     at: run.finishedAt
   });
+  // Pas de fantôme ici : le défi du jour en cours n'est jamais proposé (voir dailyGhosts, après minuit).
+});
+
+// Après minuit : la meilleure course valide de chaque défi terminé rejoint la réserve de fantômes.
+async function addDailyGhost(date) {
+  const daySnap = await db.ref('daily/' + date).once('value');
+  const day = daySnap.val();
+  if (!day || day.ghosted || !(day.closesAt <= Date.now())) return null;
+  const scores = (await db.ref('dailyScores/' + date).once('value')).val() || {};
+  const best = Object.keys(scores).map(uid => Object.assign({ uid }, scores[uid])).filter(s => s.valid)
+    .sort((a, b) => a.time - b.time || a.clicks - b.clicks)[0];
+  if (best) {
+    const [run, u] = await Promise.all([
+      db.ref('dailyRuns/' + date + '/' + best.uid).once('value').then(s => s.val() || {}),
+      db.ref('users/' + best.uid).once('value').then(s => s.val() || {})
+    ]);
+    await addGhost({ uid: best.uid, name: best.name || u.name, elo: u.elo || ELO_START, start: day.start, target: day.target,
+      path: run.path, time: best.time, steps: run.times, src: 'défi du jour ' + date });
+  }
+  await db.ref('daily/' + date + '/ghosted').set(true);
+  return best ? best.name : '(aucune réussite)';
+}
+exports.dailyGhosts = onSchedule({ schedule: 'every day 00:10', timeZone: 'Europe/Zurich', region: 'europe-west1' }, async () => {
+  if (!db) db = admin.database();
+  // Les 7 derniers jours (rattrape un jour manqué) ; chaque défi n'est traité qu'une fois (daily/<date>/ghosted).
+  for (let i = 1; i <= 7; i++) {
+    const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date(Date.now() - i * 864e5));
+    const who = await addDailyGhost(date);
+    if (who) logger.info('Fantôme du défi du jour ajouté', { date, meilleur: who });
+  }
 });
 
 /* ===================== Aperçus de partage (WhatsApp, etc.) ===================== */

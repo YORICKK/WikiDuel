@@ -76,6 +76,10 @@
           "path": {
             ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('dailyRuns/' + $date + '/' + $uid + '/startedAt').exists()",
             ".validate": "newData.hasChildren()"
+          },
+          "times": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && root.child('dailyRuns/' + $date + '/' + $uid + '/startedAt').exists()",
+            ".validate": "newData.hasChildren()"
           }
         }
       }
@@ -110,6 +114,16 @@
     "purchases": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "pathTimes": {
+      "$code": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && root.child('rooms/' + $code + '/players/' + $uid).exists() && root.child('rooms/' + $code + '/status').val() === 'playing'",
+          ".validate": "newData.hasChildren()"
+        }
       }
     },
 
