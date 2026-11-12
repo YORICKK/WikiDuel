@@ -461,7 +461,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div class="locked" id="pmLocked" hidden>
       <strong id="pmLockTitle">Réservé aux comptes WikiDuel+</strong>
       <ul>
-        <li>Historique de tes 10 dernières parties (solo, amis, classées), avec les chemins</li>
+        <li>Historique de tes 50 dernières parties (solo, amis, classées), avec les chemins</li>
         <li>Statistiques : victoires, temps, clics, courbe d'Elo</li>
         <li>Animation de victoire visible par tes adversaires</li>
         <li>Le diamant à côté de ton pseudo, même dans le classement</li>
@@ -901,7 +901,7 @@ $('premiumBtn').onclick = async () => {
   $('pmStats').innerHTML = ''; $('pmElo').hidden = true;
   $('pmHist').innerHTML = '<li class="hist-empty">Chargement…</li>';
   try {
-    const snap = await db.ref('history/' + uid).orderByChild('at').limitToLast(10).once('value');
+    const snap = await db.ref('history/' + uid).orderByChild('at').limitToLast(50).once('value');
     const games = [];
     snap.forEach(c => { games.push(c.val()); });
     S.pmGames = games;

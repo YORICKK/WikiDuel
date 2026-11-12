@@ -179,7 +179,7 @@ exports.matchmake = onValueCreated(Object.assign({ ref: '/queue/{uid}' }, DB_OPT
 
 /* ===================== Fin de manche : notation + historique ===================== */
 
-const HISTORY_MAX = 10; // parties gardées par joueur
+const HISTORY_MAX = 50; // parties gardées par joueur
 
 // Archive la manche dans history/<uid> pour chaque participant (lisible seulement par les comptes premium).
 async function archiveRound(code, room, entries, extra) {
@@ -215,9 +215,12 @@ async function pruneHistory(uid) {
   await db.ref('history/' + uid).update(drop);
 }
 
-// Les parties solo sont écrites par le téléphone : on applique la même limite de 200,
-// et une partie solo terminée compte pour le classement « Solo » si son chemin est valide.
-const SOLO_DAILY_CAP = 50; // au-delà, les parties du jour ne comptent plus (anti-triche par répétition)
+// Les parties solo sont écrites par le téléphone : on applique la même limite d'historique,
+// et une partie solo terminée compte pour le classement « Solo » si son chemin est valide
+// et si ce n'est pas le même parcours que la précédente partie comptée (pas de « Rejouer » en boucle).
+const crypto = require('crypto');
+// Empreinte du parcours : le profil est public, le parcours en clair révélerait le défi du jour.
+const pairPrint = (a, b) => crypto.createHash('sha256').update(norm(a) + '→' + norm(b)).digest('hex').slice(0, 16);
 exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{key}' }, DB_OPTS), async event => {
   if (!db) db = admin.database();
   const v = event.data.val();
@@ -228,17 +231,19 @@ exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{
   let err;
   try { err = await checkPath(v.path, v.start, v.target); } catch (e) { err = 'vérification impossible'; }
   if (err) { logger.warn('Partie solo non comptée', { uid, raison: err }); return; }
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date());
+  const print = pairPrint(v.start, v.target);
+  let counted = false;
   await db.ref('users/' + uid).transaction(u => {
     u = u || {};
-    const d = u.soloDay && u.soloDay.d === today ? u.soloDay : { d: today, n: 0 };
-    if (d.n >= SOLO_DAILY_CAP) return u;
-    d.n++;
-    u.soloDay = d;
+    delete u.soloDay; // ancien plafond journalier, supprimé
+    counted = u.soloLast !== print;
+    if (!counted) return u; // même parcours que la partie précédente : non compté
+    u.soloLast = print;
     u.soloDone = (u.soloDone || 0) + 1;
     if (!u.name && v.name) u.name = String(v.name).slice(0, 16);
     return u;
   });
+  if (!counted) logger.info('Partie solo non comptée : même parcours rejoué à la suite', { uid });
 });
 
 exports.rateRound = onValueWritten(
