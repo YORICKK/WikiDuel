@@ -6,7 +6,7 @@
     "public": ".",
     "ignore": [
       "firebase.json", ".firebaserc", "database.rules.json", "dev-server.js", "README.md",
-      "**/.*", "**/.*/**", "**/node_modules/**", "functions/**", "tools/**"
+      "**/.*", "**/.*/**", "**/node_modules/**", "functions/**", "tools/**", "marketing/**"
     ],
     "cleanUrls": true,
     "rewrites": [
