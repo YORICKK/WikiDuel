@@ -136,6 +136,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .seg button { border: 0; background: none; border-radius: 9px; padding: 8px 4px; font: 700 14px var(--display); color: var(--muted); cursor: pointer; }
 .seg button.on { background: var(--ink); color: var(--paper); }
 .seg button:focus-visible { outline: 2px solid var(--flag); outline-offset: 1px; }
+.seg.seg-sort { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: -6px; background: none; border-style: dashed; }
+.seg.seg-sort button { font-size: 13px; padding: 6px 4px; }
+.seg.seg-sort button.on { background: var(--flag); color: #fff; }
+.seg[hidden] { display: none; }
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .stat-tile { padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 2px; min-width: 0; }
 .stat-tile b { font: 700 22px/1.1 var(--mono); font-variant-numeric: tabular-nums; }
@@ -553,6 +557,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <div class="seg" id="lbTabs" role="tablist" aria-label="Choisir le classement">
       <button type="button" class="on" role="tab" aria-selected="true">Classé (Elo)</button>
     </div>
+    <div class="seg seg-sort" id="lbSort" role="group" aria-label="Trier le classement" hidden>
+      <button type="button" data-s="time" class="on" aria-pressed="true">⏱ Par temps</button>
+      <button type="button" data-s="clicks" aria-pressed="false">🖱 Par clics</button>
+    </div>
     <ol class="lb" id="lbList"><li class="lb-empty">Chargement…</li></ol>
     <button id="rankBack" class="btn ghost">Retour</button>
   </div>
@@ -852,6 +860,7 @@ function lbRow(r, i, small, score) {
 async function showGeneralBoard(tab) {
   show('ranking');
   setLbTabs([['elo', 'Classé (Elo)'], ['solo', 'Solo']], tab, showGeneralBoard);
+  $('lbSort').hidden = true; S.lbKey = null;
   $('lbLabel').textContent = tab === 'solo' ? 'Parties solo terminées' : 'Parties classées · Elo';
   $('lbTitle').textContent = 'Classement';
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
@@ -1394,6 +1403,8 @@ async function showDailyBoard(key) {
   const yesterday = zurichDate(serverNow() - 864e5);
   setLbTabs([[today, 'Aujourd’hui'], [yesterday, 'Hier']], key, showDailyBoard);
   const isToday = key === today;
+  S.lbKey = key; S.lbRows = [];
+  $('lbSort').hidden = false;
   $('lbLabel').textContent = 'Défi du jour · ' + dateLabel(key);
   $('lbTitle').textContent = 'Classement du jour';
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
@@ -1408,10 +1419,30 @@ async function showDailyBoard(key) {
     $('lbTitle').textContent = start ? start + ' → ' + target : 'Classement du jour' + (n ? ' n°' + n : '');
     if (!isToday) $('lbLabel').textContent = 'Défi d’hier' + (n ? ' n°' + n : '') + ' · ' + dateLabel(key);
     const rows = await dailyScores(key);
-    $('lbList').innerHTML = rows.length ? rows.slice(0, 100).map((r, i) => lbRow(r, i,
-      r.clicks + ' clic' + (r.clicks > 1 ? 's' : ''), '<span class="meta-time">' + fmtC(r.time) + '</span>')).join('')
-      : '<li class="lb-empty">' + (isToday ? 'Personne n’a encore réussi le défi du jour. Sois le premier !' : 'Personne n’a réussi le défi d’hier.') + '</li>';
+    if (S.lbKey !== key) return; // l'utilisateur a changé d'onglet entre-temps
+    S.lbRows = rows;
+    renderDailyRows(isToday);
+    $('lbSort').onclick = e => {
+      const b = e.target.closest('button[data-s]');
+      if (!b || b.dataset.s === S.lbSort) return;
+      S.lbSort = b.dataset.s; renderDailyRows(isToday);
+    };
   } catch (e) { $('lbList').innerHTML = '<li class="lb-empty">Classement du jour indisponible.</li>'; }
+}
+const clk = c => c + ' clic' + (c > 1 ? 's' : '');
+// Affiche le classement du jour trié par temps (officiel) ou par nombre de clics (puis temps).
+function renderDailyRows(isToday) {
+  const byClicks = S.lbSort === 'clicks';
+  $('lbSort').querySelectorAll('button').forEach(b => {
+    const on = b.dataset.s === (byClicks ? 'clicks' : 'time');
+    b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+  });
+  const rows = (S.lbRows || []).slice();
+  if (byClicks) rows.sort((a, b) => a.clicks - b.clicks || a.time - b.time);
+  $('lbList').innerHTML = rows.length ? rows.slice(0, 100).map((r, i) => byClicks
+      ? lbRow(r, i, 'en ' + fmtC(r.time), '<span class="meta-time">' + clk(r.clicks) + '</span>')
+      : lbRow(r, i, clk(r.clicks), '<span class="meta-time">' + fmtC(r.time) + '</span>')).join('')
+    : '<li class="lb-empty">' + (isToday ? 'Personne n’a encore réussi le défi du jour. Sois le premier !' : 'Personne n’a réussi le défi d’hier.') + '</li>';
 }
 function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }
 $('solo').onclick = async () => { $('homeErr').textContent = ''; S.solo = null; await poolReady; startSolo(); };
