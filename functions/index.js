@@ -666,12 +666,18 @@ exports.deleteAccount = onCall({ region: 'europe-west1' }, async req => {
   if (!req.data || req.data.confirm !== 'SUPPRIMER') throw new HttpsError('invalid-argument', 'Confirmation manquante.');
   const uid = req.auth.uid;
   const upd = {
-    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null
+    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null
   };
-  // Défis du jour : tentatives et scores, tous les jours.
-  const [runs, scores, rooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms'].map(p => db.ref(p).once('value')));
+  // Défis du jour (course et quiz) : tentatives et scores, tous les jours.
+  const [runs, scores, rooms, quizDaily, quizRooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms', 'quizDaily', 'quizRooms'].map(p => db.ref(p).once('value')));
   runs.forEach(d => { if (d.hasChild(uid)) upd['dailyRuns/' + d.key + '/' + uid] = null; });
   scores.forEach(d => { if (d.hasChild(uid)) upd['dailyScores/' + d.key + '/' + uid] = null; });
+  quizDaily.forEach(d => { if (d.hasChild(uid)) upd['quizDaily/' + d.key + '/' + uid] = null; });
+  quizRooms.forEach(r => {
+    const v = r.val() || {};
+    if (v.hostId === uid) upd['quizRooms/' + r.key] = null;
+    else if (v.players && v.players[uid]) upd['quizRooms/' + r.key + '/players/' + uid] = null;
+  });
   // Salons : on retire le joueur ; un salon entre amis dont il est l'hôte est supprimé.
   rooms.forEach(r => {
     const v = r.val() || {};

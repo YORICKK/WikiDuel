@@ -510,7 +510,11 @@ function finish() {
   const ok = G.res.filter(r => r && r.s > 0).length;
   const marks = G.qs.map((q, i) => (G.res[i] && G.res[i].s > 0) ? '1' : '0').join('');
   G.marks = marks; G.ok = ok;
-  if (G.mode === 'solo') { const b = store.get('wq-best') || 0; G.record = G.score > b; if (G.record) store.set('wq-best', G.score); renderBest(); }
+  if (G.mode === 'solo') {
+    const b = store.get('wq-best') || 0; G.record = G.score > b; if (G.record) store.set('wq-best', G.score); renderBest();
+    // Compteur des parties solo terminées (statistiques d'utilisation).
+    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok }).catch(() => {});
+  }
   if (G.mode === 'daily') saveDaily(ok, marks);
   showResults();
 }

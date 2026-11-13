@@ -194,6 +194,20 @@
       }
     },
 
+    "quizSolo": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $uid && !data.exists()",
+          ".validate": "newData.hasChildren(['at', 'score', 'ok'])",
+          "at": { ".validate": "newData.val() === now" },
+          "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
+          "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "quizDaily": {
       "$date": {
         ".read": true,
