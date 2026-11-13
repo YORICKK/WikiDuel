@@ -163,7 +163,7 @@
       ".indexOn": ["createdAt"],
       "$code": {
         ".read": "auth != null",
-        ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid)",
+        ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid)",
         "hostId": { ".validate": "newData.isString()" },
         "createdAt": { ".validate": "newData.isNumber()" },
         "status": { ".validate": "newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'done'" },
@@ -172,7 +172,7 @@
         "startAt": { ".validate": "newData.isNumber()" },
         "players": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && data.parent().parent().child('hostId').exists()",
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $uid && data.parent().parent().child('hostId').exists()",
             "name": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16" },
             "online": { ".validate": "newData.isBoolean()" },
             "joinedAt": { ".validate": "newData.isNumber()" },
@@ -201,15 +201,15 @@
         "$uid": {
           ".validate": "$date.matches(/^20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/)",
           "name": {
-            ".write": "auth != null && auth.uid === $uid && !data.exists()",
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $uid && !data.exists()",
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
           },
           "startedAt": {
-            ".write": "auth != null && auth.uid === $uid && !data.exists()",
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $uid && !data.exists()",
             ".validate": "newData.val() === now"
           },
           "res": {
-            ".write": "auth != null && auth.uid === $uid && !data.exists() && data.parent().child('startedAt').exists()",
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $uid && !data.exists() && data.parent().child('startedAt').exists()",
             ".validate": "newData.hasChildren(['score', 'ok', 'marks', 'at']) && newData.child('at').val() === now && now - data.parent().child('startedAt').val() <= 300000",
             "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
             "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
@@ -219,7 +219,7 @@
             "$other": { ".validate": false }
           },
           "score": {
-            ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.parent().child('res').exists()",
+            ".write": "auth != null && auth.token.firebase.sign_in_provider !== 'anonymous' && auth.uid === $uid && !data.exists() && newData.parent().child('res').exists()",
             ".validate": "newData.isNumber() && newData.val() === newData.parent().child('res/score').val()"
           },
           "$other": { ".validate": false }

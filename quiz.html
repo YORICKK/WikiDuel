@@ -70,6 +70,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .daily-q strong { font: 800 20px/1.2 var(--display); }
 .daily-q .acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .linkbtn { background: none; border: 0; padding: 0; color: var(--link); font: 700 15px var(--display); text-decoration: underline; cursor: pointer; }
+.acc { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.acc.need { border: 2px solid var(--quiz); }
+.acc-info { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.acc-info strong { font: 800 18px/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-info > span:last-child { font: 500 13px var(--display); color: var(--muted); }
+.acc .btn { flex: none; }
 footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--muted); }
 
 /* Salon */
@@ -169,6 +175,14 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
     <h1 class="logo">Wiki<span>Duel</span><em>Quiz</em></h1>
     <p class="pitch">Un nom, quatre photos tirées de Wikipédia. Touche la bonne, le plus vite possible. 10 questions, 10 secondes chacune.</p>
     <div class="demo" aria-hidden="true"><i>🏔️</i><i class="ok">🌊</i><i>🦁</i><i>🚗</i></div>
+
+    <div class="acc" id="accCard">
+      <div class="acc-info"><span class="label">Compte</span><strong id="accName">Invité</strong><span id="accSub">Connecte-toi avec Google pour jouer au quiz.</span></div>
+      <button id="googleBtn" class="btn ghost small" disabled>
+        <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        Google
+      </button>
+    </div>
 
     <div class="card daily-q" id="dailyCard">
       <div class="top"><span class="label" id="dLabel">Quiz du jour</span><span class="label" id="dDate"></span></div>
@@ -335,20 +349,70 @@ const ready = (async () => {
   };
   window.__wdFlush();
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
+  // Le quiz est réservé aux comptes Google (le pseudo vient du profil WikiDuel).
+  S.google = !auth.currentUser.isAnonymous;
+  if (S.google) S.profileName = (await db.ref('users/' + uid + '/name').once('value').catch(() => null) || { val: () => null }).val();
 })();
 Promise.all([ready, bankReady]).then(() => {
-  ['solo', 'create', 'join', 'dPlay'].forEach(id => { $(id).disabled = false; });
+  renderAccount();
+  ['solo', 'create', 'join', 'dPlay'].forEach(id => { $(id).disabled = !S.google; });
   loadDaily();
 }).catch(e => { $('homeErr').textContent = 'Connexion impossible : ' + (e.message || e); });
+
+/* ---------- Compte Google (obligatoire) ---------- */
+function renderAccount() {
+  const u = firebase.auth().currentUser;
+  $('googleBtn').disabled = false;
+  $('googleBtn').hidden = !!S.google;
+  $('accCard').classList.toggle('need', !S.google);
+  if (!S.google) {
+    $('accName').textContent = 'Invité';
+    $('accSub').textContent = 'Connecte-toi avec Google pour jouer au quiz.';
+    return;
+  }
+  const n = S.profileName || $('name').value.trim() || String((u && u.displayName) || '').split(' ')[0].slice(0, 16);
+  if (n && !$('name').value.trim()) $('name').value = n;
+  $('accName').textContent = n || 'Joueur';
+  $('accSub').textContent = 'Connecté avec Google';
+}
+function requireGoogle() {
+  if (S.google) return true;
+  $('homeErr').textContent = 'Connecte-toi avec Google pour jouer au quiz.';
+  $('googleBtn').focus();
+  return false;
+}
+$('googleBtn').onclick = async () => {
+  const auth = firebase.auth(), provider = new firebase.auth.GoogleAuthProvider();
+  $('homeErr').textContent = '';
+  try {
+    // Lie le compte invité à Google : même identifiant, rien n'est perdu.
+    const cred = await auth.currentUser.linkWithPopup(provider);
+    const first = String(cred.user.displayName || '').split(' ')[0].slice(0, 16);
+    const snap = await db.ref('users/' + uid + '/name').once('value');
+    if (!snap.exists() && first) await db.ref('users/' + uid + '/name').set(first);
+    location.reload();
+  } catch (e) {
+    if (e.code === 'auth/credential-already-in-use' || e.code === 'auth/email-already-in-use') {
+      // Ce compte Google existe déjà (créé sur WikiDuel) : on s'y connecte.
+      try { leaveRoom(); await auth.signInWithCredential(e.credential); location.reload(); }
+      catch (e2) { $('homeErr').textContent = 'Connexion Google impossible : ' + e2.message; }
+    } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+      $('homeErr').textContent = 'Connexion Google impossible : ' + e.message;
+    }
+  }
+};
 
 /* ---------- Accueil ---------- */
 const params = new URLSearchParams(location.search);
 $('name').value = store.get('wd-name') || '';
 if (params.get('salon')) $('codeIn').value = params.get('salon').toUpperCase().slice(0, 4);
 function getName() {
+  if (!requireGoogle()) return null;
   const n = $('name').value.trim();
   if (!n) { $('homeErr').textContent = 'Choisis un pseudo pour commencer.'; $('name').focus(); return null; }
   store.set('wd-name', n); $('homeErr').textContent = '';
+  // Même pseudo que dans les classements WikiDuel.
+  if (n !== S.profileName) { S.profileName = n; db.ref('users/' + uid + '/name').set(n).catch(() => {}); $('accName').textContent = n; }
   return n;
 }
 function renderBest() {
