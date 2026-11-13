@@ -108,6 +108,15 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .acc-elo { font: 500 13px var(--display); color: var(--muted); }
 .acc-elo b { font: 700 13px var(--mono); color: var(--ink); }
 .account .btn { flex: none; }
+.acc-menu { position: relative; flex: none; }
+.gear { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: none; color: var(--ink); display: grid; place-items: center; cursor: pointer; }
+.gear[aria-expanded="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.gear:focus-visible { outline: 2px solid var(--flag); outline-offset: 2px; }
+.menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 15; min-width: 210px; display: grid; gap: 2px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(10,20,50,.18); }
+.menu[hidden] { display: none; }
+.menu button { text-align: left; border: 0; background: none; padding: 11px 12px; border-radius: 8px; font: 700 15px var(--display); color: var(--ink); cursor: pointer; }
+.menu button[hidden], #name[hidden], #nameLabel[hidden] { display: none; }
+.menu button:hover, .menu button:focus-visible { background: var(--paper); outline: none; }
 .create-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .create-row .btn { padding: 0 10px; font-size: 16px; }
 .btn.ranked { background: var(--flag); border-color: var(--flag); color: #fff; }
@@ -424,10 +433,18 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
         Google
       </button>
-      <button id="logoutBtn" class="btn ghost small" hidden>Déconnexion</button>
+      <div class="acc-menu">
+        <button type="button" id="gearBtn" class="gear" aria-label="Réglages du compte" aria-haspopup="menu" aria-expanded="false" aria-controls="accMenu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+        <div class="menu" id="accMenu" role="menu" hidden>
+          <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
+          <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
+        </div>
+      </div>
     </div>
     <div class="stack">
-      <label class="label" for="name">Ton pseudo</label>
+      <label class="label" for="name" id="nameLabel">Ton pseudo</label>
       <input id="name" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
       <div class="create-row">
         <button id="create" class="btn">Salon entre amis</button>
@@ -525,6 +542,18 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <button id="pmBack" class="btn ghost">Retour</button>
   </div>
 </section>
+
+<!-- Changement de pseudo (menu engrenage de l'accueil) -->
+<div class="overlay" id="nameSheet" hidden>
+  <form class="sheet" id="nameForm" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
+    <h3 id="nameTitle" style="margin:0;font-size:22px">Changer de pseudo</h3>
+    <label class="label" for="nameEdit">Nouveau pseudo</label>
+    <input id="nameEdit" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
+    <div class="err" id="nameErr" role="alert"></div>
+    <button type="submit" class="btn">Enregistrer</button>
+    <button type="button" class="btn ghost" id="nameCancel">Annuler</button>
+  </form>
+</div>
 
 <!-- Suppression du compte (lien en pied de page) -->
 <div class="overlay" id="delSheet" hidden>
@@ -805,14 +834,53 @@ function renderAccount() {
   const u = firebase.auth().currentUser;
   $('googleBtn').disabled = false;
   $('googleBtn').hidden = !!S.google; $('logoutBtn').hidden = !S.google;
-  if (!S.google) { $('accName').textContent = 'Invité'; $('accElo').textContent = 'Connecte-toi pour jouer en classé'; return; }
+  if (!S.google) {
+    const n = $('name').value.trim();
+    $('accName').textContent = n || 'Invité';
+    $('accElo').textContent = (n ? 'Invité · c' : 'C') + 'onnecte-toi pour jouer en classé';
+    syncNameField(); return;
+  }
   const p = S.profile || {};
   $('accName').innerHTML = esc(p.name || (u && u.displayName) || 'Joueur') + (p.premium === true ? DIA + ' <span class="plus">WikiDuel+</span>' : '');
   $('accElo').innerHTML = p.games
     ? 'Elo <b>' + p.elo + '</b> · ' + p.games + ' partie' + (p.games > 1 ? 's' : '') + ' · ' + (p.wins || 0) + ' victoire' + ((p.wins || 0) > 1 ? 's' : '')
     : 'Elo <b>1200</b> · aucune partie classée';
   if (!$('name').value && p.name) $('name').value = p.name;
+  syncNameField();
 }
+// Une fois le pseudo choisi, le champ disparaît de l'accueil : on le change par le menu ⚙.
+function syncNameField() {
+  const has = !!$('name').value.trim();
+  $('name').hidden = has; $('nameLabel').hidden = has;
+}
+function closeAccMenu() { $('accMenu').hidden = true; $('gearBtn').setAttribute('aria-expanded', 'false'); }
+$('gearBtn').onclick = e => {
+  e.stopPropagation();
+  const open = $('accMenu').hidden;
+  $('accMenu').hidden = !open; $('gearBtn').setAttribute('aria-expanded', String(open));
+  if (open) $('accMenu').querySelector('button:not([hidden])').focus();
+};
+document.addEventListener('click', e => { if (!$('accMenu').hidden && !e.target.closest('.acc-menu')) closeAccMenu(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (!$('accMenu').hidden) { closeAccMenu(); $('gearBtn').focus(); }
+  else if (!$('nameSheet').hidden) $('nameSheet').hidden = true;
+});
+$('nameBtn').onclick = () => {
+  closeAccMenu();
+  $('nameEdit').value = $('name').value.trim(); $('nameErr').textContent = '';
+  $('nameSheet').hidden = false; $('nameEdit').focus(); $('nameEdit').select();
+};
+$('nameCancel').onclick = () => { $('nameSheet').hidden = true; };
+$('nameForm').onsubmit = async e => {
+  e.preventDefault();
+  const n = $('nameEdit').value.trim();
+  if (!n) { $('nameErr').textContent = 'Le pseudo ne peut pas être vide.'; $('nameEdit').focus(); return; }
+  $('name').value = n; store.set('wd-name', n);
+  if (S.google) { S.profile = Object.assign({}, S.profile, { name: n }); await saveProfileName(n); }
+  $('nameSheet').hidden = true;
+  renderAccount();
+};
 $('googleBtn').onclick = async () => {
   const auth = firebase.auth();
   const provider = new firebase.auth.GoogleAuthProvider();
@@ -1507,6 +1575,7 @@ function maybeEndRound() {
 /* ---------- Accueil ---------- */
 const params = new URLSearchParams(location.search);
 $('name').value = store.get('wd-name') || '';
+syncNameField();
 if (params.get('salon')) $('codeIn').value = params.get('salon').toUpperCase();
 
 function getName() {
