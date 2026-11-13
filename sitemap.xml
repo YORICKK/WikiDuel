@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://wikiduel.ch/</loc><lastmod>2026-11-12</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://wikiduel.ch/quiz</loc></url>
   <url><loc>https://wikiduel.ch/comment-jouer</loc><lastmod>2026-11-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://wikiduel.ch/course-wikipedia</loc><lastmod>2026-11-12</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
   <url><loc>https://wikiduel.ch/defis</loc><lastmod>2026-11-12</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>

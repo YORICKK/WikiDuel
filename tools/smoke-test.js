@@ -14,7 +14,7 @@ const path = require('path');
 const puppeteer = require('puppeteer-core');
 
 const ROOT = path.resolve(process.env.SMOKE_ROOT || path.join(__dirname, '..'));
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
 const BROWSERS = [
   process.env.CHROME_PATH,
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -124,7 +124,20 @@ function step(name, ok, detail) {
     await page.evaluate(() => show('home'));
     step('Classements Elo, Solo, du jour et d’hier', !boards.some(b => / KO$/.test(b)), boards.join(', '));
 
-    // 7. Pages légales
+    // 7. WikiDuel Quiz : démarrage, première question d'une partie solo, classement du jour
+    await page.goto(base + '/quiz', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForFunction(() => typeof uid !== 'undefined' && !!uid && !!S.bank && !document.getElementById('solo').disabled, { timeout: 30000 }).catch(() => {});
+    await page.evaluate(() => { document.getElementById('name').value = 'Test auto'; startSolo(); });
+    await page.waitForFunction(() => !document.getElementById('game').hidden && document.querySelectorAll('#gGrid .tile img').length === 4 && !!document.getElementById('gName').textContent, { timeout: 30000 }).catch(() => {});
+    const quiz = await page.evaluate(() => ({ game: !document.getElementById('game').hidden, name: document.getElementById('gName').textContent,
+      imgs: [...document.querySelectorAll('#gGrid .tile img')].filter(i => i.complete && i.naturalWidth > 0).length }));
+    step('WikiDuel Quiz : partie solo', quiz.game && quiz.imgs === 4, quiz.name ? quiz.name + ', ' + quiz.imgs + ' images' : 'question non affichée');
+    await page.evaluate(() => { G.over = true; showBoard('today'); });
+    await page.waitForFunction(() => !/Chargement/.test(document.getElementById('bList').innerText), { timeout: 15000 }).catch(() => {});
+    const qb = await page.evaluate(() => document.getElementById('bList').innerText);
+    step('WikiDuel Quiz : classement du jour', !/indisponible|Chargement/.test(qb));
+
+    // 8. Pages légales
     for (const p of ['/cgv', '/confidentialite', '/comment-jouer', '/course-wikipedia']) {
       const r = await page.goto(base + p, { waitUntil: 'domcontentloaded', timeout: 15000 });
       const txt = await page.content();

@@ -703,6 +703,9 @@ exports.cleanup = onSchedule({ schedule: 'every day 04:00', timeZone: 'Europe/Zu
   paths.forEach(c => { if (!alive.has(c.key)) upd['paths/' + c.key] = null; });
   queue.forEach(c => { if (((c.val() || {}).at || 0) < dayCutoff) upd['queue/' + c.key] = null; });
   matches.forEach(c => { if (((c.val() || {}).at || 0) < dayCutoff) upd['matches/' + c.key] = null; });
+  // WikiDuel Quiz : salons entre amis gardés 2 jours.
+  const oldQuiz = await db.ref('quizRooms').orderByChild('createdAt').endAt(now - 2 * 864e5).limitToFirst(2000).once('value');
+  oldQuiz.forEach(c => { upd['quizRooms/' + c.key] = null; });
   const n = Object.keys(upd).length;
   if (n) await db.ref().update(upd);
   logger.info('Nettoyage quotidien', { suppressions: n });

@@ -91,6 +91,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
 #home .wrap { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding-block: 32px; }
 .logo { font: 800 clamp(48px, 15vw, 76px)/.9 var(--display); letter-spacing: -.04em; margin: 0; }
 .logo span { color: var(--flag); }
+.quiz-link { display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card);
+  font: 600 14px var(--display); color: var(--muted); text-decoration: none; }
+.quiz-link b { color: #7b4dff; }
+@media (prefers-color-scheme: dark) { .quiz-link b { color: #a98bff; } }
 .pitch { font-size: 18px; color: var(--muted); margin: 0; max-width: 34ch; }
 .route { display: flex; align-items: center; gap: 8px; font: 500 13px var(--mono); color: var(--muted); flex-wrap: wrap; }
 .route b { color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 4px 8px; border-radius: 8px; font-weight: 700; }
@@ -412,6 +416,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
   <div class="wrap">
     <div>
       <h1 class="logo">Wiki<span>Duel</span></h1>
+      <a class="quiz-link" href="/quiz">🖼️ Nouveau : <b>WikiDuel Quiz</b> →</a>
     </div>
     <p class="pitch">Même page de départ, même cible. Seuls les liens de l'article comptent. Le premier arrivé gagne.</p>
     <div class="route" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>

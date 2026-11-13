@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<title>WikiDuel Quiz</title>
+<meta name="description" content="Le quiz en images de WikiDuel : un nom, quatre photos de Wikipédia, touche la bonne le plus vite possible. Quiz du jour, solo et duels entre amis.">
+<link rel="canonical" href="https://wikiduel.ch/quiz">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="WikiDuel">
+<meta property="og:title" content="WikiDuel Quiz : trouve la bonne image">
+<meta property="og:description" content="Un nom, quatre photos de Wikipédia : touche la bonne le plus vite possible. Quiz du jour, solo et duels entre amis.">
+<meta property="og:url" content="https://wikiduel.ch/quiz">
+<meta property="og:image" content="https://wikiduel.ch/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root {
+  --ink: #14213d; --paper: #f6f7fb; --card: #ffffff; --line: #d9deeb; --muted: #5b6585;
+  --flag: #ff5a36; --link: #2747c9; --ok: #1f9d63; --bad: #d63b2f; --quiz: #7b4dff;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --read: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --ink: #e8ecf8; --paper: #0e1426; --card: #161e36; --line: #2a3557; --muted: #9aa6c9; --flag: #ff7a5c; --link: #8ea8ff; --ok: #3fcf8e; --bad: #ff6b5e; --quiz: #a98bff; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--read);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); -webkit-tap-highlight-color: transparent; }
+button, input { font: inherit; color: inherit; }
+a { color: var(--link); }
+.wrap { max-width: 560px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 20px; }
+.label { font: 700 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 20px; border-radius: 14px;
+  border: 2px solid var(--ink); background: var(--ink); color: var(--paper); font: 800 17px var(--display); cursor: pointer; width: 100%; text-decoration: none; }
+.btn.ghost { background: transparent; color: var(--ink); }
+.btn.quiz { background: var(--quiz); border-color: var(--quiz); color: #fff; }
+.btn.small { min-height: 38px; font-size: 14px; width: auto; padding: 0 14px; border-radius: 10px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn:focus-visible, input:focus-visible, a:focus-visible, .tile:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+input.field { width: 100%; min-height: 52px; padding: 0 16px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); font: 600 17px var(--display); }
+input.field:focus { border-color: var(--ink); outline: none; }
+.err { color: var(--flag); font: 600 14px var(--display); min-height: 20px; }
+.stack { display: grid; gap: 12px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font: 600 13px var(--display); }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.join-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.join-row input { text-transform: uppercase; letter-spacing: .3em; font-family: var(--mono); }
+.join-row .btn { width: auto; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 10px; }
+
+/* Accueil */
+.back { font: 700 14px var(--display); text-decoration: none; color: var(--muted); }
+.logo { font: 800 clamp(44px, 13vw, 68px)/.9 var(--display); letter-spacing: -.04em; }
+.logo span { color: var(--flag); }
+.logo em { font-style: normal; color: var(--quiz); display: block; font-size: .62em; letter-spacing: -.02em; margin-top: 4px; }
+.pitch { font-size: 18px; color: var(--muted); margin: 0; max-width: 36ch; }
+.demo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: 280px; }
+.demo i { aspect-ratio: 1; border-radius: 10px; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; font-style: normal; font-size: 26px; }
+.demo i.ok { border: 2px solid var(--ok); }
+.daily-q .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.daily-q strong { font: 800 20px/1.2 var(--display); }
+.daily-q .acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--link); font: 700 15px var(--display); text-decoration: underline; cursor: pointer; }
+footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--muted); }
+
+/* Salon */
+.code { font: 800 44px/1 var(--mono); letter-spacing: .2em; }
+.players { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.players li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; font: 700 16px var(--display); }
+.players li.me { border-color: var(--quiz); }
+.players small { font: 500 13px var(--mono); color: var(--muted); }
+.players .off { opacity: .5; }
+
+/* Partie */
+#game .wrap { gap: 14px; padding-top: 14px; }
+.ghead { display: flex; justify-content: space-between; align-items: center; gap: 10px; font: 700 14px var(--mono); color: var(--muted); }
+.ghead b { color: var(--ink); }
+.ghead > span { white-space: nowrap; }
+.ghead #gCat { overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; text-align: center; }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 100%; background: var(--quiz); transform-origin: left; }
+.bar.low i { background: var(--flag); }
+.prompt { text-align: center; display: grid; gap: 6px; min-height: 84px; align-content: center; }
+.prompt h2 { font-size: clamp(28px, 8vw, 40px); line-height: 1.05; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { position: relative; aspect-ratio: 1; border-radius: 16px; overflow: hidden; border: 3px solid var(--line); background: var(--card); padding: 0; cursor: pointer;
+  transition: transform .12s ease, border-color .15s ease, opacity .2s ease; }
+.tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tile.flag img { object-fit: contain; padding: 10%; }
+.tile:active { transform: scale(.97); }
+.tile.picked { border-color: var(--quiz); }
+.tile.good { border-color: var(--ok); }
+.tile.wrong { border-color: var(--bad); }
+.tile.dim { opacity: .45; }
+.tile .tag { position: absolute; left: 6px; right: 6px; bottom: 6px; padding: 4px 6px; border-radius: 8px; background: rgba(10,15,30,.78); color: #fff;
+  font: 700 12px/1.25 var(--display); text-align: center; }
+.tile .mark { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 800 17px var(--display); }
+.tile.good .mark { background: var(--ok); }
+.tile.wrong .mark { background: var(--bad); }
+.info { min-height: 64px; text-align: center; font-size: 15px; color: var(--muted); }
+.info strong { color: var(--ink); font-family: var(--display); }
+.info .pts { font: 800 22px var(--display); }
+.info .pts.ok { color: var(--ok); } .info .pts.ko { color: var(--bad); }
+.info small { display: block; font: 500 11px/1.4 var(--mono); margin-top: 4px; opacity: .8; }
+.live { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.live span { font: 700 12px var(--display); padding: 3px 8px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); }
+.live span.done { border-color: var(--quiz); }
+.count { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: var(--paper); font: 800 120px var(--display); color: var(--quiz); }
+.count small { display: block; font: 600 16px var(--display); color: var(--muted); text-align: center; }
+
+/* Résultats */
+.big { font: 800 56px/1 var(--display); }
+.marks { font-size: 22px; letter-spacing: 2px; }
+.recap { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.recap li { display: grid; grid-template-columns: 56px 1fr auto; gap: 10px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 6px 10px 6px 6px; }
+.recap img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: var(--line); }
+.recap .flag img { object-fit: contain; }
+.recap b { font: 700 15px var(--display); display: block; }
+.recap small { font: 500 11px/1.3 var(--mono); color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recap .s { font: 800 15px var(--mono); }
+.recap .s.ko { color: var(--bad); }
+.lb { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lb li { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.lb li.me { border-color: var(--quiz); }
+.lb .pos { font: 800 16px var(--mono); color: var(--flag); }
+.lb strong { font: 700 16px var(--display); }
+.lb small { display: block; font: 500 12px var(--mono); color: var(--muted); }
+.lb .sc { font: 800 17px var(--mono); }
+.lb-empty { justify-content: center; text-align: center; color: var(--muted); grid-template-columns: 1fr !important; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.seg button { border: 0; background: none; border-radius: 9px; padding: 8px 4px; font: 700 14px var(--display); color: var(--muted); cursor: pointer; }
+.seg button.on { background: var(--ink); color: var(--paper); }
+@media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
+</style>
+<script>
+// Remontée des erreurs (même système que WikiDuel).
+(function () {
+  var q = window.__wdErr = [], seen = {}, count = 0;
+  function add(msg, src, line, col, stack) {
+    if (/(chrome|moz|safari|safari-web|ms-browser)-extension:\/\//.test(String(src || '') + ' ' + String(stack || ''))) return;
+    msg = String(msg || 'Erreur inconnue').slice(0, 300);
+    var key = msg + '|' + line;
+    if (seen[key] || count >= 20) return;
+    seen[key] = 1; count++;
+    q.push({ msg: msg, src: String(src || '').replace(location.origin, '').slice(0, 200), line: +line || 0, col: +col || 0,
+             stack: String(stack || '').slice(0, 1500), clientAt: Date.now() });
+    if (window.__wdFlush) window.__wdFlush();
+  }
+  window.addEventListener('error', function (e) { if (e.message) add(e.message, e.filename, e.lineno, e.colno, e.error && e.error.stack); });
+  window.addEventListener('unhandledrejection', function (e) { var r = e.reason || {}; add('Promesse rejetée : ' + (r.message || r.code || r), '', 0, 0, r.stack); });
+})();
+</script>
+</head>
+<body>
+
+<!-- ACCUEIL -->
+<section id="home" class="screen">
+  <div class="wrap">
+    <a class="back" href="/">← WikiDuel, la course sur Wikipédia</a>
+    <h1 class="logo">Wiki<span>Duel</span><em>Quiz</em></h1>
+    <p class="pitch">Un nom, quatre photos tirées de Wikipédia. Touche la bonne, le plus vite possible. 10 questions, 10 secondes chacune.</p>
+    <div class="demo" aria-hidden="true"><i>🏔️</i><i class="ok">🌊</i><i>🦁</i><i>🚗</i></div>
+
+    <div class="card daily-q" id="dailyCard">
+      <div class="top"><span class="label" id="dLabel">Quiz du jour</span><span class="label" id="dDate"></span></div>
+      <strong id="dTitle">Les mêmes 10 questions pour tout le monde</strong>
+      <span id="dSub" style="color:var(--muted);font-size:15px">Une seule tentative. Classement du jour.</span>
+      <div class="acts"><button class="btn quiz small" id="dPlay" disabled>Jouer</button><button class="linkbtn" id="dBoard">Classement du jour</button></div>
+    </div>
+
+    <div class="stack">
+      <label class="label" for="name">Ton pseudo</label>
+      <input id="name" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
+      <button id="solo" class="btn" disabled>Jouer en solo</button>
+      <div class="row2">
+        <button id="create" class="btn ghost" disabled>Salon entre amis</button>
+        <button id="board" class="btn ghost">Classement</button>
+      </div>
+      <div class="or">ou rejoindre avec un code</div>
+      <div class="join-row">
+        <input id="codeIn" class="field" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" aria-label="Code du salon">
+        <button id="join" class="btn ghost" disabled>Rejoindre</button>
+      </div>
+      <div class="err" id="homeErr" role="alert"></div>
+      <p id="best" class="label" style="text-align:center" hidden></p>
+    </div>
+    <footer>Images : <a href="https://commons.wikimedia.org/" rel="noopener">Wikimedia Commons</a>, crédits affichés après chaque partie. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br>
+      <a href="/">WikiDuel</a> · <a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a></footer>
+  </div>
+</section>
+
+<!-- SALON -->
+<section id="lobby" class="screen" hidden>
+  <div class="wrap">
+    <span class="label">Salon WikiDuel Quiz</span>
+    <div class="code" id="lCode">····</div>
+    <button class="btn ghost small" id="lShare" style="justify-self:start">Inviter sur WhatsApp</button>
+    <ul class="players" id="lPlayers"></ul>
+    <p id="lWait" style="color:var(--muted);margin:0">En attente de l'hôte…</p>
+    <button class="btn quiz" id="lStart" hidden>Lancer la partie</button>
+    <button class="btn ghost" id="lLeave">Quitter le salon</button>
+  </div>
+</section>
+
+<!-- PARTIE -->
+<section id="game" class="screen" hidden>
+  <div class="wrap">
+    <div class="ghead"><span>Question <b id="gNum">1</b>/10</span><span id="gCat"></span><span><b id="gScore">0</b> pts</span></div>
+    <div class="bar" id="gBar"><i id="gFill"></i></div>
+    <div class="prompt"><span class="label" id="gHint">Touche la bonne image</span><h2 id="gName"></h2></div>
+    <div class="grid" id="gGrid"></div>
+    <div class="info" id="gInfo" aria-live="polite"></div>
+    <div class="live" id="gLive" hidden></div>
+  </div>
+</section>
+<div class="count" id="count" hidden><div><span id="countN">3</span><small id="countTxt">Prépare-toi</small></div></div>
+
+<!-- RÉSULTATS -->
+<section id="results" class="screen" hidden>
+  <div class="wrap">
+    <span class="label" id="rLabel">Partie terminée</span>
+    <div><div class="big" id="rScore">0</div><div style="font:700 18px var(--display)" id="rSub"></div></div>
+    <div class="marks" id="rMarks" aria-hidden="true"></div>
+    <ul class="lb" id="rRank" hidden></ul>
+    <div class="stack">
+      <button class="btn quiz" id="rShare">Partager mon score</button>
+      <button class="btn" id="rAgain">Rejouer</button>
+      <button class="btn ghost" id="rBoard" hidden>Classement du jour</button>
+      <button class="btn ghost" id="rHome">Accueil</button>
+    </div>
+    <span class="label">Les réponses</span>
+    <ul class="recap" id="rRecap"></ul>
+    <p style="font-size:13px;color:var(--muted);margin:0">Images de Wikimedia Commons ; touche une réponse pour voir l'image, son auteur et sa licence.</p>
+  </div>
+</section>
+
+<!-- CLASSEMENT -->
+<section id="ranking" class="screen" hidden>
+  <div class="wrap">
+    <div><span class="label" id="bLabel">Quiz du jour</span><h2 style="font-size:30px" id="bTitle">Classement</h2></div>
+    <div class="seg" id="bTabs"><button type="button" data-k="today" class="on">Aujourd’hui</button><button type="button" data-k="yesterday">Hier</button></div>
+    <ol class="lb" id="bList"></ol>
+    <button class="btn ghost" id="bBack">Retour</button>
+  </div>
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const QN = 10, QDUR = 10000, REVEAL = 2600, SLOT = QDUR + 3500;
+const LAUNCH = '2026-11-13'; // quiz du jour n°1
+const S = { clockOffset: 0, bank: null };
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function serverNow() { return Date.now() + S.clockOffset; }
+function show(id) { ['home', 'lobby', 'game', 'results', 'ranking'].forEach(s => { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
+function zurichDate(t) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t)); }
+function dailyNum(d) { return Math.round((Date.parse(d) - Date.parse(LAUNCH)) / 864e5) + 1; }
+function dateLabel(d) { return new Date(d + 'T12:00:00Z').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); }
+const fmtPts = n => n.toLocaleString('fr-CH');
+const imgUrl = it => '/quiz-data/img/' + it.id + '.jpg';
+
+/* ---------- Banque de questions et tirage déterministe ---------- */
+const bankReady = fetch('/quiz-data/questions.json').then(r => r.json()).then(b => { S.bank = b; return b; });
+function rngFrom(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  let a = h >>> 0;
+  return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+// Même graine = mêmes 10 questions pour tout le monde (salon entre amis, quiz du jour).
+function buildQuiz(seed) {
+  const rnd = rngFrom(seed), b = S.bank;
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const keys = Object.keys(b.cats);
+  let order = shuffle(keys.slice());
+  while (order.length < QN) { const k = pick(keys); if (k !== order[order.length - 1]) order.push(k); }
+  order = order.slice(0, QN);
+  const LIMIT = [10, 12, 14, 18, 22, 26, 32, 40, 55, 999]; // de plus en plus pointu
+  const used = new Set();
+  return order.map((cat, k) => {
+    const all = b.items.filter(it => it.c === cat);
+    let pool = all.filter(it => it.r < LIMIT[k] && !used.has(it.id));
+    if (pool.length < 1) pool = all.filter(it => !used.has(it.id));
+    const ans = pick(pool); used.add(ans.id);
+    const near = all.filter(it => it.id !== ans.id && it.r < LIMIT[k] + 20);
+    const others = shuffle((near.length >= 3 ? near : all.filter(it => it.id !== ans.id)).slice()).slice(0, 3);
+    const opts = shuffle([ans].concat(others));
+    return { cat, ans, opts, good: opts.indexOf(ans) };
+  });
+}
+function preload(qs, onProgress) {
+  const urls = [...new Set(qs.flatMap(q => q.opts.map(imgUrl)))];
+  let done = 0;
+  return Promise.race([
+    Promise.all(urls.map(u => new Promise(res => { const im = new Image(); im.onload = im.onerror = () => { done++; onProgress && onProgress(done / urls.length); res(); }; im.src = u; }))),
+    new Promise(res => setTimeout(res, 15000))
+  ]);
+}
+
+/* ---------- Firebase ---------- */
+const CFG = window.FIREBASE_CONFIG || {};
+let db = null, uid = null;
+const ready = (async () => {
+  if (!(window.firebase && CFG.apiKey)) throw new Error('config');
+  firebase.initializeApp(CFG);
+  const auth = firebase.auth();
+  const user = await new Promise(res => { const off = auth.onAuthStateChanged(u => { off(); res(u); }); });
+  uid = user ? user.uid : (await auth.signInAnonymously()).user.uid;
+  db = firebase.database();
+  window.__wdFlush = () => {
+    const q = window.__wdErr || [];
+    while (q.length) {
+      const e = q.shift(), shown = Array.prototype.find.call(document.querySelectorAll('.screen'), s => !s.hidden);
+      db.ref('errors').push(Object.assign(e, { uid: uid, ua: navigator.userAgent.slice(0, 200), page: location.pathname,
+        screen: shown ? shown.id : '', at: firebase.database.ServerValue.TIMESTAMP })).catch(() => {});
+    }
+  };
+  window.__wdFlush();
+  db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
+})();
+Promise.all([ready, bankReady]).then(() => {
+  ['solo', 'create', 'join', 'dPlay'].forEach(id => { $(id).disabled = false; });
+  loadDaily();
+}).catch(e => { $('homeErr').textContent = 'Connexion impossible : ' + (e.message || e); });
+
+/* ---------- Accueil ---------- */
+const params = new URLSearchParams(location.search);
+$('name').value = store.get('wd-name') || '';
+if (params.get('salon')) $('codeIn').value = params.get('salon').toUpperCase().slice(0, 4);
+function getName() {
+  const n = $('name').value.trim();
+  if (!n) { $('homeErr').textContent = 'Choisis un pseudo pour commencer.'; $('name').focus(); return null; }
+  store.set('wd-name', n); $('homeErr').textContent = '';
+  return n;
+}
+function renderBest() {
+  const b = store.get('wq-best');
+  $('best').hidden = !b; if (b) $('best').textContent = 'Ton record en solo : ' + fmtPts(b) + ' pts';
+}
+renderBest();
+
+/* ---------- Moteur de partie ----------
+   Solo / quiz du jour : chaque question démarre quand la précédente est corrigée.
+   Entre amis : horaire fixe calé sur l'heure du serveur (startAt + i × SLOT), pour tout le monde. */
+let G = null;
+function points(t) { return Math.max(100, Math.round(1000 - 900 * t / QDUR)); }
+function startGame(opts) {
+  G = Object.assign({ i: -1, score: 0, res: [], locked: true, revealed: false }, opts);
+  show('game');
+  $('gLive').hidden = G.mode !== 'friends';
+  $('gScore').textContent = '0';
+  if (G.mode === 'friends') { G.tick = setInterval(syncTick, 100); syncTick(); }
+  else countdown(3, () => nextQuestion());
+}
+function countdown(n, done, txt) {
+  $('count').hidden = false; $('countTxt').textContent = txt || 'Prépare-toi';
+  $('countN').textContent = n;
+  if (n <= 0) { $('count').hidden = true; done(); return; }
+  setTimeout(() => countdown(n - 1, done, txt), 800);
+}
+function renderQuestion(i) {
+  G.i = i; G.locked = false; G.revealed = false; G.picked = null;
+  const q = G.qs[i], cat = S.bank.cats[q.cat];
+  $('gNum').textContent = i + 1;
+  $('gCat').textContent = cat.name;
+  $('gHint').textContent = cat.flag ? 'Touche le drapeau de ce pays' : 'Touche : ' + cat.one;
+  $('gName').textContent = q.ans.l;
+  $('gInfo').innerHTML = '';
+  $('gGrid').innerHTML = q.opts.map((it, k) =>
+    '<button type="button" class="tile' + (cat.flag ? ' flag' : '') + '" data-k="' + k + '" aria-label="Image ' + (k + 1) + '"><img src="' + imgUrl(it) + '" alt="" draggable="false"></button>').join('');
+  $('gGrid').onclick = e => { const b = e.target.closest('.tile'); if (b) answer(+b.dataset.k); };
+}
+function nextQuestion() {
+  if (G.i + 1 >= QN) return finish();
+  renderQuestion(G.i + 1);
+  G.qStart = performance.now();
+  const loop = () => {
+    if (!G || G.revealed || G.mode === 'friends') return;
+    const t = performance.now() - G.qStart;
+    drawBar(t);
+    if (t >= QDUR) answer(-1); else G.raf = requestAnimationFrame(loop);
+  };
+  G.raf = requestAnimationFrame(loop);
+}
+function drawBar(t) {
+  const left = Math.max(0, 1 - t / QDUR);
+  $('gFill').style.transform = 'scaleX(' + left + ')';
+  $('gBar').classList.toggle('low', left < .3);
+}
+function answer(k) {
+  if (!G || G.locked) return;
+  G.locked = true;
+  const q = G.qs[G.i];
+  const t = Math.min(QDUR, Math.round((G.mode === 'friends' ? serverNow() - qStartAt(G.i) : performance.now() - G.qStart)));
+  const ok = k === q.good, s = ok ? points(t) : 0;
+  G.res[G.i] = { p: k, t: t, s: s };
+  G.score += s;
+  G.picked = k;
+  if (G.mode === 'friends') renderLive();
+  if (G.mode === 'friends') {
+    db.ref('quizRooms/' + G.code + '/players/' + uid + '/a/' + G.g + '/' + G.i).set({ p: k, t: t, s: s }).catch(() => {});
+    if (k >= 0) $('gGrid').children[k].classList.add('picked');
+    $('gInfo').innerHTML = k < 0 ? '<strong>Temps écoulé</strong>' : '<strong>Réponse enregistrée</strong><br>Correction à la fin du chrono…';
+  } else reveal();
+}
+function reveal() {
+  if (G.revealed) return;
+  G.revealed = true; cancelAnimationFrame(G.raf);
+  const q = G.qs[G.i], r = G.res[G.i] || { p: -1, s: 0 };
+  [...$('gGrid').children].forEach((el, k) => {
+    const it = q.opts[k];
+    el.classList.remove('picked');
+    if (k === q.good) el.classList.add('good');
+    else if (k === r.p) el.classList.add('wrong');
+    else el.classList.add('dim');
+    if (k === q.good || k === r.p) el.insertAdjacentHTML('beforeend', '<span class="mark">' + (k === q.good ? '✓' : '✗') + '</span>');
+    el.insertAdjacentHTML('beforeend', '<span class="tag">' + esc(it.l) + '</span>');
+    el.disabled = true;
+  });
+  $('gScore').textContent = fmtPts(G.score);
+  $('gInfo').innerHTML = (r.s ? '<span class="pts ok">+' + r.s + '</span>' : '<span class="pts ko">' + (r.p < 0 ? 'Trop tard !' : 'Raté') + '</span>') +
+    '<br><strong>' + esc(q.ans.l) + '</strong>' + (q.ans.d ? ' — ' + esc(q.ans.d) : '') + '<small>Photo : ' + esc(q.ans.cr) + '</small>';
+  if (G.mode !== 'friends') setTimeout(() => { if (G && !G.over) nextQuestion(); }, REVEAL);
+}
+function finish() {
+  if (G.over) return;
+  G.over = true; clearInterval(G.tick); cancelAnimationFrame(G.raf);
+  const ok = G.res.filter(r => r && r.s > 0).length;
+  const marks = G.qs.map((q, i) => (G.res[i] && G.res[i].s > 0) ? '1' : '0').join('');
+  G.marks = marks; G.ok = ok;
+  if (G.mode === 'solo') { const b = store.get('wq-best') || 0; G.record = G.score > b; if (G.record) store.set('wq-best', G.score); renderBest(); }
+  if (G.mode === 'daily') saveDaily(ok, marks);
+  showResults();
+}
+
+/* ---------- Résultats ---------- */
+function marksEmoji(m) { return m.split('').map(c => c === '1' ? '🟩' : '🟥').join(''); }
+function showResults() {
+  show('results');
+  const g = G;
+  $('rLabel').textContent = g.mode === 'daily' ? 'Quiz du jour n°' + dailyNum(g.date) : g.mode === 'friends' ? 'Salon ' + g.code : 'Partie solo';
+  $('rScore').textContent = fmtPts(g.score) + ' pts';
+  $('rSub').textContent = g.ok + ' bonne' + (g.ok > 1 ? 's' : '') + ' réponse' + (g.ok > 1 ? 's' : '') + ' sur ' + QN + (g.record ? ' · nouveau record !' : '');
+  $('rMarks').textContent = marksEmoji(g.marks);
+  $('rAgain').hidden = g.mode !== 'solo';
+  $('rBoard').hidden = g.mode !== 'daily';
+  $('rRank').hidden = g.mode !== 'friends';
+  $('rRecap').innerHTML = g.qs.map((q, i) => {
+    const r = g.res[i] || { s: 0 }, cat = S.bank.cats[q.cat];
+    return '<li><a class="' + (cat.flag ? 'flag' : '') + '" href="' + esc(q.ans.src || '#') + '" target="_blank" rel="noopener"><img src="' + imgUrl(q.ans) + '" alt="' + esc(q.ans.l) + '"></a>' +
+      '<div style="min-width:0"><b>' + esc(q.ans.l) + '</b><small>' + esc(cat.name) + ' · ' + esc(q.ans.cr) + '</small></div>' +
+      '<span class="s' + (r.s ? '' : ' ko') + '">' + (r.s ? '+' + r.s : '0') + '</span></li>';
+  }).join('');
+  if (g.mode === 'friends') renderRoomRank();
+}
+$('rHome').onclick = () => { leaveRoom(); G = null; show('home'); loadDaily(); };
+$('rAgain').onclick = () => startSolo();
+$('rBoard').onclick = () => showBoard('today');
+$('rShare').onclick = () => {
+  const g = G; if (!g) return;
+  const head = g.mode === 'daily' ? 'WikiDuel Quiz du jour n°' + dailyNum(g.date) : 'WikiDuel Quiz';
+  const text = head + ' : ' + g.ok + '/10 · ' + fmtPts(g.score) + ' pts\n' + marksEmoji(g.marks) + '\nTu fais mieux ? https://wikiduel.ch/quiz';
+  if (navigator.share) navigator.share({ text: text }).catch(() => {});
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+};
+
+/* ---------- Solo ---------- */
+async function startSolo() {
+  if (!getName()) return;
+  await bankReady;
+  const qs = buildQuiz('solo-' + Date.now() + '-' + Math.random());
+  $('solo').disabled = true; $('solo').textContent = 'Chargement des images…';
+  await preload(qs, p => { $('solo').textContent = 'Chargement des images… ' + Math.round(p * 100) + ' %'; });
+  $('solo').disabled = false; $('solo').textContent = 'Jouer en solo';
+  startGame({ mode: 'solo', qs: qs });
+}
+$('solo').onclick = startSolo;
+
+/* ---------- Quiz du jour ---------- */
+async function loadDaily() {
+  const d = zurichDate(serverNow());
+  $('dDate').textContent = dateLabel(d);
+  $('dLabel').textContent = 'Quiz du jour · n°' + dailyNum(d);
+  try {
+    await ready;
+    const mine = (await db.ref('quizDaily/' + d + '/' + uid).once('value')).val();
+    S.dailyMine = mine;
+    if (mine && mine.res) {
+      $('dTitle').textContent = 'Fait : ' + mine.res.ok + '/10 · ' + fmtPts(mine.res.score) + ' pts';
+      $('dSub').textContent = marksEmoji(mine.res.marks) + ' Nouveau quiz à minuit.';
+      $('dPlay').hidden = true;
+    } else if (mine && mine.startedAt) {
+      $('dTitle').textContent = 'Partie commencée, non terminée';
+      $('dSub').textContent = 'Une seule tentative par jour. Nouveau quiz à minuit.';
+      $('dPlay').hidden = true;
+    } else { $('dPlay').hidden = false; }
+  } catch (e) {}
+}
+$('dPlay').onclick = async () => {
+  const name = getName(); if (!name) return;
+  $('dPlay').disabled = true; $('dPlay').textContent = 'Chargement…';
+  try {
+    await Promise.all([ready, bankReady]);
+    const d = zurichDate(serverNow());
+    const qs = buildQuiz('daily-' + d);
+    await preload(qs);
+    const ref = db.ref('quizDaily/' + d + '/' + uid);
+    if ((await ref.child('startedAt').once('value')).exists()) { loadDaily(); return; }
+    await ref.update({ name: name, startedAt: firebase.database.ServerValue.TIMESTAMP });
+    startGame({ mode: 'daily', qs: qs, date: d });
+  } catch (e) { $('homeErr').textContent = 'Quiz du jour indisponible : ' + e.message; }
+  finally { $('dPlay').disabled = false; $('dPlay').textContent = 'Jouer'; }
+};
+function saveDaily(ok, marks) {
+  const ms = G.res.reduce((s, r) => s + (r ? r.t : QDUR), 0);
+  db.ref('quizDaily/' + G.date + '/' + uid).update({
+    res: { score: G.score, ok: ok, marks: marks, ms: ms, at: firebase.database.ServerValue.TIMESTAMP }, score: G.score
+  }).catch(e => { $('rSub').textContent += ' · score non enregistré (' + e.message + ')'; });
+}
+async function showBoard(which) {
+  show('ranking');
+  const d = zurichDate(serverNow() - (which === 'yesterday' ? 864e5 : 0));
+  [...$('bTabs').children].forEach(b => b.classList.toggle('on', b.dataset.k === which));
+  $('bTabs').onclick = e => { const b = e.target.closest('button[data-k]'); if (b && b.dataset.k !== which) showBoard(b.dataset.k); };
+  $('bLabel').textContent = 'Quiz du jour n°' + dailyNum(d) + ' · ' + dateLabel(d);
+  $('bList').innerHTML = '<li class="lb-empty">Chargement…</li>';
+  try {
+    await ready;
+    const snap = await db.ref('quizDaily/' + d).orderByChild('score').limitToLast(100).once('value');
+    const rows = [];
+    snap.forEach(c => { const v = c.val(); if (v && v.res) rows.push(Object.assign({ id: c.key }, v)); });
+    rows.sort((a, b) => b.res.score - a.res.score || a.res.ms - b.res.ms);
+    $('bList').innerHTML = rows.length ? rows.map((r, i) => '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span><span><strong>' +
+      esc(r.name) + (r.id === uid ? ' (toi)' : '') + '</strong><small>' + r.res.ok + '/10 · ' + marksEmoji(r.res.marks) + '</small></span><span class="sc">' + fmtPts(r.res.score) + '</span></li>').join('')
+      : '<li class="lb-empty">Personne n’a encore joué ce quiz.</li>';
+  } catch (e) { $('bList').innerHTML = '<li class="lb-empty">Classement indisponible.</li>'; }
+}
+$('dBoard').onclick = () => showBoard('today');
+$('board').onclick = () => showBoard('today');
+$('bBack').onclick = () => { show(G && G.over ? 'results' : 'home'); };
+
+/* ---------- Entre amis ---------- */
+let R = null; // salon en cours : { code, ref, data }
+function roomCode() { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; let s = ''; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
+async function enterRoom(code, name, create) {
+  await ready;
+  const ref = db.ref('quizRooms/' + code);
+  if (create) {
+    await ref.set({ hostId: uid, createdAt: firebase.database.ServerValue.TIMESTAMP, status: 'lobby', g: 0,
+      players: { [uid]: { name: name, online: true, joinedAt: firebase.database.ServerValue.TIMESTAMP } } });
+  } else {
+    const snap = await ref.once('value');
+    if (!snap.exists()) throw new Error('Salon introuvable.');
+    await ref.child('players/' + uid).update({ name: name, online: true, joinedAt: firebase.database.ServerValue.TIMESTAMP });
+  }
+  ref.child('players/' + uid + '/online').onDisconnect().set(false);
+  R = { code: code, ref: ref, data: null };
+  $('lCode').textContent = code;
+  history.replaceState(null, '', '/quiz?salon=' + code);
+  show('lobby');
+  ref.on('value', s => { if (R && R.ref === ref) { R.data = s.val(); onRoom(); } });
+}
+function leaveRoom() {
+  if (!R) return;
+  R.ref.off(); R.ref.child('players/' + uid + '/online').set(false).catch(() => {});
+  R = null; history.replaceState(null, '', '/quiz');
+}
+function roomPlayers() {
+  const p = (R && R.data && R.data.players) || {};
+  return Object.keys(p).map(id => Object.assign({ id: id }, p[id])).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+}
+function playerScore(p, g) { const a = (p.a && p.a[g]) || {}; return Object.keys(a).reduce((s, k) => s + (a[k].s || 0), 0); }
+function onRoom() {
+  const d = R.data;
+  if (!d) { leaveRoom(); show('home'); $('homeErr').textContent = 'Le salon a été fermé.'; return; }
+  const host = d.hostId === uid, ps = roomPlayers();
+  // Arrivé après la fin de la dernière partie : on attend la suivante dans le salon.
+  const missed = d.seed && serverNow() > d.startAt + QN * SLOT && (!G || G.g !== d.g);
+  if (d.status === 'lobby' || !d.seed || missed) {
+    if (!(G && G.over && G.g === d.g)) show('lobby');
+    $('lWait').textContent = missed ? 'Partie terminée. L’hôte peut en lancer une nouvelle.' : 'En attente de l’hôte…';
+    $('lStart').textContent = missed ? 'Nouvelle partie' : 'Lancer la partie';
+    $('lPlayers').innerHTML = ps.map(p => '<li class="' + (p.id === uid ? 'me' : '') + (p.online === false ? ' off' : '') + '"><span>' + esc(p.name) + (p.id === d.hostId ? ' 👑' : '') +
+      (p.id === uid ? ' (toi)' : '') + '</span><small>' + (p.online === false ? 'parti' : 'prêt') + '</small></li>').join('');
+    $('lStart').hidden = !host; $('lWait').hidden = host;
+    return;
+  }
+  // Partie lancée (ou relancée) : on la rejoint si ce n'est pas déjà fait.
+  if (!G || G.mode !== 'friends' || G.g !== d.g) {
+    const qs = buildQuiz(d.seed);
+    G = null;
+    preload(qs).then(() => {
+      if (!R || R.data.g !== d.g) return;
+      startGame({ mode: 'friends', qs: qs, code: R.code, g: d.g, startAt: d.startAt });
+    });
+    return;
+  }
+  renderLive();
+  if (G.over) renderRoomRank();
+}
+function qStartAt(i) { return G.startAt + i * SLOT; }
+function syncTick() {
+  if (!G || G.over) return;
+  const t = serverNow() - G.startAt;
+  if (t < 0) {
+    $('count').hidden = false; $('countTxt').textContent = 'La partie commence';
+    $('countN').textContent = Math.ceil(-t / 1000); return;
+  }
+  $('count').hidden = true;
+  const idx = Math.floor(t / SLOT), within = t - idx * SLOT;
+  if (idx >= QN) return finish();
+  if (idx !== G.i) {
+    if (G.i >= 0 && !G.revealed) { if (!G.locked) answer(-1); reveal(); }
+    renderQuestion(idx);
+  }
+  drawBar(within);
+  if (within >= QDUR && !G.revealed) {
+    if (!G.locked) answer(-1);
+    reveal();
+  }
+  renderLive();
+}
+function renderLive() {
+  if (!G || G.mode !== 'friends' || !R || !R.data) return;
+  const ps = roomPlayers();
+  $('gLive').innerHTML = ps.map(p => {
+    // Les points de la question en cours ne s'affichent qu'après la correction (sinon on devine qui a juste).
+    const a = (p.a && p.a[G.g]) || {}, upto = G.revealed ? G.i : G.i - 1;
+    const sc = Object.keys(a).reduce((s, k) => s + (+k <= upto ? (a[k].s || 0) : 0), 0);
+    return '<span class="' + (a[G.i] ? 'done' : '') + '">' + (a[G.i] && !G.revealed ? '✓ ' : '') + esc(p.name) + ' · ' + fmtPts(sc) + '</span>';
+  }).join('');
+}
+function renderRoomRank() {
+  if (!R || !R.data || !G) return;
+  const ps = roomPlayers().map(p => Object.assign(p, { sc: playerScore(p, G.g) })).sort((a, b) => b.sc - a.sc);
+  $('rRank').innerHTML = ps.map((p, i) => {
+    const a = (p.a && p.a[G.g]) || {}, ok = Object.keys(a).filter(k => a[k].s > 0).length;
+    return '<li' + (p.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span><span><strong>' + esc(p.name) + (p.id === uid ? ' (toi)' : '') +
+      '</strong><small>' + ok + '/10</small></span><span class="sc">' + fmtPts(p.sc) + '</span></li>';
+  }).join('');
+  const host = R.data.hostId === uid;
+  $('rAgain').hidden = !host;
+  $('rAgain').textContent = host ? 'Nouvelle partie (même salon)' : 'Rejouer';
+}
+$('create').onclick = async () => {
+  const name = getName(); if (!name) return;
+  $('create').disabled = true;
+  try {
+    let code;
+    for (let i = 0; i < 5; i++) { code = roomCode(); if (!(await db.ref('quizRooms/' + code + '/hostId').once('value')).exists()) break; }
+    await enterRoom(code, name, true);
+  } catch (e) { $('homeErr').textContent = 'Impossible de créer le salon : ' + e.message; }
+  finally { $('create').disabled = false; }
+};
+$('join').onclick = async () => {
+  const name = getName(); if (!name) return;
+  const code = $('codeIn').value.trim().toUpperCase();
+  if (!/^[A-Z]{4}$/.test(code)) { $('homeErr').textContent = 'Le code fait 4 lettres.'; return; }
+  try { await enterRoom(code, name, false); } catch (e) { $('homeErr').textContent = e.message; }
+};
+async function hostStart() {
+  if (!R || !R.data || R.data.hostId !== uid) return;
+  const g = (R.data.g || 0) + 1;
+  await R.ref.update({ status: 'playing', g: g, seed: R.code + '-' + g + '-' + Math.random().toString(36).slice(2, 10), startAt: Math.round(serverNow() + 6000) });
+}
+$('lStart').onclick = hostStart;
+$('lLeave').onclick = () => { leaveRoom(); show('home'); };
+$('lShare').onclick = () => {
+  const url = 'https://wikiduel.ch/quiz?salon=' + R.code;
+  const text = 'Viens jouer à WikiDuel Quiz avec moi ! Code du salon : ' + R.code + '\n' + url;
+  if (navigator.share) navigator.share({ text: text }).catch(() => {});
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+};
+// Hôte : bouton « Nouvelle partie » sur l'écran de résultats.
+const soloAgain = $('rAgain').onclick;
+$('rAgain').onclick = () => { if (G && G.mode === 'friends') hostStart(); else soloAgain(); };
+</script>
+</body>
+</html>
