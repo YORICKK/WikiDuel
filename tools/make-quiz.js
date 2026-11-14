@@ -42,7 +42,7 @@ const CATS = {
     'Les Demoiselles d\'Avignon', 'Le Voyageur contemplant une mer de nuages', 'Le Tres de mayo', 'L\'École d\'Athènes', 'Les Glaneuses',
     'Un dimanche après-midi à l\'Île de la Grande Jatte', 'Bal du moulin de la Galette', 'La Laitière (Vermeer)', 'Les Nymphéas',
     'Le Sacre de Napoléon', 'La Dame à l\'hermine', 'Les Époux Arnolfini', 'Chasseurs dans la neige', 'La Tour de Babel (Bruegel)',
-    'Composition en rouge, jaune, bleu et noir', 'Campbell\'s Soup Cans', 'Le Pont japonais' ] },
+    'Composition en rouge, jaune, bleu et noir', 'Campbell\'s Soup Cans' ] }, // « Le Pont japonais » retiré : son image Wikipédia est une photo, pas le tableau
   personne: { name: 'Personnalités', one: 'personnalité', titles: [
     'Albert Einstein', 'Marie Curie', 'Isaac Newton', 'Charles Darwin', 'Léonard de Vinci', 'Napoléon Ier', 'Jules César', 'Cléopâtre VII',
     'Abraham Lincoln', 'Winston Churchill', 'Charles de Gaulle', 'Nelson Mandela', 'Gandhi', 'Martin Luther King', 'Barack Obama',
