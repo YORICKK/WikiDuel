@@ -802,3 +802,84 @@ exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SEC
     res.status(500).send('Erreur');
   }
 });
+
+/* ===================== Stats de l'appli (réservées à l'administrateur) ===================== */
+// Seul le compte Google « Yorickk » peut les lire : vérifié ici, côté serveur.
+// Aucune adresse e-mail n'est renvoyée : seulement des comptages et les pseudos.
+const ADMIN_UIDS = ['sMHhTw8j1mdsSO8FJMio75ZMo4C3'];
+exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async req => {
+  if (!db) db = admin.database();
+  const a = req.auth;
+  if (!a || !ADMIN_UIDS.includes(a.uid) || a.token.firebase.sign_in_provider !== 'google.com') throw new HttpsError('permission-denied', 'Réservé à l\'administrateur.');
+  const now = Date.now(), D = 864e5;
+  const dayKey = t => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
+
+  // Comptes (Firebase Auth)
+  const accounts = [];
+  let token;
+  do {
+    const page = await admin.auth().listUsers(1000, token);
+    page.users.forEach(u => accounts.push({ uid: u.uid, google: u.providerData.some(p => p.providerId === 'google.com'),
+      created: Date.parse(u.metadata.creationTime) || 0 }));
+    token = page.pageToken;
+  } while (token);
+
+  const snap = async p => (await db.ref(p).once('value')).val() || {};
+  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors] = await Promise.all(
+    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors'].map(snap));
+
+  const days = []; for (let i = 13; i >= 0; i--) days.push(dayKey(now - i * D));
+  const perDay = () => Object.fromEntries(days.map(d => [d, 0]));
+  const newAcc = perDay(), games = perDay(), quizGames = perDay();
+  accounts.forEach(u => { const k = dayKey(u.created); if (k in newAcc) newAcc[k]++; });
+
+  // Parties WikiDuel (historique de chaque joueur)
+  const g = [];
+  Object.keys(history).forEach(uid => Object.values(history[uid] || {}).forEach(x => { if (x && x.at) g.push({ uid, at: x.at, mode: x.mode, finished: !!x.finished }); }));
+  g.forEach(x => { const k = dayKey(x.at); if (k in games) games[k]++; });
+  const win = ms => g.filter(x => x.at > now - ms);
+  const byMode = arr => arr.reduce((m, x) => { m[x.mode || '?'] = (m[x.mode || '?'] || 0) + 1; return m; }, {});
+  const lastGame = {}; g.forEach(x => { lastGame[x.uid] = Math.max(lastGame[x.uid] || 0, x.at); });
+
+  // Quiz
+  const qs = [];
+  Object.keys(quizSolo).forEach(uid => Object.values(quizSolo[uid] || {}).forEach(x => qs.push({ uid, at: x.at, score: x.score })));
+  qs.forEach(x => { const k = dayKey(x.at); if (k in quizGames) quizGames[k]++; });
+  Object.keys(quizDaily).forEach(d => { if (d in quizGames) quizGames[d] += Object.values(quizDaily[d] || {}).filter(x => x.res).length; });
+
+  const daily = days.slice(-7).reverse().map(d => {
+    const runs = Object.values(dailyRuns[d] || {}), ok = Object.values(dailyScores[d] || {}).filter(s => s.valid).sort((x, y) => x.time - y.time);
+    const qd = Object.values(quizDaily[d] || {}).filter(x => x.res).sort((x, y) => y.res.score - x.res.score);
+    return { date: d, started: runs.length, done: ok.length, best: ok[0] ? { name: ok[0].name, time: ok[0].time, clicks: ok[0].clicks } : null,
+      quiz: qd.length, quizBest: qd[0] ? { name: qd[0].name, score: qd[0].res.score } : null };
+  });
+
+  const buys = []; Object.values(purchases).forEach(p => Object.values(p || {}).forEach(x => buys.push(x)));
+  const real = buys.filter(x => x.livemode);
+  const errs = Object.values(errors).filter(e => e && e.at).sort((x, y) => y.at - x.at);
+
+  const list = accounts.filter(u => u.google).sort((x, y) => x.created - y.created).map(u => {
+    const p = users[u.uid] || {};
+    return { name: p.name || '', created: u.created, last: lastGame[u.uid] || 0, elo: p.games ? p.elo : null, games: p.games || 0,
+      wins: p.wins || 0, solo: p.soloDone || 0, streak: p.dailyStreak || 0, premium: p.premium === true,
+      quizSolo: Object.keys(quizSolo[u.uid] || {}).length };
+  });
+
+  const recentRooms = Object.values(rooms).filter(r => r && r.createdAt > now - D);
+  return {
+    at: now,
+    accounts: { total: accounts.length, google: list.length, new24: accounts.filter(u => u.created > now - D).length,
+      new7: accounts.filter(u => u.created > now - 7 * D).length, google24: accounts.filter(u => u.google && u.created > now - D).length },
+    wikiduel: { games24: win(D).length, games7: win(7 * D).length, modes24: byMode(win(D)), players24: new Set(win(D).map(x => x.uid)).size,
+      players7: new Set(win(7 * D).map(x => x.uid)).size, rooms24: recentRooms.length, ranked24: recentRooms.filter(r => r.ranked).length,
+      ghosts24: recentRooms.filter(r => r.ghost).length },
+    quiz: { solo24: qs.filter(x => x.at > now - D).length, solo7: qs.filter(x => x.at > now - 7 * D).length, soloPlayers: Object.keys(quizSolo).length,
+      rooms: Object.keys(quizRooms).length },
+    perDay: days.map(d => ({ date: d, accounts: newAcc[d], games: games[d], quiz: quizGames[d] })),
+    daily,
+    money: { purchases: real.length, chf: real.reduce((s, x) => s + (x.amount || 0), 0) / 100, premium: Object.values(users).filter(p => p && p.premium === true).length },
+    errors: { d1: errs.filter(e => e.at > now - D).length, d7: errs.filter(e => e.at > now - 7 * D).length,
+      last: errs.slice(0, 5).map(e => ({ at: e.at, page: e.page || '', screen: e.screen || '', msg: String(e.msg || '').slice(0, 160) })) },
+    players: list
+  };
+});

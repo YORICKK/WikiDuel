@@ -97,6 +97,22 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; margin-bottom: -8px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
 .back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+/* Stats de l'appli (administrateur) */
+#admin .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
+.ad-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ad-tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.ad-tile b { font: 800 26px/1.1 var(--display); }
+.ad-tile small { font: 500 12px var(--display); color: var(--muted); }
+.ad-sec { display: grid; gap: 8px; }
+.ad-sec h3 { margin: 6px 0 0; font-size: 18px; }
+.ad-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.ad-table { width: 100%; border-collapse: collapse; font: 500 13px var(--display); }
+.ad-table th, .ad-table td { padding: 7px 8px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ad-table th { font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ad-table td.n, .ad-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.ad-table tr:last-child td { border-bottom: 0; }
+.ad-bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--flag); vertical-align: middle; min-width: 2px; }
+.ad-err { font: 500 12px/1.4 var(--mono); color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
 .quiz-link { display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card);
   font: 600 14px var(--display); color: var(--muted); text-decoration: none; }
 .quiz-link b { color: #7b4dff; }
@@ -450,6 +466,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
         </button>
         <div class="menu" id="accMenu" role="menu" hidden>
           <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
+          <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
           <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
         </div>
       </div>
@@ -555,10 +572,24 @@ input.field:focus { border-color: var(--ink); outline: none; }
   </div>
 </section>
 
+<!-- STATS DE L'APPLI (administrateur uniquement) -->
+<section id="admin" class="screen" hidden>
+  <div class="wrap">
+    <button type="button" id="adBackTop" class="back-top" aria-label="Retour à l'accueil">← Retour</button>
+    <div>
+      <div class="label" id="adAt">Stats de l'appli</div>
+      <h2 class="big">Stats</h2>
+    </div>
+    <div id="adBody"><p class="lb-empty">Chargement…</p></div>
+    <button id="adRefresh" class="btn ghost">Actualiser</button>
+  </div>
+</section>
+
 <!-- Changement de pseudo (menu engrenage de l'accueil) -->
 <div class="overlay" id="nameSheet" hidden>
   <form class="sheet" id="nameForm" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
     <h3 id="nameTitle" style="margin:0;font-size:22px">Changer de pseudo</h3>
+    <p id="nameIntro" hidden>C'est le nom affiché dans les classements et à tes adversaires. Tu pourras le changer plus tard avec ⚙.</p>
     <label class="label" for="nameEdit">Nouveau pseudo</label>
     <input id="nameEdit" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
     <div class="err" id="nameErr" role="alert"></div>
@@ -746,6 +777,8 @@ const S = {
   countTimer: null
 };
 
+// Comptes qui voient le menu « Stats de l'appli » (la vraie vérification est faite par le serveur).
+const ADMIN_UIDS = ['sMHhTw8j1mdsSO8FJMio75ZMo4C3'];
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
@@ -756,7 +789,7 @@ function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
 function show(id) {
-  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium'].forEach(s => $(s).hidden = s !== id);
+  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium', 'admin'].forEach(s => $(s).hidden = s !== id);
   window.scrollTo(0, 0);
   if (id === 'home') refreshDaily(); // met à jour la carte du défi du jour au retour à l'accueil
 }
@@ -859,6 +892,19 @@ function renderAccount() {
     : 'Elo <b>1200</b> · aucune partie classée';
   if (!$('name').value && p.name) $('name').value = p.name;
   syncNameField();
+  $('statsBtn').hidden = !ADMIN_UIDS.includes(uid);
+  // Compte Google sans pseudo : on le demande une fois (sinon il s'affiche « Joueur » dans les classements).
+  if (S.profile && !p.name && !S.askedName) { S.askedName = true; openNameSheet(true); }
+}
+function openNameSheet(required) {
+  const u = firebase.auth().currentUser;
+  S.nameRequired = !!required;
+  $('nameTitle').textContent = required ? 'Choisis ton pseudo' : 'Changer de pseudo';
+  $('nameIntro').hidden = !required;
+  $('nameCancel').hidden = !!required;
+  $('nameEdit').value = $('name').value.trim() || (required ? String((u && u.displayName) || '').split(' ')[0].slice(0, 16) : '');
+  $('nameErr').textContent = '';
+  $('nameSheet').hidden = false; $('nameEdit').focus(); $('nameEdit').select();
 }
 // Une fois le pseudo choisi, le champ disparaît de l'accueil : on le change par le menu ⚙.
 function syncNameField() {
@@ -876,13 +922,62 @@ document.addEventListener('click', e => { if (!$('accMenu').hidden && !e.target.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('accMenu').hidden) { closeAccMenu(); $('gearBtn').focus(); }
-  else if (!$('nameSheet').hidden) $('nameSheet').hidden = true;
+  else if (!$('nameSheet').hidden && !S.nameRequired) $('nameSheet').hidden = true;
 });
-$('nameBtn').onclick = () => {
-  closeAccMenu();
-  $('nameEdit').value = $('name').value.trim(); $('nameErr').textContent = '';
-  $('nameSheet').hidden = false; $('nameEdit').focus(); $('nameEdit').select();
-};
+$('nameBtn').onclick = () => { closeAccMenu(); openNameSheet(false); };
+$('statsBtn').onclick = () => { closeAccMenu(); showAdmin(); };
+
+/* ---------- Stats de l'appli (administrateur) ---------- */
+async function showAdmin() {
+  show('admin');
+  $('adBody').innerHTML = '<p class="lb-empty">Chargement…</p>';
+  try {
+    const r = await firebase.app().functions('europe-west1').httpsCallable('adminStats')();
+    renderAdmin(r.data);
+  } catch (e) {
+    $('adBody').innerHTML = '<p class="lb-empty">' + esc(e.code === 'functions/permission-denied' ? 'Réservé à l’administrateur.' : 'Stats indisponibles : ' + e.message) + '</p>';
+  }
+}
+function renderAdmin(d) {
+  const nf = n => Number(n || 0).toLocaleString('fr-CH');
+  const dd = t => t ? new Date(t).toLocaleDateString('fr-CH', { timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit' }) : '–';
+  const dk = k => k.slice(8, 10) + '.' + k.slice(5, 7);
+  const tile = (v, l) => '<div class="ad-tile"><b>' + v + '</b><small>' + l + '</small></div>';
+  const table = (head, rows) => '<div class="ad-scroll"><table class="ad-table"><thead><tr>' + head.map(h => '<th' + (h[1] ? ' class="n"' : '') + '>' + h[0] + '</th>').join('') +
+    '</tr></thead><tbody>' + rows.join('') + '</tbody></table></div>';
+  const td = (v, n) => '<td' + (n ? ' class="n"' : '') + '>' + v + '</td>';
+  const m = d.wikiduel.modes24 || {};
+  $('adAt').textContent = 'Mis à jour à ' + new Date(d.at).toLocaleTimeString('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit' });
+  const maxG = Math.max(1, ...d.perDay.map(x => x.games));
+  $('adBody').innerHTML =
+    '<div class="ad-sec"><div class="ad-tiles">' +
+      tile(nf(d.accounts.total), 'comptes (+' + d.accounts.new24 + ' en 24 h)') +
+      tile(nf(d.accounts.google), 'comptes Google (+' + d.accounts.google24 + ' en 24 h)') +
+      tile(nf(d.wikiduel.games24), 'parties WikiDuel en 24 h') +
+      tile(nf(d.wikiduel.players24), 'joueurs actifs en 24 h (' + d.wikiduel.players7 + ' sur 7 j)') +
+      tile(nf(d.quiz.solo24 + (d.daily[0] ? d.daily[0].quiz : 0)), 'parties de quiz en 24 h (solo + du jour)') +
+      tile(d.money.chf.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' CHF', d.money.purchases + ' achat' + (d.money.purchases > 1 ? 's' : '') + ' réel' + (d.money.purchases > 1 ? 's' : '') + ' · ' + d.money.premium + ' 💎') +
+    '</div></div>' +
+    '<div class="ad-sec"><h3>WikiDuel, dernières 24 h</h3><p style="margin:0;color:var(--muted);font-size:15px">' +
+      'Solo ' + (m.solo || 0) + ' · amis ' + (m.amis || 0) + ' · classées ' + (m['classée'] || 0) + ' · salons ' + d.wikiduel.rooms24 +
+      ' (dont ' + d.wikiduel.ranked24 + ' classés, ' + d.wikiduel.ghosts24 + ' contre un fantôme) · ' + d.wikiduel.games7 + ' parties sur 7 jours</p></div>' +
+    '<div class="ad-sec"><h3>14 derniers jours</h3>' + table([['Jour'], ['Nouveaux', 1], ['Parties WikiDuel', 1], [''], ['Quiz', 1]],
+      d.perDay.slice().reverse().map(x => '<tr>' + td(dk(x.date)) + td(x.accounts, 1) + td(x.games, 1) +
+        td('<span class="ad-bar" style="width:' + Math.round(70 * x.games / maxG) + 'px"></span>') + td(x.quiz, 1) + '</tr>')) + '</div>' +
+    '<div class="ad-sec"><h3>Défi et quiz du jour</h3>' + table([['Jour'], ['Défi lancés', 1], ['Réussis', 1], ['Meilleur'], ['Quiz', 1], ['Meilleur quiz']],
+      d.daily.map(x => '<tr>' + td(dk(x.date)) + td(x.started, 1) + td(x.done, 1) +
+        td(x.best ? esc(x.best.name) + ' · ' + fmtC(x.best.time) + ' · ' + x.best.clicks + ' cl.' : '–') + td(x.quiz, 1) +
+        td(x.quizBest ? esc(x.quizBest.name) + ' · ' + nf(x.quizBest.score) : '–') + '</tr>')) + '</div>' +
+    '<div class="ad-sec"><h3>Comptes Google (' + d.players.length + ')</h3>' + table([['Pseudo'], ['Créé'], ['Dern. partie'], ['Elo', 1], ['Classées', 1], ['Solo', 1], ['Série', 1], ['Quiz', 1]],
+      d.players.map(p => '<tr>' + td((p.name ? esc(p.name) : '<i style="color:var(--muted)">sans pseudo</i>') + (p.premium ? ' 💎' : '')) + td(dd(p.created)) + td(dd(p.last)) +
+        td(p.elo == null ? '–' : p.elo, 1) + td(p.games, 1) + td(p.solo, 1) + td(p.streak, 1) + td(p.quizSolo, 1) + '</tr>')) + '</div>' +
+    '<div class="ad-sec"><h3>Erreurs remontées</h3><p style="margin:0;color:var(--muted);font-size:15px">' + d.errors.d1 + ' en 24 h · ' + d.errors.d7 + ' sur 7 jours · ' +
+      d.quiz.soloPlayers + ' joueurs de quiz solo · ' + d.quiz.rooms + ' salons de quiz ouverts</p>' +
+      d.errors.last.map(e => '<div class="ad-err">' + new Date(e.at).toLocaleString('fr-CH', { timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) +
+        ' · ' + esc(e.page) + (e.screen ? ' / ' + esc(e.screen) : '') + '<br>' + esc(e.msg) + '</div>').join('') + '</div>';
+}
+$('adRefresh').onclick = showAdmin;
+$('adBackTop').onclick = () => show('home');
 $('nameCancel').onclick = () => { $('nameSheet').hidden = true; };
 $('nameForm').onsubmit = async e => {
   e.preventDefault();
@@ -890,7 +985,7 @@ $('nameForm').onsubmit = async e => {
   if (!n) { $('nameErr').textContent = 'Le pseudo ne peut pas être vide.'; $('nameEdit').focus(); return; }
   $('name').value = n; store.set('wd-name', n);
   if (S.google) { S.profile = Object.assign({}, S.profile, { name: n }); await saveProfileName(n); }
-  $('nameSheet').hidden = true;
+  $('nameSheet').hidden = true; S.nameRequired = false;
   renderAccount();
 };
 $('googleBtn').onclick = async () => {
