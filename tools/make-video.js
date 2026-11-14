@@ -1,11 +1,37 @@
 // Filme une vraie partie de WikiDuel en format TikTok (1080×1920) et l'assemble en MP4.
-// Parcours : Pizza → États-Unis → Lune (défi du jour n°1, terminé).
-// Usage : node tools/make-video.js <dossier contenant node_modules/ffmpeg-static> <sortie.mp4> [url du jeu]
+// Usage : node tools/make-video.js <dossier contenant node_modules/ffmpeg-static> <sortie.mp4> [scénario] [url du jeu]
+// Scénarios : pizza (Pizza → États-Unis → Lune), federer (Toblerone → Cervin → Suisse → Roger Federer).
+// Ne jamais filmer un défi du jour à venir (voir tools/daily-pairs.json).
 // Le jeu doit tourner (node dev-server.js). Sans musique : on l'ajoute dans TikTok (sons tendance).
 'use strict';
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
-const [ffDir, OUT, URL_ARG] = process.argv.slice(2);
+const [ffDir, OUT, SC_ARG, URL_ARG] = process.argv.slice(2);
 const GAME = URL_ARG || 'http://localhost:3000/';
+const SCENARIOS = {
+  pizza: {
+    start: 'Pizza', target: 'Lune',
+    title: '<div><div class="emo">🍕 → 🌙</div><div class="big">De la <span>Pizza</span><br>à la <span>Lune</span></div><div class="sub">en cliquant <b>seulement</b> sur des liens Wikipédia.<br>Combien de clics ?</div></div>',
+    startCap: 'Départ : 🍕 Pizza<small>Cible : 🌙 Lune</small>',
+    clicks: [
+      { to: 'États-Unis', think: 'Je cherche un lien…<small>vers quelque chose de plus « grand »</small>', cap: 'Clic 1 : 🗽 États-Unis' },
+      { to: 'Lune', think: 'Les États-Unis…<small>ils sont allés sur la Lune, non ? 🚀</small>', cap: 'Clic 2 : 🌙 Lune !' }
+    ],
+    endCap: 'Arrivé en 2 clics ! 🏁<small>Tu fais mieux ?</small>'
+  },
+  federer: {
+    start: 'Toblerone', target: 'Roger Federer',
+    title: '<div><div class="emo">🍫 → 🎾</div><div class="big">Du <span>Toblerone</span><br>à <span>Roger Federer</span></div><div class="sub">en cliquant <b>seulement</b> sur des liens Wikipédia.<br>Combien de clics ?</div></div>',
+    startCap: 'Départ : 🍫 Toblerone<small>Cible : 🎾 Roger Federer</small>',
+    clicks: [
+      { to: 'Cervin', think: 'La montagne sur l’emballage…<small>c’est laquelle déjà ? 🤔</small>', cap: 'Clic 1 : 🏔️ Le Cervin !' },
+      { to: 'Suisse', think: 'Le Cervin est en…<small>facile 😎</small>', cap: 'Clic 2 : Suisse' },
+      { to: 'Roger Federer', think: 'Maintenant, le plus célèbre des Suisses…<small>il doit être dans l’article 👀</small>', cap: 'Clic 3 : 🎾 Roger Federer !' }
+    ],
+    endCap: 'Arrivé en 3 clics ! 🏁<small>Tu fais mieux ?</small>'
+  }
+};
+const SC = SCENARIOS[SC_ARG || 'pizza'];
+if (!SC) { console.error('Scénario inconnu : ' + SC_ARG + ' (choix : ' + Object.keys(SCENARIOS).join(', ') + ')'); process.exit(1); }
 const puppeteer = require(path.join(__dirname, 'node_modules', 'puppeteer-core'));
 const ffmpeg = require(path.join(ffDir, 'node_modules', 'ffmpeg-static'));
 const CHROME = ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
@@ -87,40 +113,36 @@ const PAGE_HELPERS = () => {
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: 1080, maxHeight: 1920, everyNthFrame: 1 });
 
   // 1. Carte titre
-  await page.evaluate(() => V.card('<div><div class="emo">🍕 → 🌙</div><div class="big">De la <span>Pizza</span><br>à la <span>Lune</span></div><div class="sub">en cliquant <b>seulement</b> sur des liens Wikipédia.<br>Combien de clics ?</div></div>'));
+  await page.evaluate(html => V.card(html), SC.title);
   await sleep(3300);
   // 2. Départ (compte à rebours avec la fiche de la cible)
-  await page.evaluate(() => { V.hideCard(); S.solo = null; S.round = 0; startSolo({ start: 'Pizza', target: 'Lune' }); });
+  await page.evaluate(sc => { V.hideCard(); S.solo = null; S.round = 0; startSolo({ start: sc.start, target: sc.target }); }, SC);
   await sleep(500);
-  await page.evaluate(() => V.cap('Départ : 🍕 Pizza<small>Cible : 🌙 Lune</small>'));
+  await page.evaluate(html => V.cap(html), SC.startCap);
   await sleep(2900);
   await page.evaluate(() => V.noCap());
-  await page.waitForFunction(() => document.querySelectorAll('#artBody a.wl').length > 10 && document.getElementById('artTitle').textContent === 'Pizza', { timeout: 30000 });
+  await page.waitForFunction(t => document.querySelectorAll('#artBody a.wl').length > 10 && document.getElementById('artTitle').textContent === t, { timeout: 30000 }, SC.start);
   await sleep(900);
-  // 3. Clic 1 : États-Unis
-  await page.evaluate(() => V.cap('Je cherche un lien…<small>vers quelque chose de plus « grand »</small>'));
-  await sleep(1300);
-  await page.evaluate(async () => { const a = V.link('États-Unis'); V.open(a); await V.scrollTo(a, 1700); });
-  await page.evaluate(() => { const a = V.link('États-Unis'); a.classList.add('vhl'); V.cap('Clic 1 : 🗽 États-Unis'); });
-  await sleep(1100);
-  await page.evaluate(() => V.tap(V.link('États-Unis')));
-  await sleep(350);
-  await page.evaluate(() => { V.noCap(); V.link('États-Unis').click(); });
-  await page.waitForFunction(() => document.getElementById('artTitle').textContent === 'États-Unis' && document.querySelectorAll('#artBody a.wl').length > 10, { timeout: 30000 });
-  await sleep(800);
-  // 4. Clic 2 : Lune
-  await page.evaluate(() => V.cap('Les États-Unis…<small>ils sont allés sur la Lune, non ? 🚀</small>'));
-  await sleep(1500);
-  await page.evaluate(async () => { const a = V.link('Lune'); V.open(a); await V.scrollTo(a, 2200); });
-  await page.evaluate(() => { const a = V.link('Lune'); a.classList.add('vhl'); V.cap('Clic 2 : 🌙 Lune !'); });
-  await sleep(1100);
-  await page.evaluate(() => V.tap(V.link('Lune')));
-  await sleep(350);
-  await page.evaluate(() => { V.noCap(); V.link('Lune').click(); });
-  // 5. Résultat
+  // 3. Les clics, un par un
+  for (let k = 0; k < SC.clicks.length; k++) {
+    const c = SC.clicks[k], last = k === SC.clicks.length - 1;
+    await page.evaluate(html => V.cap(html), c.think);
+    await sleep(1400);
+    await page.evaluate(async to => { const a = V.link(to); if (!a) throw new Error('Lien introuvable : ' + to); V.open(a); await V.scrollTo(a, 1900); }, c.to);
+    await page.evaluate((to, html) => { const a = V.link(to); a.classList.add('vhl'); V.cap(html); }, c.to, c.cap);
+    await sleep(1100);
+    await page.evaluate(to => V.tap(V.link(to)), c.to);
+    await sleep(350);
+    await page.evaluate(to => { V.noCap(); V.link(to).click(); }, c.to);
+    if (!last) {
+      await page.waitForFunction(t => document.getElementById('artTitle').textContent === t && document.querySelectorAll('#artBody a.wl').length > 10, { timeout: 30000 }, c.to);
+      await sleep(800);
+    }
+  }
+  // 4. Résultat
   await page.waitForFunction(() => !document.getElementById('results').hidden, { timeout: 30000 });
   await sleep(500);
-  await page.evaluate(() => V.cap('Arrivé en 2 clics ! 🏁<small>Tu fais mieux ?</small>', true));
+  await page.evaluate(html => V.cap(html, true), SC.endCap);
   await sleep(2600);
   // 6. Carte de fin
   await page.evaluate(() => { V.noCap(); V.card('<div><div class="big">Wiki<span>Duel</span></div><div class="sub">Défie tes amis, joue le défi du jour<br>et grimpe au classement.</div><div class="url">👉 wikiduel.ch</div><div class="chips">Gratuit · sur téléphone · sans inscription</div></div>'); });
