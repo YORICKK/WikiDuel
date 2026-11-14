@@ -94,6 +94,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
 #home .wrap { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding-block: 32px; }
 .logo { font: 800 clamp(48px, 15vw, 76px)/.9 var(--display); letter-spacing: -.04em; margin: 0; }
 .logo span { color: var(--flag); }
+.back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; margin-bottom: -8px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
+.back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 .quiz-link { display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card);
   font: 600 14px var(--display); color: var(--muted); text-decoration: none; }
 .quiz-link b { color: #7b4dff; }
@@ -514,6 +517,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 <!-- WIKIDUEL+ : HISTORIQUE ET STATISTIQUES -->
 <section id="premium" class="screen" hidden>
   <div class="wrap">
+    <button type="button" id="pmBackTop" class="back-top" aria-label="Retour à l'accueil">← Retour</button>
     <div>
       <div class="label">WikiDuel+ <span id="pmDia"></span></div>
       <h2 class="big">Mes parties</h2>
@@ -999,7 +1003,7 @@ const redraw = {
 /* ---------- WikiDuel+ : historique et statistiques ---------- */
 $('pmDia').innerHTML = DIA;
 $('premiumBtn').innerHTML = DIA + ' Mes parties et stats';
-$('pmBack').onclick = () => show('home');
+$('pmBack').onclick = $('pmBackTop').onclick = () => show('home');
 $('premiumBtn').onclick = async () => {
   show('premium');
   $('pmContent').hidden = true; $('pmLocked').hidden = true;
