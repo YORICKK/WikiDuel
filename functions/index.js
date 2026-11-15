@@ -713,7 +713,7 @@ exports.deleteAccount = onCall({ region: 'europe-west1' }, async req => {
   if (!req.data || req.data.confirm !== 'SUPPRIMER') throw new HttpsError('invalid-argument', 'Confirmation manquante.');
   const uid = req.auth.uid;
   const upd = {
-    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null, ['pushSubs/' + uid]: null
+    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null, ['pushSubs/' + uid]: null, ['sources/' + uid]: null
   };
   // Défis du jour (course et quiz) : tentatives et scores, tous les jours.
   const [runs, scores, rooms, quizDaily, quizRooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms', 'quizDaily', 'quizRooms'].map(p => db.ref(p).once('value')));
@@ -904,8 +904,8 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
   } while (token);
 
   const snap = async p => (await db.ref(p).once('value')).val() || {};
-  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors] = await Promise.all(
-    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors'].map(snap));
+  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors, sources] = await Promise.all(
+    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors', 'sources'].map(snap));
 
   const days = []; for (let i = 13; i >= 0; i--) days.push(dayKey(now - i * D));
   const perDay = () => Object.fromEntries(days.map(d => [d, 0]));
@@ -944,6 +944,34 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
       quizSolo: Object.keys(quizSolo[u.uid] || {}).length };
   });
 
+  // Provenance des nouveaux joueurs : ceux dont le compte est né avec la première visite enregistrée.
+  // « A joué » = au moins une partie (course, quiz, défi) ; « revenu » = une partie un autre jour que la première visite.
+  const created = {}; accounts.forEach(u => { created[u.uid] = u.created; });
+  const activity = {};
+  const act = (uid, t) => { if (uid && t) (activity[uid] = activity[uid] || []).push(t); };
+  g.forEach(x => act(x.uid, x.at));
+  qs.forEach(x => act(x.uid, x.at));
+  Object.values(dailyRuns).forEach(day => Object.keys(day || {}).forEach(uid => act(uid, (day[uid] || {}).startedAt)));
+  Object.values(quizDaily).forEach(day => Object.keys(day || {}).forEach(uid => act(uid, (day[uid] || {}).startedAt)));
+  const bySrc = {};
+  let srcSince = 0;
+  Object.keys(sources).forEach(uid => {
+    const s = sources[uid] || {};
+    if (!s.src || !s.at) return;
+    if (!(created[uid] >= s.at - 36 * 3600e3)) return; // ancien joueur revenu : pas une nouvelle venue
+    if (!srcSince || s.at < srcSince) srcSince = s.at;
+    const row = bySrc[s.src] = bySrc[s.src] || { src: s.src, total: 0, d1: 0, d7: 0, played: 0, back: 0, quiz: 0 };
+    row.total++;
+    if (s.at > now - D) row.d1++;
+    if (s.at > now - 7 * D) row.d7++;
+    if (s.page === 'quiz') row.quiz++;
+    const acts = activity[uid] || [];
+    if (acts.length) row.played++;
+    const first = dayKey(s.at);
+    if (acts.some(t => dayKey(t) > first)) row.back++;
+  });
+  const srcRows = Object.values(bySrc).sort((a, b) => b.total - a.total);
+
   const recentRooms = Object.values(rooms).filter(r => r && r.createdAt > now - D);
   return {
     at: now,
@@ -959,6 +987,7 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
     money: { purchases: real.length, chf: real.reduce((s, x) => s + (x.amount || 0), 0) / 100, premium: Object.values(users).filter(p => p && p.premium === true).length },
     errors: { d1: errs.filter(e => e.at > now - D).length, d7: errs.filter(e => e.at > now - 7 * D).length,
       last: errs.slice(0, 5).map(e => ({ at: e.at, page: e.page || '', screen: e.screen || '', msg: String(e.msg || '').slice(0, 160) })) },
-    players: list
+    players: list,
+    sources: { since: srcSince, rows: srcRows }
   };
 });

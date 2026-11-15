@@ -341,6 +341,31 @@ function preload(qs, onProgress) {
   ]);
 }
 
+/* ---------- Provenance de la première visite (même règle que la course, voir index.html) ---------- */
+function recordSource(page) {
+  try {
+    if (store.get('wd-src')) return;
+    const q = new URLSearchParams(location.search);
+    let src = (q.get('src') || q.get('utm_source') || '').toLowerCase();
+    if (src === 'app' || src === 'rappel') src = '';
+    if (!src && q.get('salon')) src = 'invitation';
+    let ref = '';
+    try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : ''; } catch (e) {}
+    if (ref === location.hostname) ref = '';
+    if (!src && ref) {
+      const map = [[/instagram/, 'insta'], [/tiktok/, 'tiktok'], [/facebook|^fb\.|^l\.facebook/, 'facebook'], [/google\./, 'google'], [/bing\./, 'bing'],
+        [/duckduckgo/, 'duckduckgo'], [/reddit/, 'reddit'], [/^t\.co$|twitter|^x\.com/, 'x'], [/youtube/, 'youtube'], [/linkedin/, 'linkedin'],
+        [/github\.io/, 'github'], [/whatsapp/, 'whatsapp'], [/discord/, 'discord'], [/snapchat/, 'snapchat'], [/qwant|ecosia/, 'moteur-autre']];
+      const m = map.find(x => x[0].test(ref)); src = m ? m[1] : 'site-autre';
+    }
+    src = (src || 'direct').replace(/[^a-z0-9_-]/g, '').slice(0, 30) || 'direct';
+    const data = { src: src, page: page, at: firebase.database.ServerValue.TIMESTAMP };
+    if (ref) data.ref = ref.slice(0, 60);
+    db.ref('sources/' + uid).set(data).then(() => store.set('wd-src', src))
+      .catch(e => { if (e && /permission/i.test(e.code || e.message || '')) store.set('wd-src', 'deja'); });
+  } catch (e) {}
+}
+
 /* ---------- Firebase ---------- */
 const CFG = window.FIREBASE_CONFIG || {};
 let db = null, uid = null;
@@ -360,6 +385,7 @@ const ready = (async () => {
     }
   };
   window.__wdFlush();
+  recordSource('quiz');
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
   // Le quiz est réservé aux comptes Google (le pseudo vient du profil WikiDuel).
   S.google = !auth.currentUser.isAnonymous;

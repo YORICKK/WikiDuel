@@ -1003,6 +1003,7 @@ const ready = (async () => {
   uid = user ? user.uid : (await auth.signInAnonymously()).user.uid;
   db = firebase.database();
   setupErrorFlush(); // en premier : les erreurs partent même si la suite du démarrage échoue
+  recordSource('course');
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
   S.google = !auth.currentUser.isAnonymous;
   // Profil (Elo, niveau, statut WikiDuel+) : on attend la première lecture avant de déclarer la page prête.
@@ -1096,6 +1097,33 @@ document.addEventListener('keydown', e => {
 });
 $('nameBtn').onclick = () => { closeAccMenu(); openNameSheet(false); };
 $('statsBtn').onclick = () => { closeAccMenu(); showAdmin(); };
+
+/* ---------- Provenance de la première visite ---------- */
+// Une seule fois par appareil : d'où vient le joueur (?src=insta, utm_source, ou site d'origine).
+// Pas de cookie ni de pistage : juste un mot (« insta », « google »…) lisible par le serveur seul.
+function recordSource(page) {
+  try {
+    if (store.get('wd-src')) return;
+    const q = new URLSearchParams(location.search);
+    let src = (q.get('src') || q.get('utm_source') || '').toLowerCase();
+    if (src === 'app' || src === 'rappel') src = ''; // appli installée, notification : des retours, pas une première venue
+    if (!src && (q.get('defi') || q.get('salon') || q.get('d'))) src = 'invitation';
+    let ref = '';
+    try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : ''; } catch (e) {}
+    if (ref === location.hostname) ref = '';
+    if (!src && ref) {
+      const map = [[/instagram/, 'insta'], [/tiktok/, 'tiktok'], [/facebook|^fb\.|^l\.facebook/, 'facebook'], [/google\./, 'google'], [/bing\./, 'bing'],
+        [/duckduckgo/, 'duckduckgo'], [/reddit/, 'reddit'], [/^t\.co$|twitter|^x\.com/, 'x'], [/youtube/, 'youtube'], [/linkedin/, 'linkedin'],
+        [/github\.io/, 'github'], [/whatsapp/, 'whatsapp'], [/discord/, 'discord'], [/snapchat/, 'snapchat'], [/qwant|ecosia/, 'moteur-autre']];
+      const m = map.find(x => x[0].test(ref)); src = m ? m[1] : 'site-autre';
+    }
+    src = (src || 'direct').replace(/[^a-z0-9_-]/g, '').slice(0, 30) || 'direct';
+    const data = { src: src, page: page, at: firebase.database.ServerValue.TIMESTAMP };
+    if (ref) data.ref = ref.slice(0, 60);
+    db.ref('sources/' + uid).set(data).then(() => store.set('wd-src', src))
+      .catch(e => { if (e && /permission/i.test(e.code || e.message || '')) store.set('wd-src', 'deja'); });
+  } catch (e) {}
+}
 
 /* ---------- Application installable et rappel du défi du jour ---------- */
 const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
@@ -1289,6 +1317,17 @@ function renderAdmin(d) {
     '<div class="ad-sec"><h3>14 derniers jours</h3>' + table([['Jour'], ['Nouveaux', 1], ['Parties WikiDuel', 1], [''], ['Quiz', 1]],
       d.perDay.slice().reverse().map(x => '<tr>' + td(dk(x.date)) + td(x.accounts, 1) + td(x.games, 1) +
         td('<span class="ad-bar" style="width:' + Math.round(70 * x.games / maxG) + 'px"></span>') + td(x.quiz, 1) + '</tr>')) + '</div>' +
+    '<div class="ad-sec"><h3>Provenance des nouveaux joueurs</h3>' +
+      (d.sources && d.sources.rows.length
+        ? table([['Provenance'], ['Total', 1], ['24 h', 1], ['7 j', 1], ['Ont joué', 1], ['Revenus', 1]],
+            d.sources.rows.map(x => '<tr>' + td('<b>' + esc(x.src) + '</b>' + (x.quiz ? ' <small style="color:var(--muted)">(' + x.quiz + ' par le quiz)</small>' : '')) +
+              td(x.total, 1) + td(x.d1, 1) + td(x.d7, 1) +
+              td(x.played + ' <small style="color:var(--muted)">' + Math.round(100 * x.played / x.total) + ' %</small>', 1) +
+              td(x.back + ' <small style="color:var(--muted)">' + Math.round(100 * x.back / x.total) + ' %</small>', 1) + '</tr>')) +
+          '<p style="margin:0;color:var(--muted);font-size:13px">Depuis le ' + dd(d.sources.since) + '. « Revenus » = ont rejoué un autre jour que leur première visite. ' +
+            'Liens à partager : <code>wikiduel.ch/?src=insta</code>, <code>?src=tiktok</code>, <code>/quiz?src=insta</code>…</p>'
+        : '<p style="margin:0;color:var(--muted);font-size:15px">Pas encore de données : le suivi commence avec les prochains nouveaux joueurs. Partage des liens comme <code>wikiduel.ch/?src=insta</code>.</p>') +
+    '</div>' +
     '<div class="ad-sec"><h3>Défi et quiz du jour</h3>' + table([['Jour'], ['Défi lancés', 1], ['Réussis', 1], ['Meilleur'], ['Quiz', 1], ['Meilleur quiz']],
       d.daily.map(x => '<tr>' + td(dk(x.date)) + td(x.started, 1) + td(x.done, 1) +
         td(x.best ? esc(x.best.name) + ' · ' + fmtC(x.best.time) + ' · ' + x.best.clicks + ' cl.' : '–') + td(x.quiz, 1) +
