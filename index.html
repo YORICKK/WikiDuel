@@ -413,6 +413,71 @@ input.field:focus { border-color: var(--ink); outline: none; }
 }
 .sheet-text:focus-visible { outline: 2px solid var(--flag); outline-offset: 4px; border-radius: 6px; }
 .count { font: 800 96px/1 var(--display); text-align: center; color: var(--flag); font-variant-numeric: tabular-nums; }
+/* Fiche de la cible : le bouton reste toujours visible (le résumé rétrécit sur les petits écrans) */
+#overlay .sheet { position: relative; display: flex; flex-direction: column; }
+#overlay .sheet > * { flex: none; }
+#overlay .sheet-text { flex: 0 1 auto; min-height: 48px; }
+.sheet-x { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--card);
+  color: var(--ink); font: 700 20px/1 var(--display); display: grid; place-items: center; cursor: pointer; z-index: 2; }
+.sheet-x:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+#overlay .route { padding-right: 40px; }
+
+/* Niveau et XP */
+.acc-xp { display: flex; align-items: center; gap: 8px; margin-top: 4px; font: 700 12px var(--mono); color: var(--muted); }
+.xpbar { flex: 1; max-width: 160px; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.xpbar i { display: block; height: 100%; background: var(--flag); border-radius: 99px; }
+.lvl { display: inline-block; font: 800 11px/1 var(--mono); padding: 3px 6px; border-radius: 6px; background: var(--ink); color: var(--paper); vertical-align: 2px; margin-left: 4px; }
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 20px); z-index: 60; opacity: 0;
+  padding: 12px 18px; border-radius: 14px; background: var(--ink); color: var(--paper); font: 800 16px var(--display); box-shadow: 0 12px 30px rgba(10,20,50,.3);
+  transition: opacity .25s, transform .25s; pointer-events: none; text-align: center; max-width: calc(100% - 32px); }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.toast small { display: block; font: 600 13px var(--display); opacity: .8; }
+
+/* Badges */
+#badges .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
+.bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.bd { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); cursor: pointer; text-align: center; }
+.bd:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+.bd .ring { width: 64px; height: 64px; border-radius: 50%; padding: 3px; background: var(--tier, #b87333); }
+.bd .ring span { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: var(--line); font: 800 22px var(--display); color: var(--muted); }
+.bd .ring img { width: 100%; height: 100%; object-fit: cover; }
+.bd b { font: 700 12px/1.2 var(--display); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bd small { font: 700 11px var(--mono); color: var(--muted); }
+.tier-1 { --tier: linear-gradient(135deg, #c98a4b, #8a5426); }
+.tier-2 { --tier: linear-gradient(135deg, #e3e8ef, #9aa3b2); }
+.tier-3 { --tier: linear-gradient(135deg, #ffe27a, #d9a400); }
+#bdSheet .sheet { position: relative; max-height: calc(100vh - 48px); overflow-y: auto; }
+.bd-dates { margin: 0; padding-left: 18px; font: 500 13px var(--mono); color: var(--muted); }
+
+/* Face-à-face (classé) */
+.vs { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: #0b1124; overflow: hidden; }
+.vs-in { width: min(420px, 100% - 32px); display: grid; gap: 14px; }
+.vs-card { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 18px; color: #f6f7fb;
+  background: linear-gradient(135deg, #1d2b52, #14213d); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+.vs-card.opp { background: linear-gradient(135deg, #5a1f1a, #2a1530); }
+.vs-av { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font: 800 26px var(--display); background: rgba(255,255,255,.12); }
+.vs-card strong { font: 800 20px/1.15 var(--display); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vs-card small { font: 600 13px var(--display); color: #c7cfe6; }
+.vs-elo { font: 800 22px var(--mono); text-align: right; }
+.vs-elo small { display: block; font: 700 10px var(--mono); letter-spacing: .1em; color: #9aa6c9; }
+.vs-mid { text-align: center; font: 800 54px/1 var(--display); color: #ff5a36; letter-spacing: -.02em; text-shadow: 0 0 30px rgba(255,90,54,.5); }
+.vs-sub { text-align: center; font: 700 12px var(--mono); letter-spacing: .14em; color: #9aa6c9; text-transform: uppercase; }
+.vs .me { animation: vsL .55s cubic-bezier(.2,.9,.3,1.2) both; }
+.vs .opp { animation: vsR .55s cubic-bezier(.2,.9,.3,1.2) .12s both; }
+.vs-mid { animation: vsPop .4s ease-out .5s both; }
+@keyframes vsL { from { transform: translateX(-120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes vsR { from { transform: translateX(120%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes vsPop { from { transform: scale(2.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.vs.out { animation: vsOut .35s ease-in both; }
+@keyframes vsOut { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vs .me, .vs .opp, .vs-mid, .vs.out { animation: none; } }
+
+/* Thème des articles (salon entre amis) */
+.themes { display: flex; flex-wrap: wrap; gap: 6px; }
+.themes button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 99px; padding: 7px 12px; font: 700 13px var(--display); cursor: pointer; }
+.themes button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.themes button:disabled { opacity: .5; cursor: default; }
+.theme-note { font: 500 13px var(--display); color: var(--muted); margin: 0; }
 
 /* Résultats */
 #results .wrap { display: grid; gap: 20px; padding-block: 32px; }
@@ -455,6 +520,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <span class="label">Compte</span>
         <strong id="accName">Invité</strong>
         <span class="acc-elo" id="accElo">Connecte-toi pour jouer en classé</span>
+        <span class="acc-xp" id="accXp" hidden></span>
       </div>
       <button id="googleBtn" class="btn ghost small" disabled>
         <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
@@ -465,6 +531,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <div class="menu" id="accMenu" role="menu" hidden>
+          <button type="button" role="menuitem" id="badgesBtn">🏅 Mes badges</button>
           <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
           <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
           <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
@@ -572,6 +639,35 @@ input.field:focus { border-color: var(--ink); outline: none; }
   </div>
 </section>
 
+<!-- MES BADGES -->
+<section id="badges" class="screen" hidden>
+  <div class="wrap">
+    <button type="button" id="bdBackTop" class="back-top" aria-label="Retour à l'accueil">← Retour</button>
+    <div>
+      <div class="label" id="bdCount">Mes badges</div>
+      <h2 class="big">Mes badges</h2>
+    </div>
+    <p style="margin:0;color:var(--muted);font-size:15px">Chaque course réussie te donne le badge de sa page d'arrivée. <b>Bronze</b> la 1<sup>re</sup> fois, <b>argent</b> à 3, <b>or</b> à 5.</p>
+    <div class="bd-grid" id="bdGrid"></div>
+  </div>
+</section>
+<div class="overlay" id="bdSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="bdTitle">
+    <button type="button" class="sheet-x" id="bdX" aria-label="Fermer">×</button>
+    <img id="bdImg" alt="" hidden>
+    <div class="label" id="bdTier"></div>
+    <h3 id="bdTitle" style="margin:0;font-size:24px;padding-right:36px"></h3>
+    <p id="bdText"></p>
+    <a class="btn ghost" id="bdLink" href="#" target="_blank" rel="noopener">Voir la page Wikipédia ↗</a>
+    <div class="label">Obtenu le</div>
+    <ul class="bd-dates" id="bdDates"></ul>
+  </div>
+</div>
+
+<!-- Face-à-face avant une partie classée -->
+<div class="vs" id="vs" hidden aria-live="polite"></div>
+<div class="toast" id="toast" role="status"></div>
+
 <!-- STATS DE L'APPLI (administrateur uniquement) -->
 <section id="admin" class="screen" hidden>
   <div class="wrap">
@@ -653,6 +749,11 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <div class="label">Joueurs</div>
       <ul class="players" id="lobbyPlayers"></ul>
     </div>
+    <div class="stack" id="themeBox" hidden>
+      <div class="label">Thème des articles</div>
+      <div class="themes" id="themeList"></div>
+      <p class="theme-note" id="themeNote"></p>
+    </div>
     <div class="stack">
       <button id="startBtn" class="btn">Lancer la course</button>
       <p class="wait" id="waitMsg" hidden>L'hôte va lancer la course…</p>
@@ -709,6 +810,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <p class="record" id="soloRecord" hidden></p>
     <button id="againBtn" class="btn">Nouvelle course</button>
     <button id="retryBtn" class="btn ghost" hidden>Rejouer ce parcours</button>
+    <button id="lobbyBackBtn" class="btn ghost" hidden>Retour au salon</button>
     <p class="wait" id="againWait" hidden>L'hôte peut lancer une nouvelle course.</p>
     <button id="leaveBtn2" class="btn ghost small" style="justify-self:center">Quitter le salon</button>
   </div>
@@ -717,6 +819,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 <!-- Fenêtre cible / compte à rebours -->
 <div class="overlay" id="overlay" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <button type="button" class="sheet-x" id="sheetX" aria-label="Fermer la fiche">×</button>
     <div class="count" id="countdown" hidden>3</div>
     <div class="route" id="sheetRoute"></div>
     <img id="sheetImg" alt="" hidden>
@@ -789,7 +892,7 @@ function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
 function show(id) {
-  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium', 'admin'].forEach(s => $(s).hidden = s !== id);
+  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium', 'admin', 'badges'].forEach(s => $(s).hidden = s !== id);
   window.scrollTo(0, 0);
   if (id === 'home') refreshDaily(); // met à jour la carte du défi du jour au retour à l'accueil
 }
@@ -836,10 +939,11 @@ const poolReady = (async () => {
 })();
 
 // Tirage qui évite les 200 derniers articles déjà sortis sur ce téléphone.
-function pickPair() {
+function pickPair(list) {
+  const pool = list || POOL;
   const recent = store.get('wd-recent') || [];
-  let avail = POOL.filter(t => recent.indexOf(t) === -1);
-  if (avail.length < 20) avail = POOL;
+  let avail = pool.filter(t => recent.indexOf(t) === -1);
+  if (avail.length < 20) avail = pool;
   const rand = () => avail[Math.floor(Math.random() * avail.length)];
   const a = rand();
   let b; do { b = rand(); } while (b === a);
@@ -869,8 +973,12 @@ const ready = (async () => {
   setupErrorFlush(); // en premier : les erreurs partent même si la suite du démarrage échoue
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
   S.google = !auth.currentUser.isAnonymous;
-  // Profil (Elo, statut WikiDuel+) : on attend la première lecture avant de déclarer la page prête.
-  if (S.google) await new Promise(res => db.ref('users/' + uid).on('value', s => { S.profile = s.val() || {}; renderAccount(); res(); }, () => res()));
+  // Profil (Elo, niveau, statut WikiDuel+) : on attend la première lecture avant de déclarer la page prête.
+  // Suivi en direct : l'XP et les badges gagnés en fin de partie s'affichent dès que le serveur les a comptés.
+  await new Promise(res => db.ref('users/' + uid).on('value', s => {
+    const prev = S.profile; S.profile = s.val() || {};
+    renderAccount(); notifyProgress(prev, S.profile); res();
+  }, () => res()));
   renderAccount();
 })();
 
@@ -879,6 +987,7 @@ function renderAccount() {
   const u = firebase.auth().currentUser;
   $('googleBtn').disabled = false;
   $('googleBtn').hidden = !!S.google; $('logoutBtn').hidden = !S.google;
+  renderXp();
   if (!S.google) {
     const n = $('name').value.trim();
     $('accName').textContent = n || 'Invité';
@@ -895,6 +1004,35 @@ function renderAccount() {
   $('statsBtn').hidden = !ADMIN_UIDS.includes(uid);
   // Compte Google sans pseudo : on le demande une fois (sinon il s'affiche « Joueur » dans les classements).
   if (S.profile && !p.name && !S.askedName) { S.askedName = true; openNameSheet(true); }
+}
+/* ---------- Niveau (XP) ---------- */
+// Niveau 1 à 100 XP, puis 50 XP de plus pour chaque niveau suivant (150, 200, 250…).
+function levelOf(xp) {
+  let n = 0, need = 100, cur = Math.max(0, xp || 0);
+  while (cur >= need) { cur -= need; n++; need += 50; }
+  return { n, cur, need };
+}
+const lvlTag = xp => '<span class="lvl" title="Niveau">Niv. ' + levelOf(xp).n + '</span>';
+function renderXp() {
+  const p = S.profile || {}, L = levelOf(p.xp);
+  $('accXp').hidden = false;
+  $('accXp').innerHTML = '<span>Niv. ' + L.n + '</span><span class="xpbar" aria-hidden="true"><i style="width:' + Math.round(100 * L.cur / L.need) + '%"></i></span>' +
+    '<span>' + L.cur + '/' + L.need + ' XP</span>' + (p.badges ? '<span>· 🏅 ' + p.badges + '</span>' : '');
+}
+let toastTimer = null;
+function toast(html, ms) {
+  const t = $('toast'); t.innerHTML = html; t.classList.add('on');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), ms || 3200);
+}
+// XP et badges gagnés : petite notification (et « niveau supérieur » le cas échéant).
+function notifyProgress(prev, cur) {
+  if (!prev) return;
+  const gain = (cur.xp || 0) - (prev.xp || 0);
+  if (gain <= 0) return;
+  const a = levelOf(prev.xp).n, b = levelOf(cur.xp).n;
+  const newBadge = (cur.badges || 0) > (prev.badges || 0);
+  if (b > a) toast('⭐ Niveau ' + b + ' !<small>+' + gain + ' XP' + (newBadge ? ' · nouveau badge 🏅' : '') + '</small>', 4200);
+  else toast('+' + gain + ' XP' + (newBadge ? '<small>Nouveau badge 🏅</small>' : ''));
 }
 function openNameSheet(required) {
   const u = firebase.auth().currentUser;
@@ -926,6 +1064,105 @@ document.addEventListener('keydown', e => {
 });
 $('nameBtn').onclick = () => { closeAccMenu(); openNameSheet(false); };
 $('statsBtn').onclick = () => { closeAccMenu(); showAdmin(); };
+
+/* ---------- Mes badges ---------- */
+// Un badge par page d'arrivée atteinte : bronze dès 1, argent à 3, or à 5.
+const tierOf = n => n >= 5 ? 3 : n >= 3 ? 2 : 1;
+const TIER_NAME = ['', '🥉 Bronze', '🥈 Argent', '🥇 Or'];
+const thumbCache = {};
+async function loadThumbs(titles) {
+  const need = titles.filter(t => !(t in thumbCache));
+  for (let i = 0; i < need.length; i += 50) {
+    const part = need.slice(i, i + 50);
+    part.forEach(t => { thumbCache[t] = null; });
+    try {
+      const j = await (await fetch(WIKI + '/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=160&titles=' +
+        encodeURIComponent(part.join('|')))).json();
+      const back = {};
+      (j.query.normalized || []).concat(j.query.redirects || []).forEach(r => { back[r.to] = (back[r.from] || r.from); });
+      (j.query.pages || []).forEach(p => { const src = p.thumbnail && p.thumbnail.source; const orig = back[p.title] || p.title; thumbCache[orig] = src || null; thumbCache[p.title] = src || null; });
+    } catch (e) {}
+  }
+}
+async function showBadges() {
+  show('badges');
+  $('bdGrid').innerHTML = '<p class="lb-empty">Chargement…</p>';
+  try {
+    await ready;
+    const snap = await db.ref('badges/' + uid).once('value');
+    const list = [];
+    snap.forEach(c => { const v = c.val(); if (v && v.t) list.push({ key: c.key, t: v.t, n: v.n || 1, d: Array.isArray(v.d) ? v.d : [] }); });
+    list.sort((a, b) => (b.d[0] || 0) - (a.d[0] || 0));
+    S.badgeList = list;
+    const gold = list.filter(b => b.n >= 5).length;
+    $('bdCount').textContent = list.length + ' badge' + (list.length > 1 ? 's' : '') + (gold ? ' · ' + gold + ' en or' : '');
+    if (!list.length) { $('bdGrid').innerHTML = '<p class="lb-empty" style="grid-column:1/-1">Aucun badge pour l’instant. Termine une course pour gagner ton premier !</p>'; return; }
+    const draw = () => {
+      $('bdGrid').innerHTML = list.map((b, i) => {
+        const img = thumbCache[b.t];
+        return '<button type="button" class="bd tier-' + tierOf(b.n) + '" data-i="' + i + '" aria-label="' + esc(b.t) + ', ' + TIER_NAME[tierOf(b.n)].slice(3) + '">' +
+          '<span class="ring"><span>' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(b.t.charAt(0))) + '</span></span>' +
+          '<b>' + esc(b.t) + '</b><small>×' + b.n + '</small></button>';
+      }).join('');
+    };
+    draw();
+    await loadThumbs(list.map(b => b.t));
+    if (!$('badges').hidden) draw();
+  } catch (e) { $('bdGrid').innerHTML = '<p class="lb-empty">Badges indisponibles.</p>'; }
+}
+$('bdGrid').onclick = async e => {
+  const el = e.target.closest('.bd'); if (!el) return;
+  const b = S.badgeList[+el.dataset.i]; if (!b) return;
+  const t = tierOf(b.n);
+  $('bdTitle').textContent = b.t;
+  $('bdTier').textContent = TIER_NAME[t] + ' · obtenu ' + b.n + ' fois' + (t === 1 ? ' · argent à 3' : t === 2 ? ' · or à 5' : '');
+  $('bdText').textContent = 'Chargement…'; $('bdImg').hidden = true;
+  $('bdLink').href = WIKI + '/wiki/' + encodeURIComponent(b.t.replace(/ /g, '_'));
+  $('bdDates').innerHTML = b.d.map(x => '<li>' + new Date(x).toLocaleString('fr-CH', { timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '</li>').join('') +
+    (b.n > b.d.length ? '<li>… et ' + (b.n - b.d.length) + ' fois avant</li>' : '');
+  $('bdSheet').hidden = false;
+  try { history.pushState({ wdBadge: 1 }, ''); } catch (err) {}
+  const s = await loadSummary(b.t);
+  if ($('bdTitle').textContent !== b.t) return;
+  let text = (s && s.extract) || '';
+  if (text.length > 600) text = text.slice(0, 600).replace(/\s+\S*$/, '') + '…';
+  $('bdText').textContent = text || 'Résumé indisponible.';
+  if (s && s.thumbnail) { $('bdImg').src = s.thumbnail.source; $('bdImg').hidden = false; }
+};
+function closeBadge() { $('bdSheet').hidden = true; if (history.state && history.state.wdBadge) { try { history.back(); } catch (e) {} } }
+$('bdX').onclick = closeBadge;
+$('bdSheet').addEventListener('click', e => { if (e.target === $('bdSheet')) closeBadge(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('bdSheet').hidden) closeBadge(); });
+$('badgesBtn').onclick = () => { closeAccMenu(); showBadges(); };
+$('bdBackTop').onclick = () => show('home');
+
+/* ---------- Face-à-face (début d'une partie classée) ---------- */
+// Pendant les premières secondes du compte à rebours : les deux profils entrent en confrontation.
+async function showVersus(room) {
+  const key = room.code + '/' + room.round;
+  if (S.vsShown === key) return;
+  S.vsShown = key;
+  if (room.startedAt - serverNow() < 3500) return; // trop tard (page rechargée) : on passe directement à la cible
+  const me = S.profile || {};
+  const oppP = room.players.find(p => p.id !== uid);
+  const card = (cls, name, lvl, elo, prem, badges, emoji) =>
+    '<div class="vs-card ' + cls + '"><div class="vs-av" aria-hidden="true">' + emoji + '</div><div style="min-width:0"><strong>' + esc(name) + (prem ? ' ' + DIA : '') + '</strong>' +
+    '<small>' + (lvl == null ? 'Course enregistrée' : 'Niveau ' + lvl) + (badges ? ' · 🏅 ' + badges : '') + '</small></div>' +
+    '<div class="vs-elo">' + (elo || '—') + '<small>ELO</small></div></div>';
+  let opp;
+  if (room.ghost) opp = { name: 'Fantôme de ' + (room.ghost.name || 'Joueur'), lvl: null, elo: room.ghost.elo, prem: false, badges: 0, emoji: '👻' };
+  else if (oppP) {
+    const v = (await db.ref('users/' + oppP.id).once('value').catch(() => null));
+    const u = (v && v.val()) || {};
+    opp = { name: u.name || oppP.name, lvl: levelOf(u.xp).n, elo: u.elo || 1200, prem: u.premium === true, badges: u.badges || 0, emoji: (u.name || oppP.name || '?').charAt(0).toUpperCase() };
+  } else return;
+  const myName = me.name || (S.me && S.me.name) || 'Toi';
+  $('vs').innerHTML = '<div class="vs-in"><div class="vs-sub">Partie classée</div>' +
+    card('me', myName, levelOf(me.xp).n, me.elo || 1200, me.premium === true, me.badges || 0, myName.charAt(0).toUpperCase()) +
+    '<div class="vs-mid">VS</div>' + card('opp', opp.name, opp.lvl, opp.elo, opp.prem, opp.badges, opp.emoji) + '</div>';
+  $('vs').classList.remove('out'); $('vs').hidden = false;
+  setTimeout(() => { $('vs').classList.add('out'); setTimeout(() => { $('vs').hidden = true; }, 350); }, 2700);
+}
 
 /* ---------- Stats de l'appli (administrateur) ---------- */
 async function showAdmin() {
@@ -1047,12 +1284,12 @@ async function showGeneralBoard(tab) {
     snap.forEach(c => { const v = c.val(); if (v && (tab === 'solo' ? v.soloDone : v.games)) rows.push(Object.assign({ id: c.key }, v)); });
     rows.sort((a, b) => b[field] - a[field]);
     if (tab === 'solo') {
-      $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i, 'parcours réussis en solo',
+      $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i, 'Niv. ' + levelOf(r.xp).n + ' · parcours réussis en solo',
         '<span class="score">' + r.soloDone + '</span>')).join('')
         : '<li class="lb-empty">Aucune partie solo terminée pour l’instant.</li>';
     } else {
       $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i,
-        r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : ''),
+        'Niv. ' + levelOf(r.xp).n + ' · ' + r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : ''),
         '<span class="score">' + r.elo + '</span>')).join('')
         : '<li class="lb-empty">Aucune partie classée pour l’instant. Lance la première !</li>';
     }
@@ -1070,12 +1307,17 @@ function infoOf(id, rerender) {
   if (!db || id === 'me') return null;
   db.ref('users/' + id).once('value').then(s => {
     const v = s.val() || {};
-    userCache[id] = { elo: v.elo || 1200, premium: v.premium === true };
+    userCache[id] = { elo: v.elo || 1200, premium: v.premium === true, xp: v.xp || 0, badges: v.badges || 0, name: v.name || '' };
     rerender();
   }).catch(() => {});
   return null;
 }
 function eloOf(id, rerender) { const i = infoOf(id, rerender); return i ? i.elo : null; }
+function lvlOf(id, rerender) {
+  if (id === uid || id === 'me') return lvlTag(S.profile && S.profile.xp);
+  if (id === 'ghost') return '';
+  const i = infoOf(id, rerender); return i ? lvlTag(i.xp) : '';
+}
 function isPremium(id, rerender) {
   if (id === 'ghost') return false;
   if (id === uid || id === 'me') return isMePremium();
@@ -1378,7 +1620,8 @@ function toState(code, v) {
 
 async function startRound() {
   await poolReady;
-  const pair = pickPair();
+  const th = S.raw && S.raw.theme ? (await themesReady, themeById(S.raw.theme)) : null;
+  const pair = pickPair(th && th.pages.length > 10 ? th.pages : null);
   const upd = { start: pair.start, target: pair.target, status: 'playing', round: S.room.round + 1, winnerId: null, startedAt: serverNow() + 3000 };
   S.room.players.forEach(p => {
     upd['players/' + p.id + '/path'] = [pair.start];
@@ -1872,7 +2115,7 @@ function renderLobby() {
   $('lobbyMode').textContent = S.room.ranked ? 'Classée · 1 contre 1' : 'Entre amis';
   $('lobbyMode').className = 'pill' + (S.room.ranked ? ' ranked' : '');
   $('lobbyPlayers').innerHTML = S.room.players.map(p =>
-    '<li><span class="dot' + (p.online ? '' : ' off') + '"></span>' + esc(p.name) + dia(p.id, redraw.lobby) +
+    '<li><span class="dot' + (p.online ? '' : ' off') + '"></span>' + esc(p.name) + dia(p.id, redraw.lobby) + lvlOf(p.id, redraw.lobby) +
     (S.room.ranked ? '<span class="elo">' + (eloOf(p.id, redraw.lobby) || '…') + '</span>' : '') +
     (p.id === S.me.playerId ? ' <span style="color:var(--muted);font-weight:500">(toi)</span>' : '') +
     (p.host ? '<span class="tag">Hôte</span>' : '') + '</li>').join('');
@@ -1880,6 +2123,28 @@ function renderLobby() {
   $('startBtn').hidden = !host; $('waitMsg').hidden = host;
   $('startBtn').disabled = S.room.players.length < 2;
   $('startBtn').textContent = S.room.players.length < 2 ? "En attente d'un adversaire…" : 'Lancer la course';
+  renderThemes(host);
+}
+
+/* ---------- Thèmes d'articles (hôte WikiDuel+, salons entre amis) ---------- */
+let THEMES = null;
+const themesReady = fetch('/themes.json').then(r => r.json()).then(j => { THEMES = j.themes; if (S.room && !$('lobby').hidden) renderLobby(); }).catch(() => {});
+function themeById(id) { return (THEMES || []).find(t => t.id === id) || null; }
+function renderThemes(host) {
+  const box = $('themeBox');
+  box.hidden = !!S.room.ranked || !THEMES;
+  if (box.hidden) return;
+  const cur = S.raw && S.raw.theme || '';
+  const can = host && isMePremium();
+  $('themeList').innerHTML = [{ id: '', name: 'Mélange', emoji: '🎲' }].concat(THEMES).map(t =>
+    '<button type="button" data-th="' + t.id + '"' + (t.id === cur ? ' class="on"' : '') + (can ? '' : ' disabled') + '>' + t.emoji + ' ' + esc(t.name) + '</button>').join('');
+  $('themeNote').innerHTML = can ? 'Les pages de départ et d’arrivée seront tirées dans ce thème.'
+    : host ? DIA + ' Choisir un thème est réservé aux membres <b>WikiDuel+</b>. Tes amis n’ont pas besoin d’être membres.'
+    : (cur ? 'Thème choisi par l’hôte.' : 'L’hôte peut choisir un thème s’il est membre WikiDuel+.');
+  $('themeList').onclick = async e => {
+    const b = e.target.closest('button[data-th]'); if (!b || !can) return;
+    try { await S.ref.child('theme').set(b.dataset.th || null); } catch (err) { $('themeNote').textContent = 'Thème non enregistré : ' + (err.code || err.message); }
+  };
 }
 $('copyLink').onclick = async () => {
   try { await navigator.clipboard.writeText($('shareUrl').textContent); $('copyLink').textContent = 'Lien copié'; }
@@ -1909,8 +2174,9 @@ async function beginRound() {
   $('artTitle').textContent = ''; $('artBody').innerHTML = ''; $('artErr').textContent = '';
   $('giveupBtn').hidden = false;
 
-  // Fiche de la cible + compte à rebours
+  // Fiche de la cible + compte à rebours (en classé, précédés du face-à-face des deux profils)
   openSheet(true);
+  if (room.ranked && !S.solo) showVersus(room).catch(() => {});
   // Titre canonique de la cible (au cas où elle serait une redirection)
   fetch(WIKI + '/w/api.php?action=query&format=json&formatversion=2&redirects=1&origin=*&titles=' + encodeURIComponent(room.target))
     .then(r => r.json()).then(j => { const p = j.query && j.query.pages && j.query.pages[0]; if (p && p.title) S.targetKey = norm(p.title); }).catch(() => {});
@@ -1944,7 +2210,9 @@ async function loadIntro(title) {
 async function openSheet(withCount) {
   const room = S.room;
   $('overlay').hidden = false;
-  $('countdown').hidden = !withCount; $('sheetClose').hidden = withCount;
+  $('countdown').hidden = !withCount; $('sheetClose').hidden = withCount; $('sheetX').hidden = withCount;
+  // Fiche ouverte en cours de course : le bouton « retour » du téléphone la ferme (au lieu de quitter la page).
+  if (!withCount && !(history.state && history.state.wdSheet)) { try { history.pushState({ wdSheet: 1 }, ''); } catch (e) {} }
   $('sheetRoute').innerHTML = '<b>' + esc(room.start) + '</b> → … → <b>' + esc(room.target) + '</b>';
   $('sheetTitle').textContent = room.target; $('sheetText').textContent = 'Chargement du résumé…'; $('sheetImg').hidden = true;
   $('sheetText').scrollTop = 0;
@@ -1956,7 +2224,19 @@ async function openSheet(withCount) {
   if (s && s.thumbnail) { $('sheetImg').src = s.thumbnail.source; $('sheetImg').hidden = false; }
 }
 $('goalBtn').onclick = () => openSheet(false);
-$('sheetClose').onclick = () => $('overlay').hidden = true;
+function closeSheet() {
+  if (!$('countdown').hidden) return; // pendant le compte à rebours, la fiche se ferme toute seule
+  $('overlay').hidden = true;
+  if (history.state && history.state.wdSheet) { try { history.back(); } catch (e) {} }
+}
+$('sheetClose').onclick = closeSheet;
+$('sheetX').onclick = closeSheet;
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeSheet(); });
+window.addEventListener('popstate', () => {
+  if (!$('overlay').hidden && $('countdown').hidden) $('overlay').hidden = true;
+  if (!$('bdSheet').hidden) $('bdSheet').hidden = true;
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('overlay').hidden) closeSheet(); });
 
 function startTick() { stopTick(); S.tick = setInterval(renderTimer, 250); renderTimer(); }
 function stopTick() { clearInterval(S.tick); clearInterval(S.countTimer); }
@@ -2180,6 +2460,9 @@ function renderResults() {
   }).join('');
   const host = isHost();
   $('againBtn').hidden = !host; $('againWait').hidden = host;
+  // Entre amis : l'hôte peut ramener tout le monde au salon (changer de thème, attendre un joueur…).
+  $('lobbyBackBtn').hidden = !host || !!S.solo || !!room.ranked;
+  $('againWait').textContent = 'L’hôte peut lancer une nouvelle course ou revenir au salon.';
 
   const solo = !!S.solo;
   $('retryBtn').hidden = !solo;
@@ -2330,6 +2613,12 @@ function watchResults(room) {
     if (S.room && S.room.status === 'done') renderResults();
   });
 }
+$('lobbyBackBtn').onclick = async () => {
+  if (!S.ref || !isHost()) return;
+  $('lobbyBackBtn').disabled = true;
+  try { await S.ref.update({ status: 'lobby' }); } catch (e) {}
+  $('lobbyBackBtn').disabled = false;
+};
 $('againBtn').onclick = async () => {
   if (S.solo) return startSolo();
   if (S.room && S.room.ranked) { const name = S.me.name; await leave(true); return enterQueue(name); }

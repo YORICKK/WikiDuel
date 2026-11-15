@@ -194,6 +194,12 @@
       }
     },
 
+    "badges": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid"
+      }
+    },
+
     "quizSolo": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
@@ -203,6 +209,7 @@
           "at": { ".validate": "newData.val() === now" },
           "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
           "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
+          "m": { ".validate": "newData.val() === 'amis'" },
           "$other": { ".validate": false }
         }
       }
@@ -248,6 +255,9 @@
         ".write": "auth != null && $code.matches(/^[A-Z]{4}$/) && ((!data.exists() && newData.child('hostId').val() === auth.uid && newData.child('ranked').val() !== true) || data.child('hostId').val() === auth.uid)",
         "ranked": {
           ".validate": "newData.isBoolean() && (!data.exists() || data.val() === newData.val())"
+        },
+        "theme": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z]{2,20}$/) && root.child('users/' + auth.uid + '/premium').val() === true"
         },
         "status": {
           ".write": "auth != null && data.val() === 'playing' && newData.val() === 'done' && data.parent().child('players').child(auth.uid).exists()",

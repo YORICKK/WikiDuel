@@ -203,6 +203,13 @@ async function archiveRound(code, room, entries, extra) {
   });
   await db.ref().update(updates);
   await Promise.all(entries.map(p => pruneHistory(p.uid)));
+  // XP et badge pour chaque joueur arrivé (en classé : chemin vérifié ; victoire = bonus).
+  for (const p of entries) {
+    if (!p.finishedAt) continue;
+    if (room.ranked && !(extra.verdicts && extra.verdicts[p.uid] === 'ok')) continue;
+    const xp = XP.course + (room.ranked && extra.winnerId === p.uid ? XP.rankedWin : 0);
+    await award(p.uid, xp, room.target, now).catch(e => logger.error('XP non attribuée', { uid: p.uid, error: e.message }));
+  }
 }
 
 // Ne garde que les HISTORY_MAX parties les plus récentes d'un joueur.
@@ -222,6 +229,42 @@ async function pruneHistory(uid) {
 const crypto = require('crypto');
 // Empreinte du parcours : le profil est public, le parcours en clair révélerait le défi du jour.
 const pairPrint = (a, b) => crypto.createHash('sha256').update(norm(a) + '→' + norm(b)).digest('hex').slice(0, 16);
+
+/* ===================== Niveaux (XP) et badges ===================== */
+// XP : 25 par course arrivée, +10 pour une victoire en classé, +15 pour le défi du jour réussi,
+// 15 par partie de quiz terminée. Niveau 1 à 100 XP, puis 50 XP de plus à chaque niveau (150, 200…).
+// Badge : la page d'arrivée de chaque course réussie (bronze dès 1, argent à 3, or à 5).
+const XP = { course: 25, rankedWin: 10, daily: 15, quiz: 15 };
+const badgeKey = title => crypto.createHash('sha256').update(norm(title)).digest('hex').slice(0, 12);
+async function award(uid, xp, target, at) {
+  if (!uid || !(xp > 0)) return;
+  await db.ref('users/' + uid + '/xp').transaction(v => (v || 0) + xp);
+  if (!target) return;
+  const when = at || Date.now();
+  let isNew = false;
+  await db.ref('badges/' + uid + '/' + badgeKey(target)).transaction(b => {
+    isNew = !(b && b.n);
+    b = b || { t: String(target).slice(0, 200), n: 0, d: [] };
+    b.n = (b.n || 0) + 1;
+    b.d = [when].concat(Array.isArray(b.d) ? b.d : []).slice(0, 10); // 10 dernières dates
+    return b;
+  });
+  if (isNew) await db.ref('users/' + uid + '/badges').transaction(n => (n || 0) + 1);
+}
+// Quiz : 15 XP par partie terminée (une partie toutes les 45 s au plus, contre les écritures en rafale).
+async function awardQuiz(uid) {
+  let ok = false;
+  await db.ref('users/' + uid + '/quizLastAt').transaction(t => { ok = !t || Date.now() - t > 45000; return ok ? Date.now() : t; });
+  if (ok) await award(uid, XP.quiz);
+}
+exports.quizSoloXp = onValueCreated(Object.assign({ ref: '/quizSolo/{uid}/{id}' }, DB_OPTS), async event => {
+  if (!db) db = admin.database();
+  await awardQuiz(event.params.uid);
+});
+exports.quizDailyXp = onValueCreated(Object.assign({ ref: '/quizDaily/{date}/{uid}/res' }, DB_OPTS), async event => {
+  if (!db) db = admin.database();
+  await awardQuiz(event.params.uid);
+});
 exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{key}' }, DB_OPTS), async event => {
   if (!db) db = admin.database();
   const v = event.data.val();
@@ -244,7 +287,9 @@ exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{
     if (!u.name && v.name) u.name = String(v.name).slice(0, 16);
     return u;
   });
-  if (!counted) logger.info('Partie solo non comptée : même parcours rejoué à la suite', { uid });
+  if (!counted) { logger.info('Partie solo non comptée : même parcours rejoué à la suite', { uid }); return; }
+  // Course solo (ou défi du jour) réussie : XP et badge de la page d'arrivée.
+  await award(uid, XP.course + (v.daily ? XP.daily : 0), v.target, typeof v.at === 'number' ? v.at : Date.now());
 });
 
 exports.rateRound = onValueWritten(
@@ -666,7 +711,7 @@ exports.deleteAccount = onCall({ region: 'europe-west1' }, async req => {
   if (!req.data || req.data.confirm !== 'SUPPRIMER') throw new HttpsError('invalid-argument', 'Confirmation manquante.');
   const uid = req.auth.uid;
   const upd = {
-    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null
+    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null
   };
   // Défis du jour (course et quiz) : tentatives et scores, tous les jours.
   const [runs, scores, rooms, quizDaily, quizRooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms', 'quizDaily', 'quizRooms'].map(p => db.ref(p).once('value')));
@@ -861,7 +906,7 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
   const list = accounts.filter(u => u.google).sort((x, y) => x.created - y.created).map(u => {
     const p = users[u.uid] || {};
     return { name: p.name || '', created: u.created, last: lastGame[u.uid] || 0, elo: p.games ? p.elo : null, games: p.games || 0,
-      wins: p.wins || 0, solo: p.soloDone || 0, streak: p.dailyStreak || 0, premium: p.premium === true,
+      wins: p.wins || 0, xp: p.xp || 0, badges: p.badges || 0, solo: p.soloDone || 0, streak: p.dailyStreak || 0, premium: p.premium === true,
       quizSolo: Object.keys(quizSolo[u.uid] || {}).length };
   });
 

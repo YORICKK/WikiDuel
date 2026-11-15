@@ -519,6 +519,10 @@ function finish() {
     db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok }).catch(() => {});
   }
   if (G.mode === 'daily') saveDaily(ok, marks);
+  // Partie entre amis terminée : comptée aussi (elle rapporte de l'XP, comme le solo).
+  if (G.mode === 'friends' && G.res.some(r => r)) {
+    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: Math.min(10000, G.score), ok: ok, m: 'amis' }).catch(() => {});
+  }
   showResults();
 }
 
