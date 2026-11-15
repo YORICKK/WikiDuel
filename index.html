@@ -7,6 +7,10 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WikiDuel">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#14213d">
 <title>WikiDuel</title>
 <meta name="description" content="Relie deux pages Wikipédia en cliquant uniquement sur les liens. Défi du jour, parties classées et duels entre amis.">
@@ -473,6 +477,19 @@ input.field:focus { border-color: var(--ink); outline: none; }
 @keyframes vsOut { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .vs .me, .vs .opp, .vs-mid, .vs.out { animation: none; } }
 
+/* Profil d'un joueur */
+#lbList li[data-uid] { cursor: pointer; }
+#lbList li[data-uid]:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+#pfBody { display: grid; gap: 16px; }
+.pf-head { display: flex; gap: 14px; align-items: center; padding-right: 36px; }
+.pf-head h3 { margin: 0; font-size: 24px; overflow-wrap: anywhere; }
+.pf-av { flex: none; width: 60px; height: 60px; border-radius: 18px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 800 28px var(--display); }
+.pf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pf-stat { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.pf-stat b { font: 800 22px/1.1 var(--display); }
+.pf-stat b small { font: 600 14px var(--display); color: var(--muted); }
+.pf-stat > small { font: 500 12px var(--display); color: var(--muted); }
+
 /* Thème des articles (salon entre amis) */
 .themes { display: flex; flex-wrap: wrap; gap: 6px; }
 .themes button { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 99px; padding: 7px 12px; font: 700 13px var(--display); cursor: pointer; }
@@ -534,6 +551,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <div class="menu" id="accMenu" role="menu" hidden>
           <button type="button" role="menuitem" id="badgesBtn">🏅 Mes badges</button>
           <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
+          <button type="button" role="menuitem" id="pushBtn">🔔 Rappel du défi chaque matin</button>
+          <button type="button" role="menuitem" id="installBtn" hidden>📲 Installer l'appli</button>
           <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
           <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
         </div>
@@ -564,6 +583,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
         <div class="d-actions">
           <button id="dPlay" class="btn small">Jouer</button>
           <button id="dBoard" class="d-link">Classement du jour</button>
+          <button id="dRemind" class="d-link" hidden>🔔 Me le rappeler</button>
         </div>
       </div>
       <div class="home-links">
@@ -662,6 +682,14 @@ input.field:focus { border-color: var(--ink); outline: none; }
     <a class="btn ghost" id="bdLink" href="#" target="_blank" rel="noopener">Voir la page Wikipédia ↗</a>
     <div class="label">Obtenu le</div>
     <ul class="bd-dates" id="bdDates"></ul>
+  </div>
+</div>
+
+<!-- Profil d'un joueur (touché dans un classement) -->
+<div class="overlay" id="pfSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pfTitle" style="position:relative">
+    <button type="button" class="sheet-x" id="pfX" aria-label="Fermer">×</button>
+    <div id="pfBody"></div>
   </div>
 </div>
 
@@ -1066,6 +1094,62 @@ document.addEventListener('keydown', e => {
 $('nameBtn').onclick = () => { closeAccMenu(); openNameSheet(false); };
 $('statsBtn').onclick = () => { closeAccMenu(); showAdmin(); };
 
+/* ---------- Application installable et rappel du défi du jour ---------- */
+const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+let deferredInstall = null, swReg = null;
+if ('serviceWorker' in navigator && !/\.github\.io$/i.test(location.hostname)) {
+  navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; renderAppMenu(); }).catch(() => {});
+}
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; renderAppMenu(); });
+addEventListener('appinstalled', () => { deferredInstall = null; renderAppMenu(); toast('📲 WikiDuel est installé !'); });
+function pushOn() { return !!store.get('wd-push') && 'Notification' in window && Notification.permission === 'granted'; }
+function renderAppMenu() {
+  $('installBtn').hidden = isStandalone() || !(deferredInstall || isIOS);
+  $('pushBtn').textContent = pushOn() ? '🔕 Arrêter le rappel du défi' : '🔔 Rappel du défi chaque matin';
+  $('dRemind').hidden = pushOn();
+}
+$('installBtn').onclick = async () => {
+  closeAccMenu();
+  if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; renderAppMenu(); }
+  else toast('📲 Sur iPhone : touche <b>Partager</b> ⬆️<small>puis « Sur l’écran d’accueil »</small>', 7000);
+};
+const b64u = s => { const b = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function subId(endpoint) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
+  return Array.from(new Uint8Array(h)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function enablePush() {
+  if (!pushSupported()) {
+    toast(isIOS && !isStandalone() ? '🔔 Sur iPhone, installe d’abord WikiDuel<small>Partager ⬆️ puis « Sur l’écran d’accueil », et active le rappel depuis l’appli.</small>'
+      : 'Ton navigateur ne gère pas les notifications.', 8000);
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { toast('Notifications refusées<small>Tu peux les autoriser dans les réglages du navigateur.</small>', 5000); return; }
+  try {
+    const reg = swReg || await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
+    const j = sub.toJSON(), id = await subId(j.endpoint);
+    await ready;
+    await db.ref('pushSubs/' + uid + '/' + id).set({ endpoint: j.endpoint, keys: { p256dh: j.keys.p256dh, auth: j.keys.auth }, at: NOW() });
+    store.set('wd-push', id); renderAppMenu();
+    toast('🔔 Rappel activé<small>Chaque matin à 8 h, si tu n’as pas encore joué le défi.</small>', 4500);
+  } catch (e) { toast('Rappel impossible<small>' + esc(e.message || String(e)) + '</small>', 6000); }
+}
+async function disablePush() {
+  const id = store.get('wd-push'); store.del('wd-push');
+  try { const reg = swReg || await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) {}
+  try { await ready; if (id) await db.ref('pushSubs/' + uid + '/' + id).remove(); } catch (e) {}
+  renderAppMenu(); toast('🔕 Rappel désactivé');
+}
+$('pushBtn').onclick = () => { closeAccMenu(); return pushOn() ? disablePush() : enablePush(); };
+$('dRemind').onclick = enablePush;
+renderAppMenu();
+
 /* ---------- Mes badges ---------- */
 // Un badge par page d'arrivée atteinte : bronze dès 1, argent à 3, or à 5.
 const tierOf = n => n >= 5 ? 3 : n >= 3 ? 2 : 1;
@@ -1266,7 +1350,7 @@ function setLbTabs(tabs, active, onPick) {
   $('lbTabs').onclick = e => { const b = e.target.closest('button[data-t]'); if (b && b.dataset.t !== active) onPick(b.dataset.t); };
 }
 function lbRow(r, i, small, score) {
-  return '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
+  return '<li data-uid="' + esc(r.id || '') + '" tabindex="0" role="button" aria-label="Voir le profil de ' + esc(r.name || 'Joueur') + '"' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
     '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium === true ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
     '<small>' + small + '</small></span>' + score + '</li>';
 }
@@ -1297,6 +1381,37 @@ async function showGeneralBoard(tab) {
   } catch (e) { $('lbList').innerHTML = '<li class="lb-empty">Classement indisponible.</li>'; }
 }
 $('rankBtn').onclick = () => showGeneralBoard('elo');
+
+/* ---------- Profil d'un joueur (depuis les classements) ---------- */
+async function showProfile(id) {
+  if (!id) return;
+  $('pfBody').innerHTML = '<p class="lb-empty">Chargement…</p>';
+  $('pfSheet').hidden = false;
+  try { history.pushState({ wdProfile: 1 }, ''); } catch (e) {}
+  let v = {};
+  try { await ready; v = (await db.ref('users/' + id).once('value')).val() || {}; } catch (e) {}
+  const L = levelOf(v.xp), name = v.name || 'Joueur';
+  const stat = (n, l) => '<div class="pf-stat"><b>' + n + '</b><small>' + l + '</small></div>';
+  $('pfBody').innerHTML =
+    '<div class="pf-head"><div class="pf-av" aria-hidden="true">' + esc(name.charAt(0).toUpperCase()) + '</div><div style="min-width:0">' +
+      '<h3 id="pfTitle">' + esc(name) + (v.premium === true ? ' ' + DIA : '') + (id === uid ? ' <span style="font:500 14px var(--display);color:var(--muted)">(toi)</span>' : '') + '</h3>' +
+      '<div class="acc-xp"><span>Niv. ' + L.n + '</span><span class="xpbar" aria-hidden="true"><i style="width:' + Math.round(100 * L.cur / L.need) + '%"></i></span><span>' + L.cur + '/' + L.need + ' XP</span></div></div></div>' +
+    '<div class="pf-grid">' +
+      stat(v.games ? v.elo : '—', 'Elo') +
+      stat(v.games || 0, 'parties classées') +
+      stat(v.wins || 0, 'victoires en classé') +
+      stat(v.soloDone || 0, 'parcours solo réussis') +
+      stat((v.dailyStreak || 0) + (v.dailyBest > (v.dailyStreak || 0) ? '<small> / ' + v.dailyBest + '</small>' : ''), 'série au défi du jour' + (v.dailyBest > (v.dailyStreak || 0) ? ' (record)' : '')) +
+      stat('🏅 ' + (v.badges || 0) + (v.gold ? ' <small>· 🥇 ' + v.gold + '</small>' : ''), 'badges' + (v.gold ? ' (dont en or)' : '')) +
+    '</div>' + (v.premium === true ? '<p class="theme-note">' + DIA + ' Membre WikiDuel+</p>' : '');
+}
+function closeProfile() { $('pfSheet').hidden = true; if (history.state && history.state.wdProfile) { try { history.back(); } catch (e) {} } }
+$('lbList').addEventListener('click', e => { const li = e.target.closest('li[data-uid]'); if (li && li.dataset.uid) showProfile(li.dataset.uid); });
+$('lbList').addEventListener('keydown', e => { if (e.key !== 'Enter' && e.key !== ' ') return; const li = e.target.closest('li[data-uid]'); if (li) { e.preventDefault(); showProfile(li.dataset.uid); } });
+$('pfX').onclick = closeProfile;
+$('pfSheet').addEventListener('click', e => { if (e.target === $('pfSheet')) closeProfile(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pfSheet').hidden) closeProfile(); });
+window.addEventListener('popstate', () => { if (!$('pfSheet').hidden) $('pfSheet').hidden = true; });
 $('rankBack').onclick = () => show('home');
 
 // Elo des joueurs affichés (mis en cache).

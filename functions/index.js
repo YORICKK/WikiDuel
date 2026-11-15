@@ -241,15 +241,17 @@ async function award(uid, xp, target, at) {
   await db.ref('users/' + uid + '/xp').transaction(v => (v || 0) + xp);
   if (!target) return;
   const when = at || Date.now();
-  let isNew = false;
+  let isNew = false, isGold = false;
   await db.ref('badges/' + uid + '/' + badgeKey(target)).transaction(b => {
     isNew = !(b && b.n);
+    isGold = !!(b && b.n === 4); // 5e fois : le badge passe en or
     b = b || { t: String(target).slice(0, 200), n: 0, d: [] };
     b.n = (b.n || 0) + 1;
     b.d = [when].concat(Array.isArray(b.d) ? b.d : []).slice(0, 10); // 10 dernières dates
     return b;
   });
   if (isNew) await db.ref('users/' + uid + '/badges').transaction(n => (n || 0) + 1);
+  if (isGold) await db.ref('users/' + uid + '/gold').transaction(n => (n || 0) + 1); // nombre de badges en or (profil public)
 }
 // Quiz : 15 XP par partie terminée (une partie toutes les 45 s au plus, contre les écritures en rafale).
 async function awardQuiz(uid) {
@@ -711,7 +713,7 @@ exports.deleteAccount = onCall({ region: 'europe-west1' }, async req => {
   if (!req.data || req.data.confirm !== 'SUPPRIMER') throw new HttpsError('invalid-argument', 'Confirmation manquante.');
   const uid = req.auth.uid;
   const upd = {
-    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null
+    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null, ['pushSubs/' + uid]: null
   };
   // Défis du jour (course et quiz) : tentatives et scores, tous les jours.
   const [runs, scores, rooms, quizDaily, quizRooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms', 'quizDaily', 'quizRooms'].map(p => db.ref(p).once('value')));
@@ -846,6 +848,38 @@ exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SEC
     logger.error('Erreur de traitement du webhook', { type: event.type, error: e.message });
     res.status(500).send('Erreur');
   }
+});
+
+/* ===================== Rappel du défi du jour (notifications) ===================== */
+// Chaque matin à 8 h (heure suisse) : une notification aux joueurs qui l'ont demandée
+// et qui n'ont pas encore joué le défi du jour. Clé privée VAPID : secret Firebase.
+const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
+const VAPID_PRIVATE_KEY = defineSecret('VAPID_PRIVATE_KEY');
+exports.dailyReminder = onSchedule({ schedule: 'every day 08:00', timeZone: 'Europe/Zurich', region: 'europe-west1', secrets: [VAPID_PRIVATE_KEY] }, async () => {
+  if (!db) db = admin.database();
+  const webpush = require('web-push');
+  webpush.setVapidDetails('https://wikiduel.ch', VAPID_PUBLIC, VAPID_PRIVATE_KEY.value().trim());
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [day, subs, runs] = await Promise.all(['daily/' + today, 'pushSubs', 'dailyRuns/' + today].map(p => db.ref(p).once('value').then(s => s.val())));
+  if (!day || !subs) { logger.info('Rappel du défi : rien à envoyer', { defi: !!day }); return; }
+  const payload = JSON.stringify({ title: '🗓️ Défi du jour n°' + (day.n || ''), body: 'Un nouveau parcours mystère t’attend. Une seule tentative, à toi de jouer !',
+    url: '/?src=rappel', tag: 'wikiduel-daily-' + today });
+  let sent = 0, gone = 0, skipped = 0;
+  const drop = {};
+  for (const uid of Object.keys(subs)) {
+    if (runs && runs[uid]) { skipped++; continue; } // déjà joué aujourd'hui
+    for (const [id, s] of Object.entries(subs[uid] || {})) {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 6 * 3600, urgency: 'normal' });
+        sent++;
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) { drop['pushSubs/' + uid + '/' + id] = null; gone++; } // abonnement expiré
+        else logger.warn('Rappel non envoyé', { uid, code: e.statusCode, error: String(e.body || e.message).slice(0, 200) });
+      }
+    }
+  }
+  if (gone) await db.ref().update(drop);
+  logger.info('Rappel du défi envoyé', { date: today, envoyes: sent, expires: gone, dejaJoue: skipped });
 });
 
 /* ===================== Stats de l'appli (réservées à l'administrateur) ===================== */

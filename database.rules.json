@@ -200,6 +200,25 @@
       }
     },
 
+    "pushSubs": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$id": {
+          ".write": "auth != null && auth.uid === $uid && $id.matches(/^[a-f0-9]{16}$/)",
+          ".validate": "newData.hasChildren(['endpoint', 'keys', 'at'])",
+          "endpoint": { ".validate": "newData.isString() && newData.val().matches(/^https:\\/\\//) && newData.val().length <= 1000" },
+          "keys": {
+            ".validate": "newData.hasChildren(['p256dh', 'auth'])",
+            "p256dh": { ".validate": "newData.isString() && newData.val().length <= 200" },
+            "auth": { ".validate": "newData.isString() && newData.val().length <= 100" },
+            "$other": { ".validate": false }
+          },
+          "at": { ".validate": "newData.val() === now" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
     "quizSolo": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
