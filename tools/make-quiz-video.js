@@ -122,23 +122,31 @@ const PAGE_HELPERS = () => {
   });
   await page.evaluate(() => { const d = document.createElement('div'); d.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;opacity:.01'; document.body.appendChild(d); let i = 0; setInterval(() => { d.style.background = (i++ % 2) ? '#000' : '#010101'; }, 33); });
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: 1080, maxHeight: 1920, everyNthFrame: 1 });
+  // Instants clés (même horloge que les images) : servent à caler les bruitages de la bande-son.
+  const EV = [];
+  const ev = (type, dt) => EV.push({ type, t: Date.now() / 1000 + (dt || 0) });
 
   // 1. Carte titre
   await page.evaluate(html => V.card(html), SC.title);
+  ev('title');
   await sleep(3200);
   // 2. Départ de la partie (compte à rebours du jeu : 3, 2, 1)
   await page.evaluate(() => { V.hideCard(); startGame({ mode: 'solo', qs: window.__qs }); });
+  ev('count'); ev('count', 0.8); ev('count', 1.6);
 
   // 3. Les 5 questions
   for (let k = 0; k < SC.q.length; k++) {
     const s = SC.q[k];
     await page.waitForFunction(i => G && G.i === i && !G.locked, { timeout: 30000 }, k);
+    ev('question');
     if (s.before) { await sleep(Math.min(1200, s.wait - 900)); await page.evaluate(t => V.cap(t), s.before); await sleep(s.wait - Math.min(1200, s.wait - 900) - 500); }
     else await sleep(s.wait - 500);
     const idx = s.opts.indexOf(s.pick);
     await page.evaluate(i => V.tap(document.querySelectorAll('#gGrid .tile')[i]), idx);
+    ev('tap');
     await sleep(500);
     await page.evaluate(i => { V.noCap(); answer(i); }, idx);
+    ev(s.pick === s.ans ? 'ok' : 'ko');
     await sleep(450);
     await page.evaluate((t, bad) => V.cap(t, bad), s.after, s.pick !== s.ans);
     await sleep(k === SC.q.length - 1 ? 1500 : 1950); // la dernière doit finir avant le passage auto (2,6 s)
@@ -150,11 +158,13 @@ const PAGE_HELPERS = () => {
     for (let i = 5; i < 10; i++) { const t = ts[i - 5]; const s = t ? points(t) : 0; G.res[i] = { p: s ? G.qs[i].good : (G.qs[i].good + 1) % 4, t: t || 10000, s }; G.score += s; }
     G.i = 9; finish();
   });
+  ev('results');
   await sleep(400);
   await page.evaluate(html => V.cap(html, false, 70), SC.endCap);
   await sleep(3000);
   // 5. Carte de fin
   await page.evaluate(html => { V.noCap(); V.card(html); }, SC.end);
+  ev('end');
   await sleep(3400);
   await cdp.send('Page.stopScreencast');
   await browser.close();
@@ -168,11 +178,24 @@ const PAGE_HELPERS = () => {
   });
   list += "file '" + path.join(work, 'f' + String(frames.length - 1).padStart(5, '0') + '.jpg').replace(/\\/g, '/') + "'\n";
   fs.writeFileSync(path.join(work, 'list.txt'), list);
-  execFileSync(ffmpeg, ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(work, 'list.txt'),
-    '-vf', 'scale=1080:1920:flags=lanczos,fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '19',
-    '-movflags', '+faststart', '-an', OUT], { stdio: 'ignore' });
-  fs.rmSync(work, { recursive: true, force: true });
   const secs = frames.length ? (frames[frames.length - 1].t - frames[0].t + 0.5) : 0;
+  // Bande-son synthétisée (musique rétro + bruitages calés sur les instants clés). SANS_SON=1 pour une vidéo muette.
+  const t0 = frames.length ? frames[0].t : 0;
+  const events = EV.map(e => ({ type: e.type, at: e.t - t0 })).filter(e => e.at >= 0);
+  events.filter(e => e.type === 'question').forEach(q => {          // tic-tac chaque seconde jusqu'au toucher
+    const tap = events.find(e => e.type === 'tap' && e.at > q.at);
+    for (let x = q.at + 1; tap && x < tap.at - 0.15; x += 1) events.push({ type: 'tick', at: x });
+  });
+  console.log('Calage : 1re image ' + t0.toFixed(2) + ' | 1er événement ' + (EV[0] ? EV[0].t.toFixed(2) : '-') + ' | événements : ' +
+    events.filter(e => e.type !== 'tick').map(e => e.type + '@' + e.at.toFixed(2)).join(' '));
+  const withSound = !process.env.SANS_SON;
+  const wav = path.join(work, 'son.wav');
+  if (withSound) fs.writeFileSync(wav, require('./make-sound').buildAudio(secs, events.sort((a, b) => a.at - b.at)));
+  execFileSync(ffmpeg, ['-y', '-f', 'concat', '-safe', '0', '-i', path.join(work, 'list.txt')].concat(withSound ? ['-i', wav] : []).concat([
+    '-vf', 'scale=1080:1920:flags=lanczos,fps=30,format=yuv420p', '-c:v', 'libx264', '-preset', 'slow', '-crf', '19'])
+    .concat(withSound ? ['-map', '0:v', '-map', '1:a', '-c:a', 'aac', '-b:a', '160k', '-shortest'] : ['-an'])
+    .concat(['-movflags', '+faststart', OUT]), { stdio: 'ignore' });
+  fs.rmSync(work, { recursive: true, force: true });
   console.log('UID_ENREGISTREMENT=' + uidRec);
   console.log('Vidéo : ' + OUT + ' (' + frames.length + ' images, ' + secs.toFixed(1) + ' s, ' + Math.round(fs.statSync(OUT).size / 1024) + ' Ko)');
 })().catch(e => { console.error('Échec du tournage : ' + e.message); process.exit(1); });
