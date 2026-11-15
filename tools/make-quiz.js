@@ -52,6 +52,24 @@ const CATS = {
     'Zinédine Zidane', 'Serena Williams', 'Usain Bolt', 'Michael Jordan', 'Mohamed Ali', 'Neil Armstrong', 'Youri Gagarine', 'Thomas Edison',
     'Nikola Tesla', 'Sigmund Freud', 'Galilée (savant)', 'Christophe Colomb', 'Jeanne d\'Arc', 'Steve Jobs', 'Bill Gates', 'Walt Disney',
     'Coco Chanel', 'Audrey Hepburn', 'Che Guevara', 'Karl Marx', 'Jean-Jacques Rousseau', 'Henri Dunant', 'Alfred Nobel' ] },
+  // Ajoutées le 15.11.2026 ; « since » : absentes des quiz du jour d'avant cette date (pour ne pas les changer).
+  // Jeux vidéo : seules les images libres de Commons sont gardées (consoles surtout ; la plupart des jaquettes ne sont pas libres).
+  jeuvideo: { name: 'Jeux vidéo', one: 'jeu vidéo ou console', since: '2026-11-16', titles: [
+    'Nintendo Switch', 'PlayStation 5', 'PlayStation 4', 'PlayStation 2', 'PlayStation', 'PlayStation Portable', 'Xbox 360', 'Xbox One', 'Xbox',
+    'Xbox Series', 'Nintendo Entertainment System', 'Super Nintendo', 'Nintendo 64', 'GameCube', 'Wii', 'Wii U', 'Game Boy', 'Game Boy Color',
+    'Game Boy Advance', 'Nintendo DS', 'Nintendo 3DS', 'Mega Drive', 'Master System', 'Dreamcast', 'Game Gear', 'Atari 2600',
+    'Virtual Boy', 'Neo-Geo AES', 'Borne d\'arcade', 'Manette de jeu', 'Joystick', 'Oculus Rift',
+    'Clair Obscur: Expedition 33', 'Portal (jeu vidéo)', 'Pong', 'Pac-Man', 'Minecraft', 'Super Mario Bros.', 'Fortnite', '0 A.D.',
+    'Pokémon Rouge et Bleu', 'Counter-Strike' ] },
+  // Retirés après contrôle visuel : Rocket League, Tetris, League of Legends, SuperTuxKart, The Legend of Zelda, Space Invaders
+  // (leur image est un logo ou une affiche qui écrit le nom = réponse donnée), Steam Deck (image noire), Casque de réalité virtuelle (doublon).
+  sport: { name: 'Sport', one: 'sport', since: '2026-11-16', titles: [
+    'Football', 'Basket-ball', 'Tennis', 'Rugby à XV', 'Handball', 'Volley-ball', 'Beach-volley', 'Natation', 'Water-polo', 'Plongeon',
+    'Athlétisme', 'Saut à la perche', 'Lancer du javelot', 'Marathon (sport)', 'Cyclisme sur route', 'VTT', 'BMX', 'Ski alpin', 'Saut à ski',
+    'Ski de fond', 'Biathlon', 'Snowboard', 'Hockey sur glace', 'Patinage artistique', 'Curling', 'Bobsleigh', 'Golf', 'Boxe anglaise',
+    'Judo', 'Karaté', 'Escrime', 'Lutte', 'Sumo', 'Formule 1', 'Badminton', 'Tennis de table', 'Baseball', 'Football américain', 'Cricket',
+    'Hockey sur gazon', 'Escalade', 'Surf', 'Skateboard', 'Équitation', 'Gymnastique artistique', 'Haltérophilie', 'Aviron', 'Canoë-kayak',
+    'Voile (sport)', 'Tir à l\'arc', 'Polo', 'Pétanque', 'Bowling', 'Fléchettes', 'Lutte suisse' ] },
 };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -120,14 +138,23 @@ async function describe(list) {
   return list.filter(x => !x.bad && x.thumb);
 }
 
+// node tools/make-quiz.js               → reconstruit toute la banque
+// node tools/make-quiz.js sport jeuvideo → ne (re)construit que ces catégories, le reste est gardé tel quel
 (async () => {
   fs.mkdirSync(IMG, { recursive: true });
-  const items = [], cats = {};
+  const only = process.argv.slice(2);
+  let items = [], cats = {};
+  if (only.length) {
+    const old = JSON.parse(fs.readFileSync(path.join(OUT, 'questions.json'), 'utf8'));
+    cats = old.cats; items = old.items.filter(i => !only.includes(i.c));
+  }
   for (const [key, c] of Object.entries(CATS)) {
+    if (only.length && !only.includes(key)) continue;
     process.stdout.write(key + '… ');
     let list = c.sparql ? await fromSparql(c) : await fromTitles(c.titles);
     list = await describe(list);
     cats[key] = { name: c.name, one: c.one, flag: !!c.flag };
+    if (c.since) cats[key].since = c.since;
     for (const x of list) {
       const id = crypto.createHash('sha256').update(key + '|' + x.title).digest('hex').slice(0, 10);
       const file = path.join(IMG, id + '.jpg');
@@ -144,7 +171,10 @@ async function describe(list) {
     console.log(items.filter(i => i.c === key).length);
   }
   // Rang de notoriété dans la catégorie (0 = le plus connu) : sert à doser la difficulté.
-  for (const key of Object.keys(cats)) items.filter(i => i.c === key).sort((a, b) => b.r - a.r).forEach((it, k) => { it.r = k; });
+  for (const key of Object.keys(cats)) {
+    if (only.length && !only.includes(key)) continue; // catégories gardées : rang déjà calculé
+    items.filter(i => i.c === key).sort((a, b) => b.r - a.r).forEach((it, k) => { it.r = k; });
+  }
   fs.writeFileSync(path.join(OUT, 'questions.json'), JSON.stringify({ v: 1, cats, items }));
   console.log('Total :', items.length, 'éléments');
 })();
