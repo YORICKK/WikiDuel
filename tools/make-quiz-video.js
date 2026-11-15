@@ -1,10 +1,11 @@
 // Filme une partie de WikiDuel Quiz en format TikTok (1080×1920) et l'assemble en MP4.
 // 5 questions choisies (dont une ratée exprès, pour le suspense), puis le score et une carte de fin.
-// Usage : node tools/make-quiz-video.js <dossier contenant node_modules/ffmpeg-static> <sortie.mp4> [url du quiz]
-// Le jeu doit tourner (node dev-server.js). Sans musique : on l'ajoute dans TikTok (sons tendance).
+// Usage : node tools/make-quiz-video.js <dossier contenant node_modules/ffmpeg-static> <sortie.mp4> [scénario] [url du quiz]
+// Scénarios : danube (TikTok), retro (Instagram : consoles, sport, Suisse).
+// Le jeu doit tourner (node dev-server.js). Sans musique : on l'ajoute dans l'appli (sons tendance).
 'use strict';
 const fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
-const [ffDir, OUT, URL_ARG] = process.argv.slice(2);
+const [ffDir, OUT, SC_ARG, URL_ARG] = process.argv.slice(2);
 const GAME = URL_ARG || 'http://localhost:3000/quiz.html';
 const puppeteer = require(path.join(__dirname, 'node_modules', 'puppeteer-core'));
 const ffmpeg = require(path.join(ffDir, 'node_modules', 'ffmpeg-static'));
@@ -25,6 +26,33 @@ const SCRIPT = [
   { cat: 'personne', opts: ['Karl Marx', 'Alfred Nobel', 'Charles Darwin', 'Henri Dunant'], ans: 'Henri Dunant', pick: 'Henri Dunant', wait: 5200,
     before: 'Que des barbes 🧔', after: 'Ouf ! Le fondateur de la Croix-Rouge ⛑️' }
 ];
+const SCENARIOS = {
+  danube: {
+    q: SCRIPT,
+    title: '<div><div class="emo">🌊🏔️<br>🦁🚗</div><div class="big">4 photos.<br>Une seule est<br>le <span>Danube</span>.</div><div class="sub">10 secondes pour la trouver.<br>Tu ferais mieux que moi ?</div></div>',
+    endCap: '8 sur 10 🔥<small>Et toi, tu fais combien ?</small>',
+    end: '<div><div class="big">Wiki<span>Duel</span> <em>Quiz</em></div><div class="sub">Le quiz du jour, le même pour tous.<br>Défie tes amis en direct.</div><div class="url">👉 wikiduel.ch/quiz</div><div class="chips">Gratuit · sur téléphone · photos Wikipédia</div></div>'
+  },
+  retro: {
+    q: [
+      { cat: 'jeuvideo', opts: ['GameCube', 'Dreamcast', 'Nintendo 64', 'PlayStation'], ans: 'Nintendo 64', pick: 'Nintendo 64', wait: 1200,
+        before: null, after: 'Mon enfance 😍' },
+      { cat: 'sport', opts: ['Sumo', 'Lutte suisse', 'Judo', 'Lutte'], ans: 'Lutte suisse', pick: 'Lutte suisse', wait: 2600,
+        before: 'La sciure… 👀', after: 'Le Schwingen, évidemment 💪' },
+      { cat: 'monument', opts: ['Pont Charles', 'Tower Bridge', 'Kapellbrücke', 'Pont du Gard'], ans: 'Kapellbrücke', pick: 'Kapellbrücke', wait: 3300,
+        before: 'Euh… Lucerne ? 🤔', after: 'Le pont de la Chapelle ✅' },
+      { cat: 'animal', opts: ['Bouquetin des Alpes', 'Chamois', 'Cerf élaphe', 'Marmotte des Alpes'], ans: 'Chamois', pick: 'Bouquetin des Alpes', wait: 3900,
+        before: 'Bouquetin ou chamois ?! 😵', after: 'RATÉ 😭' },
+      { cat: 'jeuvideo', opts: ['Game Boy', 'Nintendo DS', 'Game Boy Advance', 'Game Boy Color'], ans: 'Game Boy Color', pick: 'Game Boy Color', wait: 5100,
+        before: 'Elles se ressemblent toutes 😅', after: 'Ouf ! La Game Boy Color 🎮' }
+    ],
+    title: '<div><div class="emo">🎮⚽<br>🏔️🐐</div><div class="big">Consoles, sport<br>et <span>Suisse</span>.</div><div class="sub">4 photos, une seule bonne.<br>10 secondes. Tu fais mieux que moi ?</div></div>',
+    endCap: '8 sur 10 🔥<small>Bouquetin ou chamois, sois honnête 👇</small>',
+    end: '<div><div class="big">Wiki<span>Duel</span> <em>Quiz</em></div><div class="sub">Nouveau : <b>Sport</b> et <b>Jeux vidéo</b>.<br>Le quiz du jour, le même pour tous.</div><div class="url">👉 wikiduel.ch/quiz</div><div class="chips">Gratuit · sans inscription · photos Wikipédia</div></div>'
+  }
+};
+const SC = SCENARIOS[SC_ARG || 'danube'];
+if (!SC) { console.error('Scénario inconnu : ' + SC_ARG); process.exit(1); }
 
 const CSS = `
 #vcard { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; text-align: center; padding: 40px 28px;
@@ -71,6 +99,7 @@ const PAGE_HELPERS = () => {
   await page.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
   await page.goto(GAME, { waitUntil: 'networkidle2', timeout: 60000 });
   await page.waitForFunction(() => typeof uid !== 'undefined' && !!uid && !!S.bank, { timeout: 30000 });
+  const uidRec = await page.evaluate(() => uid);
   await page.addStyleTag({ content: CSS });
   await page.evaluate(PAGE_HELPERS);
 
@@ -79,7 +108,7 @@ const PAGE_HELPERS = () => {
     const it = (c, l) => S.bank.items.find(i => i.c === c && i.l === l);
     const qs = script.map(s => { const opts = s.opts.map(l => it(s.cat, l)); return { cat: s.cat, ans: it(s.cat, s.ans), opts, good: s.opts.indexOf(s.ans) }; });
     window.__qs = qs.concat(buildQuiz('video-fin').filter(q => !script.some(s => s.cat === q.cat)).concat(buildQuiz('video-fin-2')).slice(0, 5));
-  }, SCRIPT);
+  }, SC.q);
   // Images chargées d'avance (pas de trou noir à l'écran).
   await page.evaluate(() => preload(window.__qs));
   // Partie solo d'un compte connecté (le tournage ne dépend pas de la connexion Google).
@@ -95,14 +124,14 @@ const PAGE_HELPERS = () => {
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, maxWidth: 1080, maxHeight: 1920, everyNthFrame: 1 });
 
   // 1. Carte titre
-  await page.evaluate(() => V.card('<div><div class="emo">🌊🏔️<br>🦁🚗</div><div class="big">4 photos.<br>Une seule est<br>le <span>Danube</span>.</div><div class="sub">10 secondes pour la trouver.<br>Tu ferais mieux que moi ?</div></div>'));
+  await page.evaluate(html => V.card(html), SC.title);
   await sleep(3200);
   // 2. Départ de la partie (compte à rebours du jeu : 3, 2, 1)
   await page.evaluate(() => { V.hideCard(); startGame({ mode: 'solo', qs: window.__qs }); });
 
   // 3. Les 5 questions
-  for (let k = 0; k < SCRIPT.length; k++) {
-    const s = SCRIPT[k];
+  for (let k = 0; k < SC.q.length; k++) {
+    const s = SC.q[k];
     await page.waitForFunction(i => G && G.i === i && !G.locked, { timeout: 30000 }, k);
     if (s.before) { await sleep(Math.min(1200, s.wait - 900)); await page.evaluate(t => V.cap(t), s.before); await sleep(s.wait - Math.min(1200, s.wait - 900) - 500); }
     else await sleep(s.wait - 500);
@@ -112,7 +141,7 @@ const PAGE_HELPERS = () => {
     await page.evaluate(i => { V.noCap(); answer(i); }, idx);
     await sleep(450);
     await page.evaluate((t, bad) => V.cap(t, bad), s.after, s.pick !== s.ans);
-    await sleep(k === SCRIPT.length - 1 ? 1500 : 1950); // la dernière doit finir avant le passage auto (2,6 s)
+    await sleep(k === SC.q.length - 1 ? 1500 : 1950); // la dernière doit finir avant le passage auto (2,6 s)
     await page.evaluate(() => V.noCap());
   }
   // 4. Accélère : les 5 dernières questions sont comptées réussies (4) ou ratées (1), puis résultats.
@@ -122,10 +151,10 @@ const PAGE_HELPERS = () => {
     G.i = 9; finish();
   });
   await sleep(400);
-  await page.evaluate(() => V.cap('8 sur 10 🔥<small>Et toi, tu fais combien ?</small>', false, 70));
+  await page.evaluate(html => V.cap(html, false, 70), SC.endCap);
   await sleep(3000);
   // 5. Carte de fin
-  await page.evaluate(() => { V.noCap(); V.card('<div><div class="big">Wiki<span>Duel</span> <em>Quiz</em></div><div class="sub">Le quiz du jour, le même pour tous.<br>Défie tes amis en direct.</div><div class="url">👉 wikiduel.ch/quiz</div><div class="chips">Gratuit · sur téléphone · photos Wikipédia</div></div>'); });
+  await page.evaluate(html => { V.noCap(); V.card(html); }, SC.end);
   await sleep(3400);
   await cdp.send('Page.stopScreencast');
   await browser.close();
@@ -144,5 +173,6 @@ const PAGE_HELPERS = () => {
     '-movflags', '+faststart', '-an', OUT], { stdio: 'ignore' });
   fs.rmSync(work, { recursive: true, force: true });
   const secs = frames.length ? (frames[frames.length - 1].t - frames[0].t + 0.5) : 0;
+  console.log('UID_ENREGISTREMENT=' + uidRec);
   console.log('Vidéo : ' + OUT + ' (' + frames.length + ' images, ' + secs.toFixed(1) + ' s, ' + Math.round(fs.statSync(OUT).size / 1024) + ' Ko)');
 })().catch(e => { console.error('Échec du tournage : ' + e.message); process.exit(1); });
