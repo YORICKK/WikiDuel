@@ -428,6 +428,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
 #overlay .route { padding-right: 40px; }
 
 /* Niveau et XP */
+.acc-top { display: flex; align-items: center; gap: 10px; }
+#accLvl { letter-spacing: .04em; color: var(--muted); }
+#accLvl b { color: var(--ink); }
 .acc-xp { display: flex; align-items: center; gap: 8px; margin-top: 4px; font: 700 12px var(--mono); color: var(--muted); }
 .xpbar { flex: 1; max-width: 160px; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
 .xpbar i { display: block; height: 100%; background: var(--flag); border-radius: 99px; }
@@ -535,7 +538,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
     </div>
     <div class="account" id="account">
       <div class="acc-info">
-        <span class="label">Compte</span>
+        <span class="label acc-top">Compte <span id="accLvl"></span></span>
         <strong id="accName">Invité</strong>
         <span class="acc-elo" id="accElo">Connecte-toi pour jouer en classé</span>
         <span class="acc-xp" id="accXp" hidden></span>
@@ -1042,11 +1045,11 @@ function levelOf(xp) {
   return { n, cur, need };
 }
 const lvlTag = xp => '<span class="lvl" title="Niveau">Niv. ' + levelOf(xp).n + '</span>';
+// Carte du compte : juste le niveau et les médailles, à droite de « Compte » (discret).
 function renderXp() {
   const p = S.profile || {}, L = levelOf(p.xp);
-  $('accXp').hidden = false;
-  $('accXp').innerHTML = '<span>Niv. ' + L.n + '</span><span class="xpbar" aria-hidden="true"><i style="width:' + Math.round(100 * L.cur / L.need) + '%"></i></span>' +
-    '<span>' + L.cur + '/' + L.need + ' XP</span>' + (p.badges ? '<span>· 🏅 ' + p.badges + '</span>' : '');
+  $('accLvl').innerHTML = '<b>Niv. ' + L.n + '</b>' + (p.badges ? ' · 🏅 ' + p.badges : '');
+  $('accLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
 }
 let toastTimer = null;
 function toast(html, ms) {
