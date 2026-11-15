@@ -127,12 +127,13 @@ function step(name, ok, detail) {
     // 7. WikiDuel Quiz : démarrage, première question d'une partie solo, classement du jour
     await page.goto(base + '/quiz', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForFunction(() => typeof uid !== 'undefined' && !!uid && !!S.bank && !document.getElementById('googleBtn').disabled, { timeout: 30000 }).catch(() => {});
-    // Le test tourne en invité : le quiz doit être bloqué et demander la connexion Google.
+    // Le test tourne en invité : tous les modes du quiz doivent être jouables (Google reste proposé).
+    await page.waitForFunction(() => !document.getElementById('solo').disabled, { timeout: 15000 }).catch(() => {});
     const gate = await page.evaluate(() => ({ google: !document.getElementById('googleBtn').hidden,
-      locked: ['solo', 'create', 'join', 'dPlay'].every(id => document.getElementById(id).disabled) }));
-    step('WikiDuel Quiz : réservé aux comptes Google', gate.google && gate.locked, gate.locked ? '' : 'un mode est jouable en invité');
-    // La partie solo se joue sans rien écrire en base : on simule un compte Google pour la tester.
-    await page.evaluate(() => { S.google = true; S.profileName = 'Test auto'; document.getElementById('name').value = 'Test auto'; startSolo(); });
+      open: ['solo', 'create', 'join', 'dPlay'].every(id => !document.getElementById(id).disabled) }));
+    step('WikiDuel Quiz : ouvert aux invités', gate.google && gate.open, gate.open ? '' : 'un mode est bloqué pour les invités');
+    // Partie solo (n'écrit en base qu'à la fin, que le test n'atteint pas).
+    await page.evaluate(() => { document.getElementById('name').value = 'Test auto'; startSolo(); });
     await page.waitForFunction(() => !document.getElementById('game').hidden && document.querySelectorAll('#gGrid .tile img').length === 4 && !!document.getElementById('gName').textContent, { timeout: 30000 }).catch(() => {});
     const quiz = await page.evaluate(() => ({ game: !document.getElementById('game').hidden, name: document.getElementById('gName').textContent,
       imgs: [...document.querySelectorAll('#gGrid .tile img')].filter(i => i.complete && i.naturalWidth > 0).length }));
