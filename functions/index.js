@@ -207,8 +207,9 @@ async function archiveRound(code, room, entries, extra) {
   for (const p of entries) {
     if (!p.finishedAt) continue;
     if (room.ranked && !(extra.verdicts && extra.verdicts[p.uid] === 'ok')) continue;
-    const xp = XP.course + (room.ranked && extra.winnerId === p.uid ? XP.rankedWin : 0);
-    await award(p.uid, xp, room.target, now).catch(e => logger.error('XP non attribuée', { uid: p.uid, error: e.message }));
+    const win = room.ranked && extra.winnerId === p.uid;
+    const xp = XP.course + (win ? XP.rankedWin : 0), liens = LIENS.course + (win ? LIENS.rankedWin : 0);
+    await award(p.uid, xp, room.target, now, liens).catch(e => logger.error('XP non attribuée', { uid: p.uid, error: e.message }));
   }
 }
 
@@ -233,32 +234,196 @@ const pairPrint = (a, b) => crypto.createHash('sha256').update(norm(a) + '→' +
 /* ===================== Niveaux (XP) et badges ===================== */
 // XP : 25 par course arrivée, +10 pour une victoire en classé, +15 pour le défi du jour réussi,
 // 15 par partie de quiz terminée. Niveau 1 à 100 XP, puis 50 XP de plus à chaque niveau (150, 200…).
-// Badge : la page d'arrivée de chaque course réussie (bronze dès 1, argent à 3, or à 5).
+// Badge : la page d'arrivée de chaque course réussie. Chaque nouvelle obtention = un exemplaire de plus (n),
+// que l'on peut revendre à la banque ou mettre aux enchères (voir « Marché » plus bas).
+// Liens 🔗 : monnaie du jeu, purement fictive (ni achetable, ni convertible en argent réel).
 const XP = { course: 25, rankedWin: 10, daily: 15, quiz: 15 };
+const LIENS = { course: 2, rankedWin: 5, daily: 3, quiz: 1 };
 const badgeKey = title => crypto.createHash('sha256').update(norm(title)).digest('hex').slice(0, 12);
-async function award(uid, xp, target, at) {
-  if (!uid || !(xp > 0)) return;
-  await db.ref('users/' + uid + '/xp').transaction(v => (v || 0) + xp);
-  if (!target) return;
-  const when = at || Date.now();
-  let isNew = false, isGold = false;
-  await db.ref('badges/' + uid + '/' + badgeKey(target)).transaction(b => {
+// Ajoute un exemplaire d'un badge (gagné ou acheté). Tient à jour le nombre de badges distincts et la rareté.
+async function addCopy(uid, key, title, when) {
+  let isNew = false;
+  await db.ref('badges/' + uid + '/' + key).transaction(b => {
     isNew = !(b && b.n);
-    isGold = !!(b && b.n === 4); // 5e fois : le badge passe en or
-    b = b || { t: String(target).slice(0, 200), n: 0, d: [] };
+    b = b || { t: String(title).slice(0, 200), n: 0, d: [] };
     b.n = (b.n || 0) + 1;
-    b.d = [when].concat(Array.isArray(b.d) ? b.d : []).slice(0, 10); // 10 dernières dates
+    b.d = [when || Date.now()].concat(Array.isArray(b.d) ? b.d : []).slice(0, 10); // 10 dernières dates
     return b;
   });
-  if (isNew) await db.ref('users/' + uid + '/badges').transaction(n => (n || 0) + 1);
-  if (isGold) await db.ref('users/' + uid + '/gold').transaction(n => (n || 0) + 1); // nombre de badges en or (profil public)
+  if (isNew) {
+    await db.ref('users/' + uid + '/badges').transaction(n => (n || 0) + 1);
+    await db.ref('badgeOwners/' + key).transaction(o => ({ t: (o && o.t) || String(title).slice(0, 200), owners: ((o && o.owners) || 0) + 1 }));
+  }
+}
+// Retire des exemplaires (vente, mise aux enchères). Échoue si le joueur n'en a pas assez.
+async function removeCopies(uid, key, count) {
+  let ok = false, gone = false, title = '';
+  // Note : une transaction peut d'abord recevoir « null » (cache vide) ; on renvoie alors null pour qu'elle relise la vraie valeur.
+  await db.ref('badges/' + uid + '/' + key).transaction(b => {
+    ok = false; gone = false;
+    if (b === null) return null;
+    if (!(b.n >= count)) return; // abandon : pas assez d'exemplaires
+    ok = true; title = b.t;
+    b.n -= count;
+    if (b.n <= 0) { gone = true; return null; } // dernier exemplaire : le badge quitte la collection
+    return b;
+  });
+  if (ok && gone) {
+    await db.ref('users/' + uid + '/badges').transaction(n => Math.max(0, (n || 0) - 1));
+    await db.ref('badgeOwners/' + key + '/owners').transaction(n => Math.max(0, (n || 0) - 1));
+  }
+  return { ok, title };
+}
+async function award(uid, xp, target, at, liens) {
+  if (!uid || !(xp > 0)) return;
+  await db.ref('users/' + uid + '/xp').transaction(v => (v || 0) + xp);
+  if (liens > 0) await db.ref('users/' + uid + '/liens').transaction(v => (v || 0) + liens);
+  if (target) await addCopy(uid, badgeKey(target), target, at);
 }
 // Quiz : 15 XP par partie terminée (une partie toutes les 45 s au plus, contre les écritures en rafale).
 async function awardQuiz(uid) {
   let ok = false;
   await db.ref('users/' + uid + '/quizLastAt').transaction(t => { ok = !t || Date.now() - t > 45000; return ok ? Date.now() : t; });
-  if (ok) await award(uid, XP.quiz);
+  if (ok) await award(uid, XP.quiz, null, null, LIENS.quiz);
 }
+
+/* ===================== Marché : revente à la banque et enchères ===================== */
+// Prix de rachat par la banque : plus un badge est rare (peu de joueurs le possèdent), plus il vaut cher.
+const bankPrice = owners => Math.max(5, Math.round(60 / (1 + Math.max(0, (owners || 1) - 1) / 2)));
+const levelOf = xp => { let n = 0, need = 100, cur = Math.max(0, xp || 0); while (cur >= need) { cur -= need; n++; need += 50; } return n; };
+const AUCTION_FEE = 0.05, AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24, 48], SNIPE_MS = 5 * 60 * 1000;
+// Marché : compte Google et niveau 2 minimum (contre les comptes invités créés en série).
+async function requireMarket(req) {
+  const uid = requireGoogle(req);
+  const u = (await db.ref('users/' + uid).once('value')).val() || {};
+  if (levelOf(u.xp) < 2) throw new HttpsError('failed-precondition', 'Le marché s’ouvre au niveau 2.');
+  return { uid, name: String(u.name || 'Joueur').slice(0, 16) };
+}
+const validKey = k => typeof k === 'string' && /^[a-f0-9]{12}$/.test(k);
+
+// Vendre des exemplaires à la banque (ouvert à tous les joueurs).
+exports.sellBadge = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
+  const uid = req.auth.uid, key = req.data && req.data.key, count = Math.floor((req.data && req.data.count) || 1);
+  if (!validKey(key) || !(count >= 1 && count <= 100)) throw new HttpsError('invalid-argument', 'Demande invalide.');
+  const owners = ((await db.ref('badgeOwners/' + key + '/owners').once('value')).val()) || 1;
+  const price = bankPrice(owners);
+  const r = await removeCopies(uid, key, count);
+  if (!r.ok) throw new HttpsError('failed-precondition', 'Tu n’as pas assez d’exemplaires de ce badge.');
+  const total = price * count;
+  await db.ref('users/' + uid + '/liens').transaction(v => (v || 0) + total);
+  logger.info('Badge vendu à la banque', { uid, key, count, total });
+  return { liens: total, price };
+});
+
+// Mettre un exemplaire aux enchères (l'exemplaire est retiré de la collection pendant la vente).
+exports.createAuction = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  const me = await requireMarket(req);
+  const key = req.data && req.data.key, start = Math.floor((req.data && req.data.start) || 0), hours = Math.floor((req.data && req.data.hours) || 24);
+  if (!validKey(key) || !(start >= 1 && start <= 100000) || !AUCTION_HOURS.includes(hours)) throw new HttpsError('invalid-argument', 'Demande invalide.');
+  const open = await db.ref('auctions').orderByChild('seller').equalTo(me.uid).once('value');
+  let n = 0; open.forEach(c => { if ((c.val() || {}).status === 'open') n++; });
+  if (n >= AUCTION_MAX_OPEN) throw new HttpsError('resource-exhausted', 'Maximum ' + AUCTION_MAX_OPEN + ' ventes en cours.');
+  const r = await removeCopies(me.uid, key, 1);
+  if (!r.ok) throw new HttpsError('failed-precondition', 'Tu n’as pas ce badge.');
+  const now = Date.now();
+  const ref = db.ref('auctions').push();
+  await ref.set({ key, t: r.title, seller: me.uid, sellerName: me.name, start, price: start, bids: 0,
+    createdAt: now, endsAt: now + hours * 3600e3, status: 'open' });
+  logger.info('Enchère créée', { id: ref.key, uid: me.uid, key, start, hours });
+  return { id: ref.key };
+});
+
+// Enchérir : la somme est bloquée tout de suite ; l'enchérisseur précédent est remboursé.
+exports.bid = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  const me = await requireMarket(req);
+  const id = String((req.data && req.data.id) || ''), amount = Math.floor((req.data && req.data.amount) || 0);
+  if (!/^[-\w]{10,30}$/.test(id) || !(amount >= 1 && amount <= 1000000)) throw new HttpsError('invalid-argument', 'Demande invalide.');
+  const a0 = (await db.ref('auctions/' + id).once('value')).val();
+  if (!a0 || a0.status !== 'open' || a0.endsAt <= Date.now()) throw new HttpsError('failed-precondition', 'Cette enchère est terminée.');
+  if (a0.seller === me.uid) throw new HttpsError('failed-precondition', 'Tu ne peux pas enchérir sur ta propre vente.');
+  // 1. Bloque la somme (échoue si le solde ne suffit pas).
+  let paid = false;
+  await db.ref('users/' + me.uid + '/liens').transaction(v => { paid = false; if (v === null) return null; paid = v >= amount; return paid ? v - amount : undefined; });
+  if (!paid) throw new HttpsError('failed-precondition', 'Solde insuffisant.');
+  // 2. Place l'offre si elle est toujours la meilleure, sinon on rembourse.
+  let prev = null, why = '';
+  const res = await db.ref('auctions/' + id).transaction(a => {
+    prev = null; why = '';
+    if (a === null) return null;
+    const now = Date.now();
+    if (a.status !== 'open' || a.endsAt <= now) { why = 'Cette enchère est terminée.'; return; }
+    if (a.bidder === me.uid) { why = 'Tu as déjà la meilleure offre.'; return; }
+    const min = a.bidder ? a.price + Math.max(1, Math.ceil(a.price * 0.05)) : a.start;
+    if (amount < min) { why = 'Offre trop basse : minimum ' + min + ' 🔗.'; return; }
+    if (a.bidder) prev = { uid: a.bidder, amount: a.price };
+    a.price = amount; a.bidder = me.uid; a.bidderName = me.name; a.bids = (a.bids || 0) + 1;
+    if (a.endsAt - now < SNIPE_MS) a.endsAt = now + SNIPE_MS; // offre de dernière minute : +5 min
+    return a;
+  });
+  if (!res.committed || !res.snapshot.exists() || res.snapshot.val().bidder !== me.uid) {
+    await db.ref('users/' + me.uid + '/liens').transaction(v => (v || 0) + amount);
+    throw new HttpsError('failed-precondition', why || 'Offre refusée.');
+  }
+  if (prev) await db.ref('users/' + prev.uid + '/liens').transaction(v => (v || 0) + prev.amount);
+  logger.info('Enchère', { id, uid: me.uid, amount });
+  return { ok: true, price: amount, endsAt: res.snapshot.val().endsAt };
+});
+
+// Annuler une vente sans offre : l'exemplaire revient au vendeur.
+exports.cancelAuction = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
+  const uid = req.auth.uid, id = String((req.data && req.data.id) || '');
+  if (!/^[-\w]{10,30}$/.test(id)) throw new HttpsError('invalid-argument', 'Demande invalide.');
+  let a = null;
+  const res = await db.ref('auctions/' + id).transaction(x => {
+    a = x ? Object.assign({}, x) : null;
+    if (x === null) return null;
+    if (x.seller !== uid || x.status !== 'open' || x.bidder) return;
+    x.status = 'cancelled'; x.closedAt = Date.now();
+    return x;
+  });
+  if (!res.committed || !a || a.status !== 'open' || !res.snapshot.exists() || res.snapshot.val().status !== 'cancelled') throw new HttpsError('failed-precondition', 'Impossible d’annuler (déjà une offre, ou vente terminée).');
+  await addCopy(uid, a.key, a.t, Date.now());
+  return { ok: true };
+});
+
+// Toutes les 5 minutes : clôture des enchères échues (badge à l'acheteur, Liens au vendeur moins 5 %).
+async function closeAuction(id) {
+  let a = null;
+  const res = await db.ref('auctions/' + id).transaction(x => {
+    a = x ? Object.assign({}, x) : null;
+    if (x === null) return null;
+    if (x.status !== 'open' || x.endsAt > Date.now()) return;
+    x.status = 'closing'; return x;
+  });
+  if (!res.committed || !a || a.status !== 'open' || !res.snapshot.exists() || res.snapshot.val().status !== 'closing') return null;
+  const now = Date.now();
+  if (a.bidder) {
+    const gain = Math.floor(a.price * (1 - AUCTION_FEE));
+    await addCopy(a.bidder, a.key, a.t, now);
+    await db.ref('users/' + a.seller + '/liens').transaction(v => (v || 0) + gain);
+    await db.ref('auctions/' + id).update({ status: 'sold', closedAt: now, sellerGain: gain });
+    return 'vendu';
+  }
+  await addCopy(a.seller, a.key, a.t, now);
+  await db.ref('auctions/' + id).update({ status: 'unsold', closedAt: now });
+  return 'invendu';
+}
+exports.closeAuctions = onSchedule({ schedule: 'every 5 minutes', region: 'europe-west1' }, async () => {
+  if (!db) db = admin.database();
+  const snap = await db.ref('auctions').orderByChild('status').equalTo('open').once('value');
+  const due = []; snap.forEach(c => { if ((c.val() || {}).endsAt <= Date.now()) due.push(c.key); });
+  for (const id of due) { const r = await closeAuction(id).catch(e => { logger.error('Clôture échouée', { id, error: e.message }); return null; }); if (r) logger.info('Enchère close', { id, r }); }
+  // Ventes terminées depuis plus de 7 jours : effacées.
+  const old = await db.ref('auctions').orderByChild('closedAt').endAt(Date.now() - 7 * 864e5).limitToFirst(500).once('value');
+  const upd = {}; old.forEach(c => { if (c.val() && c.val().closedAt) upd['auctions/' + c.key] = null; });
+  if (Object.keys(upd).length) await db.ref().update(upd);
+});
 exports.quizSoloXp = onValueCreated(Object.assign({ ref: '/quizSolo/{uid}/{id}' }, DB_OPTS), async event => {
   if (!db) db = admin.database();
   await awardQuiz(event.params.uid);
@@ -291,7 +456,8 @@ exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{
   });
   if (!counted) { logger.info('Partie solo non comptée : même parcours rejoué à la suite', { uid }); return; }
   // Course solo (ou défi du jour) réussie : XP et badge de la page d'arrivée.
-  await award(uid, XP.course + (v.daily ? XP.daily : 0), v.target, typeof v.at === 'number' ? v.at : Date.now());
+  await award(uid, XP.course + (v.daily ? XP.daily : 0), v.target, typeof v.at === 'number' ? v.at : Date.now(),
+    LIENS.course + (v.daily ? LIENS.daily : 0));
 });
 
 exports.rateRound = onValueWritten(

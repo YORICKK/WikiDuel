@@ -200,6 +200,15 @@
       }
     },
 
+    "badgeOwners": {
+      ".read": true
+    },
+
+    "auctions": {
+      ".read": "auth != null",
+      ".indexOn": ["status", "seller", "closedAt"]
+    },
+
     "sources": {
       "$uid": {
         ".write": "auth != null && auth.uid === $uid && !data.exists()",
