@@ -200,6 +200,13 @@
       }
     },
 
+    "nextSolo": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && !newData.exists()"
+      }
+    },
+
     "badgeOwners": {
       ".read": true
     },

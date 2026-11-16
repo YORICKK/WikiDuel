@@ -139,9 +139,18 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .join-row .btn { width: auto; }
 
 /* Compte et modes */
-.account { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.account { display: grid; gap: 14px; padding: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 8px 24px rgba(10,20,50,.08); }
+.acc-head { display: flex; align-items: center; gap: 12px; }
+.acc-av { flex: none; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 800 24px var(--display); }
+.acc-av.prem { background: linear-gradient(135deg, #3fb8ff, #7b4dff); color: #fff; }
 .acc-info { flex: 1; min-width: 0; display: grid; gap: 2px; }
-.acc-info strong { font: 800 18px/1.2 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-info strong { font: 800 21px/1.15 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.acc-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.acc-chip { display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border-radius: 14px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+.acc-chip b { font: 800 22px/1 var(--display); }
+.acc-chip small { font: 600 12px var(--display); color: var(--muted); }
+.acc-chip:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+.acc-chip:active { transform: scale(.98); }
 .acc-elo { font: 500 13px var(--display); color: var(--muted); }
 .acc-elo b { font: 700 13px var(--mono); color: var(--ink); }
 .account .btn { flex: none; }
@@ -570,8 +579,10 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <button id="chGo" class="btn ranked">Relever le défi</button>
     </div>
     <div class="account" id="account">
+      <div class="acc-head">
+      <div class="acc-av" id="accAv" aria-hidden="true">?</div>
       <div class="acc-info">
-        <span class="label acc-top">Compte <span id="accLvl"></span></span>
+        <span class="label acc-top">Compte <span id="accLvl" hidden></span></span>
         <strong id="accName">Invité</strong>
         <span class="acc-elo" id="accElo">Connecte-toi pour jouer en classé</span>
         <span class="acc-xp" id="accXp" hidden></span>
@@ -593,6 +604,12 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
           <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
           <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
         </div>
+      </div>
+      </div>
+      <div class="acc-chips">
+        <button type="button" class="acc-chip" id="chipLvl"><b id="cLvl">0</b><small>Niveau</small></button>
+        <button type="button" class="acc-chip" id="chipBadges"><b id="cBadges">0</b><small>🏅 Badges</small></button>
+        <button type="button" class="acc-chip" id="chipLiens"><b id="cLiens">0</b><small>🔗 Liens</small></button>
       </div>
     </div>
     <div class="stack">
@@ -1072,6 +1089,7 @@ const ready = (async () => {
   db = firebase.database();
   setupErrorFlush(); // en premier : les erreurs partent même si la suite du démarrage échoue
   recordSource('course');
+  db.ref('nextSolo/' + uid).once('value').then(s => { S.nextSolo = s.val(); }).catch(() => {});
   db.ref('.info/serverTimeOffset').on('value', s => { S.clockOffset = s.val() || 0; });
   S.google = !auth.currentUser.isAnonymous;
   // Profil (Elo, niveau, statut WikiDuel+) : on attend la première lecture avant de déclarer la page prête.
@@ -1093,15 +1111,15 @@ function renderAccount() {
     const n = $('name').value.trim();
     $('accName').textContent = n || 'Invité';
     $('accElo').textContent = (n ? 'Invité · c' : 'C') + 'onnecte-toi pour jouer en classé';
-    syncNameField(); return;
+    syncNameField(); renderXp(); return;
   }
   const p = S.profile || {};
-  $('accName').innerHTML = esc(p.name || (u && u.displayName) || 'Joueur') + (p.premium === true ? DIA + ' <span class="plus">WikiDuel+</span>' : '');
+  $('accName').innerHTML = esc(p.name || (u && u.displayName) || 'Joueur') + (p.premium === true ? ' ' + DIA : '');
   $('accElo').innerHTML = p.games
     ? 'Elo <b>' + p.elo + '</b> · ' + p.games + ' partie' + (p.games > 1 ? 's' : '') + ' · ' + (p.wins || 0) + ' victoire' + ((p.wins || 0) > 1 ? 's' : '')
     : 'Elo <b>1200</b> · aucune partie classée';
   if (!$('name').value && p.name) $('name').value = p.name;
-  syncNameField();
+  syncNameField(); renderXp();
   $('statsBtn').hidden = !ADMIN_UIDS.includes(uid);
   // Compte Google sans pseudo : on le demande une fois (sinon il s'affiche « Joueur » dans les classements).
   if (S.profile && !p.name && !S.askedName) { S.askedName = true; openNameSheet(true); }
@@ -1121,7 +1139,16 @@ function renderXp() {
   if (!$('market').hidden) $('mkBal').textContent = '🔗 ' + (p.liens || 0);
   if (!$('badges').hidden) $('bdBal').textContent = '🔗 ' + (p.liens || 0);
   $('accLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
+  // Carte du compte : avatar (initiale) et trois pastilles Niveau / Badges / Liens.
+  const nm = ($('accName').textContent || '?').trim();
+  $('accAv').textContent = (nm.charAt(0) || '?').toUpperCase();
+  $('accAv').classList.toggle('prem', isMePremium());
+  $('cLvl').textContent = L.n; $('cBadges').textContent = p.badges || 0; $('cLiens').textContent = p.liens || 0;
+  $('chipLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
 }
+$('chipLvl').onclick = () => { const L = levelOf(S.profile && S.profile.xp); toast('Niveau ' + L.n + '<small>' + L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1) + '</small>'); };
+$('chipBadges').onclick = () => showBadges();
+$('chipLiens').onclick = () => showMarket('open');
 let toastTimer = null;
 function toast(html, ms) {
   const t = $('toast'); t.innerHTML = html; t.classList.add('on');
@@ -2025,6 +2052,13 @@ function soloEmit() {
   });
 }
 function startSolo(pair, opts) {
+  // Parcours imposé par l'administrateur pour la prochaine partie solo de ce joueur (utilisé une seule fois).
+  if (!pair && S.nextSolo && S.nextSolo.target) {
+    const f = S.nextSolo; S.nextSolo = null;
+    let st = f.start || pickPair().start; if (norm(st) === norm(f.target)) st = pickPair().start;
+    pair = { start: st, target: f.target };
+    ready.then(() => db.ref('nextSolo/' + uid).remove()).catch(() => {});
+  }
   pair = pair || pickPair();
   opts = opts || {};
   markStart(opts.daily ? 'defi' : (S.via || 'solo')); S.via = null;
