@@ -292,7 +292,7 @@ async function awardQuiz(uid) {
 const BANK_PRICE = 10;
 const bankPrice = () => BANK_PRICE;
 const levelOf = xp => { let n = 0, need = 100, cur = Math.max(0, xp || 0); while (cur >= need) { cur -= need; n++; need += 50; } return n; };
-const AUCTION_FEE = 0.05, AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24, 48], SNIPE_MS = 5 * 60 * 1000;
+const AUCTION_FEE = 0.05, AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24], SNIPE_MS = 5 * 60 * 1000;
 // Marché : compte Google et niveau 2 minimum (contre les comptes invités créés en série).
 async function requireMarket(req) {
   const uid = requireGoogle(req);
