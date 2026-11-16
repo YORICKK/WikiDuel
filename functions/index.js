@@ -713,7 +713,7 @@ exports.deleteAccount = onCall({ region: 'europe-west1' }, async req => {
   if (!req.data || req.data.confirm !== 'SUPPRIMER') throw new HttpsError('invalid-argument', 'Confirmation manquante.');
   const uid = req.auth.uid;
   const upd = {
-    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null, ['pushSubs/' + uid]: null, ['sources/' + uid]: null
+    ['users/' + uid]: null, ['history/' + uid]: null, ['queue/' + uid]: null, ['matches/' + uid]: null, ['quizSolo/' + uid]: null, ['badges/' + uid]: null, ['pushSubs/' + uid]: null, ['sources/' + uid]: null, ['starts/' + uid]: null
   };
   // Défis du jour (course et quiz) : tentatives et scores, tous les jours.
   const [runs, scores, rooms, quizDaily, quizRooms] = await Promise.all(['dailyRuns', 'dailyScores', 'rooms', 'quizDaily', 'quizRooms'].map(p => db.ref(p).once('value')));
@@ -904,8 +904,8 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
   } while (token);
 
   const snap = async p => (await db.ref(p).once('value')).val() || {};
-  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors, sources] = await Promise.all(
-    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors', 'sources'].map(snap));
+  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors, sources, starts] = await Promise.all(
+    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors', 'sources', 'starts'].map(snap));
 
   const days = []; for (let i = 13; i >= 0; i--) days.push(dayKey(now - i * D));
   const perDay = () => Object.fromEntries(days.map(d => [d, 0]));
@@ -954,14 +954,18 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
   Object.values(dailyRuns).forEach(day => Object.keys(day || {}).forEach(uid => act(uid, (day[uid] || {}).startedAt)));
   Object.values(quizDaily).forEach(day => Object.keys(day || {}).forEach(uid => act(uid, (day[uid] || {}).startedAt)));
   const bySrc = {};
+  const funnel = { total: 0, started: 0, via: {} }; // nouveaux joueurs → ont lancé une partie (et par quel bouton)
   let srcSince = 0;
   Object.keys(sources).forEach(uid => {
     const s = sources[uid] || {};
     if (!s.src || !s.at) return;
     if (!(created[uid] >= s.at - 36 * 3600e3)) return; // ancien joueur revenu : pas une nouvelle venue
     if (!srcSince || s.at < srcSince) srcSince = s.at;
-    const row = bySrc[s.src] = bySrc[s.src] || { src: s.src, total: 0, d1: 0, d7: 0, played: 0, back: 0, quiz: 0 };
+    const row = bySrc[s.src] = bySrc[s.src] || { src: s.src, total: 0, d1: 0, d7: 0, started: 0, played: 0, back: 0, quiz: 0 };
     row.total++;
+    const st = starts[uid];
+    if (st && st.via) { row.started++; funnel.started++; funnel.via[st.via] = (funnel.via[st.via] || 0) + 1; }
+    funnel.total++;
     if (s.at > now - D) row.d1++;
     if (s.at > now - 7 * D) row.d7++;
     if (s.page === 'quiz') row.quiz++;
@@ -988,6 +992,6 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
     errors: { d1: errs.filter(e => e.at > now - D).length, d7: errs.filter(e => e.at > now - 7 * D).length,
       last: errs.slice(0, 5).map(e => ({ at: e.at, page: e.page || '', screen: e.screen || '', msg: String(e.msg || '').slice(0, 160) })) },
     players: list,
-    sources: { since: srcSince, rows: srcRows }
+    sources: { since: srcSince, rows: srcRows, funnel }
   };
 });

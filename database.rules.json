@@ -212,6 +212,16 @@
       }
     },
 
+    "starts": {
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && !data.exists()",
+        ".validate": "newData.hasChildren(['via', 'at'])",
+        "via": { ".validate": "newData.isString() && newData.val().matches(/^(rapide|solo|defi|invitation|salon|classe|quiz)$/)" },
+        "at": { ".validate": "newData.val() === now" },
+        "$other": { ".validate": false }
+      }
+    },
+
     "pushSubs": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

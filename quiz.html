@@ -153,6 +153,9 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .lb small { display: block; font: 500 12px var(--mono); color: var(--muted); }
 .lb .sc { font: 800 17px var(--mono); }
 .lb-empty { justify-content: center; text-align: center; color: var(--muted); grid-template-columns: 1fr !important; }
+.back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; margin-bottom: -8px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
+.back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 .seg button { border: 0; background: none; border-radius: 9px; padding: 8px 4px; font: 700 14px var(--display); color: var(--muted); cursor: pointer; }
 .seg button.on { background: var(--ink); color: var(--paper); }
@@ -271,6 +274,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 <!-- CLASSEMENT -->
 <section id="ranking" class="screen" hidden>
   <div class="wrap">
+    <button type="button" class="back-top" id="bBackTop" aria-label="Retour">← Retour</button>
     <div><span class="label" id="bLabel">Quiz du jour</span><h2 style="font-size:30px" id="bTitle">Classement</h2></div>
     <div class="seg" id="bTabs"><button type="button" data-k="today" class="on">Aujourd’hui</button><button type="button" data-k="yesterday">Hier</button></div>
     <ol class="lb" id="bList"></ol>
@@ -344,7 +348,7 @@ function preload(qs, onProgress) {
 /* ---------- Provenance de la première visite (même règle que la course, voir index.html) ---------- */
 function recordSource(page) {
   try {
-    if (store.get('wd-src')) return;
+    if (store.get('wd-src') || navigator.webdriver) return; // navigateurs automatisés (tests, tournages) : pas comptés
     const q = new URLSearchParams(location.search);
     let src = (q.get('src') || q.get('utm_source') || '').toLowerCase();
     if (src === 'app' || src === 'rappel') src = '';
@@ -459,7 +463,17 @@ renderBest();
    Entre amis : horaire fixe calé sur l'heure du serveur (startAt + i × SLOT), pour tout le monde. */
 let G = null;
 function points(t) { return Math.max(100, Math.round(1000 - 900 * t / QDUR)); }
+// Mesure (comme la course) : première partie lancée par ce joueur, une seule fois.
+function markStart(via) {
+  try {
+    if (store.get('wd-started')) return;
+    if (navigator.webdriver) return; // tests automatiques : pas comptés
+    store.set('wd-started', via);
+    ready.then(() => db.ref('starts/' + uid).set({ via: via, at: firebase.database.ServerValue.TIMESTAMP })).catch(() => {});
+  } catch (e) {}
+}
 function startGame(opts) {
+  markStart('quiz');
   G = Object.assign({ i: -1, score: 0, res: [], locked: true, revealed: false }, opts);
   show('game');
   $('gLive').hidden = G.mode !== 'friends';
@@ -660,7 +674,7 @@ async function showBoard(which) {
 }
 $('dBoard').onclick = () => showBoard('today');
 $('board').onclick = () => showBoard('today');
-$('bBack').onclick = () => { show(G && G.over ? 'results' : 'home'); };
+$('bBack').onclick = $('bBackTop').onclick = () => { show(G && G.over ? 'results' : 'home'); };
 
 /* ---------- Entre amis ---------- */
 let R = null; // salon en cours : { code, ref, data }

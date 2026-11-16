@@ -102,6 +102,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; margin-bottom: -8px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
 .back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+/* Démarrage rapide (premier passage) */
+.quick { display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: var(--card); border: 2px solid var(--flag); box-shadow: 0 10px 30px rgba(255,90,54,.15); }
+.quick-btn { min-height: 64px; font-size: 22px; background: var(--flag); border-color: var(--flag); color: #fff; }
+.quick-txt { margin: 0; font-size: 16px; color: var(--muted); text-align: center; }
+.quick-txt b { color: var(--ink); }
+
 /* Stats de l'appli (administrateur) */
 #admin .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
 .ad-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
@@ -527,7 +533,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
       <a class="quiz-link" href="/quiz">🖼️ Nouveau : <b>WikiDuel Quiz</b> →</a>
     </div>
     <p class="pitch">Même page de départ, même cible. Seuls les liens de l'article comptent. Le premier arrivé gagne.</p>
-    <div class="route" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>
+    <div class="route" id="demoRoute" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>
+    <!-- Premier passage : une course facile en un geste (pseudo proposé automatiquement) -->
+    <div class="quick" id="quickBox" hidden>
+      <button id="quickBtn" class="btn quick-btn">▶ Jouer maintenant</button>
+      <p class="quick-txt" id="quickTxt"></p>
+    </div>
     <div class="challenge" id="challengeBox" hidden>
       <div class="ch-info">
         <span class="label">Défi reçu</span>
@@ -750,6 +761,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 <!-- CLASSEMENT -->
 <section id="ranking" class="screen" hidden>
   <div class="wrap">
+    <button type="button" id="rankBackTop" class="back-top" aria-label="Retour à l'accueil">← Retour</button>
     <div>
       <div class="label" id="lbLabel">Parties classées · Elo</div>
       <h2 class="big" id="lbTitle">Classement</h2>
@@ -1103,7 +1115,7 @@ $('statsBtn').onclick = () => { closeAccMenu(); showAdmin(); };
 // Pas de cookie ni de pistage : juste un mot (« insta », « google »…) lisible par le serveur seul.
 function recordSource(page) {
   try {
-    if (store.get('wd-src')) return;
+    if (store.get('wd-src') || navigator.webdriver) return; // navigateurs automatisés (tests, tournages) : pas comptés
     const q = new URLSearchParams(location.search);
     let src = (q.get('src') || q.get('utm_source') || '').toLowerCase();
     if (src === 'app' || src === 'rappel') src = ''; // appli installée, notification : des retours, pas une première venue
@@ -1124,6 +1136,44 @@ function recordSource(page) {
       .catch(e => { if (e && /permission/i.test(e.code || e.message || '')) store.set('wd-src', 'deja'); });
   } catch (e) {}
 }
+
+/* ---------- Premier passage : « Jouer maintenant » ---------- */
+// Nouveau visiteur (pas de pseudo, jamais joué, pas venu par une invitation) : une course facile en un geste.
+// Parcours en 2 clics, vérifiés sur Wikipédia, et absents des défis du jour programmés.
+const EASY = [['Jules César', 'Colisée'], ['Samouraï', 'Tokyo'], ['Vin', 'Tour Eiffel'], ['Tomate', 'Pizza'], ['Sushi', 'Samouraï']];
+const PSEUDO_ANIMAUX = ['Lynx', 'Renard', 'Chamois', 'Hibou', 'Loutre', 'Panda', 'Koala', 'Faucon', 'Castor', 'Marmotte', 'Dauphin', 'Tigre'];
+function isFirstVisit() {
+  const q = new URLSearchParams(location.search);
+  return !store.get('wd-name') && !store.get('wd-started') && !q.get('salon') && !q.get('defi') && !q.get('compte');
+}
+function setupQuickStart() {
+  if (!isFirstVisit()) return;
+  const pair = EASY[Math.floor(Math.random() * EASY.length)];
+  S.quickPair = { start: pair[0], target: pair[1] };
+  $('quickTxt').innerHTML = 'Va de <b>' + esc(pair[0]) + '</b> à <b>' + esc(pair[1]) + '</b> en cliquant uniquement sur les liens de l’article. 2 clics suffisent !';
+  $('quickBox').hidden = false; $('demoRoute').hidden = true;
+}
+$('quickBtn').onclick = async () => {
+  if (!$('name').value.trim()) {
+    const n = PSEUDO_ANIMAUX[Math.floor(Math.random() * PSEUDO_ANIMAUX.length)] + ' ' + (100 + Math.floor(Math.random() * 900));
+    $('name').value = n; store.set('wd-name', n);
+  }
+  $('quickBox').hidden = true; $('demoRoute').hidden = false;
+  S.solo = null; S.via = 'rapide'; S.firstRun = true;
+  await poolReady;
+  startSolo(S.quickPair || { start: EASY[0][0], target: EASY[0][1] });
+};
+// Mesure : quel bouton a lancé la toute première partie de ce joueur (une seule fois, sans pistage).
+function markStart(via) {
+  try {
+    if (store.get('wd-started')) return;
+    if (navigator.webdriver) return; // tests automatiques : pas comptés
+    store.set('wd-started', via);
+    $('quickBox').hidden = true; $('demoRoute').hidden = false;
+    ready.then(() => db.ref('starts/' + uid).set({ via: via, at: firebase.database.ServerValue.TIMESTAMP })).catch(() => {});
+  } catch (e) {}
+}
+setupQuickStart();
 
 /* ---------- Application installable et rappel du défi du jour ---------- */
 const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
@@ -1319,9 +1369,12 @@ function renderAdmin(d) {
         td('<span class="ad-bar" style="width:' + Math.round(70 * x.games / maxG) + 'px"></span>') + td(x.quiz, 1) + '</tr>')) + '</div>' +
     '<div class="ad-sec"><h3>Provenance des nouveaux joueurs</h3>' +
       (d.sources && d.sources.rows.length
-        ? table([['Provenance'], ['Total', 1], ['24 h', 1], ['7 j', 1], ['Ont joué', 1], ['Revenus', 1]],
+        ? (d.sources.funnel ? '<p style="margin:0;font:600 15px var(--display)">Démarrage : <b>' + d.sources.funnel.started + ' / ' + d.sources.funnel.total +
+              '</b> nouveaux ont lancé une partie (' + Math.round(100 * d.sources.funnel.started / Math.max(1, d.sources.funnel.total)) + ' %)' +
+              (Object.keys(d.sources.funnel.via).length ? ' — ' + Object.entries(d.sources.funnel.via).sort((a, b) => b[1] - a[1]).map(e => esc(e[0] === 'rapide' ? '« Jouer maintenant »' : e[0]) + ' ' + e[1]).join(', ') : '') + '</p>' : '') +
+          table([['Provenance'], ['Total', 1], ['24 h', 1], ['7 j', 1], ['Ont lancé', 1], ['Ont joué', 1], ['Revenus', 1]],
             d.sources.rows.map(x => '<tr>' + td('<b>' + esc(x.src) + '</b>' + (x.quiz ? ' <small style="color:var(--muted)">(' + x.quiz + ' par le quiz)</small>' : '')) +
-              td(x.total, 1) + td(x.d1, 1) + td(x.d7, 1) +
+              td(x.total, 1) + td(x.d1, 1) + td(x.d7, 1) + td(x.started || 0, 1) +
               td(x.played + ' <small style="color:var(--muted)">' + Math.round(100 * x.played / x.total) + ' %</small>', 1) +
               td(x.back + ' <small style="color:var(--muted)">' + Math.round(100 * x.back / x.total) + ' %</small>', 1) + '</tr>')) +
           '<p style="margin:0;color:var(--muted);font-size:13px">Depuis le ' + dd(d.sources.since) + '. « Revenus » = ont rejoué un autre jour que leur première visite. ' +
@@ -1454,7 +1507,7 @@ $('pfX').onclick = closeProfile;
 $('pfSheet').addEventListener('click', e => { if (e.target === $('pfSheet')) closeProfile(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pfSheet').hidden) closeProfile(); });
 window.addEventListener('popstate', () => { if (!$('pfSheet').hidden) $('pfSheet').hidden = true; });
-$('rankBack').onclick = () => show('home');
+$('rankBack').onclick = $('rankBackTop').onclick = () => show('home');
 
 // Elo des joueurs affichés (mis en cache).
 // Profil public des joueurs affichés (Elo + statut WikiDuel+), mis en cache.
@@ -1802,6 +1855,7 @@ function soloEmit() {
 function startSolo(pair, opts) {
   pair = pair || pickPair();
   opts = opts || {};
+  markStart(opts.daily ? 'defi' : (S.via || 'solo')); S.via = null;
   const round = S.solo ? S.solo.round + 1 : 1;
   S.me = { playerId: 'me', name: (store.get('wd-name') || 'Toi') };
   S.solo = { status: 'playing', start: pair.start, target: pair.target, round: round,
@@ -1815,6 +1869,10 @@ function soloEnd() {
   const p = S.solo.me;
   S.solo.status = 'done';
   S.solo.rec = p.finishedAt ? saveSoloRecord(S.solo, p.finishedAt - S.solo.startedAt, p.path.length - 1) : null;
+  if (S.firstRun) {  // première course du « Jouer maintenant » : on montre la suite
+    S.firstRun = false;
+    if (p.finishedAt) setTimeout(() => toast('🎉 Première course réussie !<small>Essaie le défi du jour, ou défie un ami avec le bouton WhatsApp.</small>', 6500), 900);
+  }
   saveSoloHistory(S.solo);
   if (S.solo.daily) finishDaily(S.solo);
   soloEmit();
@@ -2095,13 +2153,14 @@ function getName() {
 $('create').onclick = async () => {
   const name = getName(); if (!name) return;
   $('create').disabled = true;
-  try { const code = await createRoom(name, false); enterRoom({ code: code, name: name }); }
+  try { const code = await createRoom(name, false); markStart('salon'); enterRoom({ code: code, name: name }); }
   catch (e) { $('homeErr').textContent = e.message; }
   finally { $('create').disabled = !CONFIG_OK; }
 };
 $('createRanked').onclick = async () => {
   if (!S.google) { $('homeErr').textContent = 'Connecte-toi avec Google pour jouer en classé.'; return; }
   const name = getName(); if (!name) return;
+  markStart('classe');
   enterQueue(name);
 };
 
@@ -2185,7 +2244,7 @@ $('join').onclick = async () => {
   const code = $('codeIn').value.trim().toUpperCase();
   if (code.length !== 4) { $('homeErr').textContent = 'Le code fait 4 lettres.'; return; }
   $('join').disabled = true;
-  try { await joinRoom(code, name); await saveProfileName(name); enterRoom({ code: code, name: name }); }
+  try { await joinRoom(code, name); await saveProfileName(name); markStart('salon'); enterRoom({ code: code, name: name }); }
   catch (e) { $('homeErr').textContent = e.message; }
   finally { $('join').disabled = !CONFIG_OK; }
 };
@@ -2726,7 +2785,7 @@ $('chGo').onclick = () => {
   const c = S.challenge; if (!c) return;
   $('challengeBox').hidden = true; $('homeErr').textContent = '';
   const n = $('name').value.trim(); if (n) store.set('wd-name', n); // pour signer ton propre défi en retour
-  S.solo = null;
+  S.solo = null; S.via = 'invitation';
   startSolo({ start: c.start, target: c.target });
 };
 function renderChallengeResult(room) {
