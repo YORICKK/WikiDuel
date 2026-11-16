@@ -288,8 +288,9 @@ async function awardQuiz(uid) {
 }
 
 /* ===================== Marché : revente à la banque et enchères ===================== */
-// Prix de rachat par la banque : plus un badge est rare (peu de joueurs le possèdent), plus il vaut cher.
-const bankPrice = owners => Math.max(5, Math.round(60 / (1 + Math.max(0, (owners || 1) - 1) / 2)));
+// Prix de rachat par la banque : 10 Liens par exemplaire, quel que soit le badge (la rareté se joue aux enchères).
+const BANK_PRICE = 10;
+const bankPrice = () => BANK_PRICE;
 const levelOf = xp => { let n = 0, need = 100, cur = Math.max(0, xp || 0); while (cur >= need) { cur -= need; n++; need += 50; } return n; };
 const AUCTION_FEE = 0.05, AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24, 48], SNIPE_MS = 5 * 60 * 1000;
 // Marché : compte Google et niveau 2 minimum (contre les comptes invités créés en série).
@@ -307,8 +308,7 @@ exports.sellBadge = onCall({ region: 'europe-west1' }, async req => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
   const uid = req.auth.uid, key = req.data && req.data.key, count = Math.floor((req.data && req.data.count) || 1);
   if (!validKey(key) || !(count >= 1 && count <= 100)) throw new HttpsError('invalid-argument', 'Demande invalide.');
-  const owners = ((await db.ref('badgeOwners/' + key + '/owners').once('value')).val()) || 1;
-  const price = bankPrice(owners);
+  const price = bankPrice();
   const r = await removeCopies(uid, key, count);
   if (!r.ok) throw new HttpsError('failed-precondition', 'Tu n’as pas assez d’exemplaires de ce badge.');
   const total = price * count;
