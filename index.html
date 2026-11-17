@@ -472,7 +472,18 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .toast small { display: block; font: 600 13px var(--display); opacity: .8; }
 
 /* Badges */
-#badges .wrap, #market .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
+.ach-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ach-item { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.ach-item.done { border-color: var(--ok); }
+.ach-item.ready { border: 2px solid var(--flag); }
+.ach-emo { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 26px; background: var(--paper); }
+.ach-item b { font: 800 16px/1.2 var(--display); }
+.ach-item small { display: block; font: 500 12px var(--display); color: var(--muted); }
+.ach-bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 6px; }
+.ach-bar i { display: block; height: 100%; background: var(--flag); border-radius: 99px; }
+.ach-item.done .ach-bar i { background: var(--ok); }
+.ach-stars { font: 700 14px var(--display); letter-spacing: 1px; white-space: nowrap; }
+#badges .wrap, #market .wrap, #ach .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
 .bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
 .bd { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); cursor: pointer; text-align: center; }
 .bd:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
@@ -613,6 +624,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
         <div class="menu" id="accMenu" role="menu" hidden>
           <button type="button" role="menuitem" id="badgesBtn">🏅 Mes badges</button>
           <button type="button" role="menuitem" id="marketBtn">🛒 Marché</button>
+          <button type="button" role="menuitem" id="achBtn">🏆 Succès</button>
           <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
           <button type="button" role="menuitem" id="installBtn" hidden>📲 Installer l'appli</button>
           <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
@@ -768,6 +780,20 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <ul class="bd-dates" id="bdDates"></ul>
   </div>
 </div>
+
+<!-- SUCCÈS (collections de badges par catégorie) -->
+<section id="ach" class="screen" hidden>
+  <div class="wrap">
+    <button type="button" id="achBackTop" class="back-top" aria-label="Retour">← Retour</button>
+    <div>
+      <div class="label" id="achCount">Succès</div>
+      <h2 class="big">Succès</h2>
+    </div>
+    <p style="margin:0;color:var(--muted);font-size:15px">Collectionne des badges d'une même famille (pays, consoles, animaux…) pour débloquer des paliers. Chaque palier rapporte des <b>Liens 🔗</b> : 10, 25, 50 puis 100.</p>
+    <button type="button" class="btn" id="achClaim" hidden></button>
+    <ul class="ach-list" id="achList"></ul>
+  </div>
+</section>
 
 <!-- MARCHÉ (enchères entre joueurs) -->
 <section id="market" class="screen" hidden>
@@ -1024,7 +1050,7 @@ function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
 function show(id) {
-  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium', 'admin', 'badges', 'market'].forEach(s => $(s).hidden = s !== id);
+  ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium', 'admin', 'badges', 'market', 'ach'].forEach(s => $(s).hidden = s !== id);
   if (id !== 'market' && S.mkRef) { S.mkRef.off(); S.mkRef = null; } // arrête le suivi du marché en quittant l'écran
   window.scrollTo(0, 0);
   if (id === 'home') refreshDaily(); // met à jour la carte du défi du jour au retour à l'accueil
@@ -1308,9 +1334,9 @@ renderAppMenu();
 const bankPrice = () => 10;
 const call = name => firebase.app().functions('europe-west1').httpsCallable(name);
 const liens = () => (S.profile && S.profile.liens) || 0;
-const canMarket = () => S.google && levelOf(S.profile && S.profile.xp).n >= 2;
+const canMarket = () => S.google && levelOf(S.profile && S.profile.xp).n >= 1;
 const marketGateText = () => !S.google ? 'Le marché est réservé aux comptes Google : connecte-toi depuis l’accueil.'
-  : 'Le marché s’ouvre au niveau 2 (tu es niveau ' + levelOf(S.profile && S.profile.xp).n + '). Joue encore un peu !';
+  : 'Le marché s’ouvre au niveau 1 (tu es niveau ' + levelOf(S.profile && S.profile.xp).n + '). Joue encore un peu !';
 let OWNERS = {};
 async function loadOwners() { try { OWNERS = (await db.ref('badgeOwners').once('value')).val() || {}; } catch (e) {} }
 const ownersOf = key => (OWNERS[key] && OWNERS[key].owners) || 1;
@@ -1500,6 +1526,63 @@ $('marketBtn').onclick = () => { closeAccMenu(); showMarket('open'); };
 $('bdMarket').onclick = () => showMarket('open');
 $('mkMine').onclick = () => showBadges();
 $('mkBackTop').onclick = () => show('home');
+
+/* ---------- Succès (familles de badges) ---------- */
+// Même liste que le serveur (functions/achievements.js), qui vérifie et verse les récompenses.
+const ACH = [
+  { id: 'collection', cat: null, emoji: '🏅', name: 'Collectionneur', what: 'badges différents', tiers: [10, 50, 100, 250] },
+  { id: 'pays', cat: 'pays', emoji: '🌍', name: 'Globe-trotter', what: 'pays', tiers: [3, 10, 25] },
+  { id: 'ville', cat: 'ville', emoji: '🏙️', name: 'Citadin', what: 'villes', tiers: [3, 10, 25] },
+  { id: 'jeuvideo', cat: 'jeuvideo', emoji: '🎮', name: 'Gamer', what: 'consoles ou jeux vidéo', tiers: [2, 4, 8] },
+  { id: 'personnalite', cat: 'personnalite', emoji: '👤', name: 'Carnet d’adresses', what: 'personnalités', tiers: [5, 15, 30] },
+  { id: 'artiste', cat: 'artiste', emoji: '🎭', name: 'Fan d’artistes', what: 'artistes (peintres, musiciens, écrivains…)', tiers: [3, 8, 15] },
+  { id: 'sport', cat: 'sport', emoji: '⚽', name: 'Sportif', what: 'sports, clubs ou sportifs', tiers: [3, 8, 15] },
+  { id: 'vivant', cat: 'vivant', emoji: '🐾', name: 'Naturaliste', what: 'animaux ou plantes', tiers: [3, 10, 25] },
+  { id: 'nature', cat: 'nature', emoji: '🏔️', name: 'Explorateur', what: 'montagnes, fleuves, lacs, îles…', tiers: [3, 8, 15] },
+  { id: 'espace', cat: 'espace', emoji: '🪐', name: 'Astronaute', what: 'astres (planètes, étoiles, lunes…)', tiers: [2, 5, 8] },
+  { id: 'oeuvre', cat: 'oeuvre', emoji: '🎨', name: 'Mécène', what: 'œuvres (tableaux, films, livres, chansons…)', tiers: [2, 5, 10] },
+  { id: 'histoire', cat: 'histoire', emoji: '🏛️', name: 'Historien', what: 'pages d’histoire', tiers: [3, 10, 20] },
+  { id: 'sciences', cat: 'sciences', emoji: '🔬', name: 'Savant', what: 'pages de sciences', tiers: [3, 10, 20] }
+];
+const ACH_REWARDS = [10, 25, 50, 100];
+async function showAch() {
+  show('ach');
+  $('achList').innerHTML = '<li class="lb-empty">Chargement…</li>'; $('achClaim').hidden = true;
+  try {
+    await ready;
+    const [snap] = await Promise.all([db.ref('badges/' + uid).once('value'), loadOwners()]);
+    const own = snap.val() || {}, keys = Object.keys(own).filter(k => own[k] && own[k].n > 0);
+    const claimed = (S.profile && S.profile.ach) || {};
+    let ready2 = 0, unlocked = 0;
+    const rows = ACH.map(a => {
+      const n = a.cat ? keys.filter(k => String((OWNERS[k] || {}).c || '').split(',').includes(a.cat)).length : keys.length;
+      const reached = a.tiers.filter(t => n >= t).length, got = claimed[a.id] || 0;
+      const next = a.tiers[reached], prev = reached ? a.tiers[reached - 1] : 0;
+      ready2 += ACH_REWARDS.slice(got, reached).reduce((s, x) => s + x, 0); unlocked += reached;
+      const pct = next ? Math.round(100 * (n - prev) / (next - prev)) : 100;
+      const stars = a.tiers.map((t, i) => i < reached ? '★' : '☆').join('');
+      return '<li class="ach-item' + (reached > got ? ' ready' : next ? '' : ' done') + '"><span class="ach-emo" aria-hidden="true">' + a.emoji + '</span><div style="min-width:0">' +
+        '<b>' + esc(a.name) + '</b><small>' + n + ' ' + esc(a.what) + (next ? ' · prochain palier : ' + next : ' · tous les paliers atteints !') + '</small>' +
+        '<div class="ach-bar" aria-hidden="true"><i style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div></div>' +
+        '<span class="ach-stars" aria-label="' + reached + ' paliers sur ' + a.tiers.length + '">' + stars + '</span></li>';
+    });
+    $('achList').innerHTML = rows.join('');
+    $('achCount').textContent = unlocked + ' palier' + (unlocked > 1 ? 's' : '') + ' débloqué' + (unlocked > 1 ? 's' : '');
+    $('achClaim').hidden = !ready2;
+    $('achClaim').textContent = '🎁 Récupérer ' + ready2 + ' 🔗';
+  } catch (e) { $('achList').innerHTML = '<li class="lb-empty">Succès indisponibles.</li>'; }
+}
+$('achClaim').onclick = async () => {
+  $('achClaim').disabled = true;
+  try {
+    const r = await call('claimAchievements')({});
+    if (r.data.total) toast('🏆 +' + r.data.total + ' 🔗<small>' + r.data.gained.map(g => esc(g.name) + ' ' + '★'.repeat(g.tier)).join(' · ') + '</small>', 5000);
+    setTimeout(showAch, 600);
+  } catch (e) { toast('Récupération impossible<small>' + esc(errText(e)) + '</small>'); }
+  $('achClaim').disabled = false;
+};
+$('achBtn').onclick = () => { closeAccMenu(); showAch(); };
+$('achBackTop').onclick = () => show('home');
 
 /* ---------- Face-à-face (début d'une partie classée) ---------- */
 // Pendant les premières secondes du compte à rebours : les deux profils entrent en confrontation.
@@ -1701,6 +1784,7 @@ async function showProfile(id) {
       stat((v.dailyStreak || 0) + (v.dailyBest > (v.dailyStreak || 0) ? '<small> / ' + v.dailyBest + '</small>' : ''), 'série au défi du jour' + (v.dailyBest > (v.dailyStreak || 0) ? ' (record)' : '')) +
       stat('🏅 ' + (v.badges || 0), 'badges différents') +
       stat('🔗 ' + (v.liens || 0), 'Liens') +
+      stat('🏆 ' + (v.achTotal || 0), 'paliers de succès') +
     '</div>' + (v.premium === true ? '<p class="theme-note">' + DIA + ' Membre WikiDuel+</p>' : '') +
     (v.avatar && v.avatar.img ? '<p class="pf-cr">Photo de profil : badge « ' + esc(v.avatar.t) + ' » · ' + esc(v.avatar.cr || 'Wikimedia Commons') +
       (v.avatar.src ? ' · <a href="' + esc(v.avatar.src) + '" target="_blank" rel="noopener">source</a>' : '') + '</p>' : '');

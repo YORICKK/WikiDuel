@@ -268,8 +268,16 @@
           "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
           "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
           "m": { ".validate": "newData.val() === 'amis'" },
+          "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
           "$other": { ".validate": false }
         }
+      }
+    },
+
+    "quizWeek": {
+      "$week": {
+        ".read": true,
+        ".indexOn": ["total"]
       }
     },
 

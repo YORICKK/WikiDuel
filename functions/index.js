@@ -238,6 +238,7 @@ const pairPrint = (a, b) => crypto.createHash('sha256').update(norm(a) + '→' +
 // que l'on peut revendre à la banque ou mettre aux enchères (voir « Marché » plus bas).
 // Liens 🔗 : monnaie du jeu, purement fictive (ni achetable, ni convertible en argent réel).
 const XP = { course: 25, rankedWin: 10, daily: 15, quiz: 15 };
+const { ACH, REWARDS, classifyTitles } = require('./achievements');
 const LIENS = { course: 2, rankedWin: 5, daily: 3, quiz: 1 };
 const badgeKey = title => crypto.createHash('sha256').update(norm(title)).digest('hex').slice(0, 12);
 // Ajoute un exemplaire d'un badge (gagné ou acheté). Tient à jour le nombre de badges distincts et la rareté.
@@ -252,7 +253,13 @@ async function addCopy(uid, key, title, when) {
   });
   if (isNew) {
     await db.ref('users/' + uid + '/badges').transaction(n => (n || 0) + 1);
-    await db.ref('badgeOwners/' + key).transaction(o => ({ t: (o && o.t) || String(title).slice(0, 200), owners: ((o && o.owners) || 0) + 1 }));
+    const res = await db.ref('badgeOwners/' + key).transaction(o => Object.assign({}, o || {}, { t: (o && o.t) || String(title).slice(0, 200), owners: ((o && o.owners) || 0) + 1 }));
+    // Nouveau badge dans le jeu : on le classe tout de suite (pays, console, animal…) pour les Succès.
+    const o = res.snapshot.val() || {};
+    if (o.c === undefined) {
+      try { const c = (await classifyTitles([o.t]))[o.t] || []; await db.ref('badgeOwners/' + key + '/c').set(c.join(',')); }
+      catch (e) { logger.warn('Badge non classé (sera repris)', { key, error: e.message }); }
+    }
   }
 }
 // Retire des exemplaires (vente, mise aux enchères). Échoue si le joueur n'en a pas assez.
@@ -284,11 +291,75 @@ async function award(uid, xp, target, at, liens) {
   if (target) await addCopy(uid, badgeKey(target), target, at);
 }
 // Quiz : 15 XP par partie terminée (une partie toutes les 45 s au plus, contre les écritures en rafale).
-async function awardQuiz(uid) {
+async function awardQuiz(uid, score, name) {
   let ok = false;
   await db.ref('users/' + uid + '/quizLastAt').transaction(t => { ok = !t || Date.now() - t > 45000; return ok ? Date.now() : t; });
-  if (ok) await award(uid, XP.quiz, null, null, LIENS.quiz);
+  if (!ok) return;
+  await award(uid, XP.quiz, null, null, LIENS.quiz);
+  await quizWeekAdd(uid, score, name);
 }
+// Classement de la semaine du quiz (lundi → dimanche, heure suisse) : total des points, meilleur score, parties.
+function weekKey(t) {
+  const d = new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date(t)) + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);       // jeudi de la semaine (règle ISO)
+  const y = d.getUTCFullYear(), jan4 = new Date(Date.UTC(y, 0, 4));
+  const w = 1 + Math.round(((d - jan4) / 864e5 - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
+  return y + '-W' + String(w).padStart(2, '0');
+}
+async function quizWeekAdd(uid, score, name) {
+  score = Math.max(0, Math.min(10000, Math.floor(score || 0)));
+  if (!name) name = (await db.ref('users/' + uid + '/name').once('value')).val();
+  await db.ref('quizWeek/' + weekKey(Date.now()) + '/' + uid).transaction(v => {
+    v = v || {};
+    v.games = (v.games || 0) + 1; v.total = (v.total || 0) + score; v.best = Math.max(v.best || 0, score);
+    v.name = String(name || v.name || 'Joueur').slice(0, 16);
+    return v;
+  });
+}
+
+/* ===================== Succès (catégories de badges) ===================== */
+// Toutes les heures : classe les badges qui ne le sont pas encore (rattrapage, et si Wikidata était indisponible).
+exports.classifyBadges = onSchedule({ schedule: 'every 60 minutes', region: 'europe-west1', timeoutSeconds: 300 }, async () => {
+  if (!db) db = admin.database();
+  const all = (await db.ref('badgeOwners').once('value')).val() || {};
+  const todo = Object.keys(all).filter(k => all[k] && all[k].t && all[k].c === undefined).slice(0, 400);
+  if (!todo.length) return;
+  const cats = await classifyTitles(todo.map(k => all[k].t));
+  const upd = {}; todo.forEach(k => { upd['badgeOwners/' + k + '/c'] = (cats[all[k].t] || []).join(','); });
+  await db.ref().update(upd);
+  logger.info('Badges classés', { n: todo.length });
+});
+// Compte, pour chaque succès, le nombre de badges différents du joueur dans la catégorie.
+async function achievementCounts(uid) {
+  const [mine, owners] = await Promise.all([db.ref('badges/' + uid).once('value'), db.ref('badgeOwners').once('value')]);
+  const own = mine.val() || {}, cats = owners.val() || {};
+  const keys = Object.keys(own).filter(k => own[k] && own[k].n > 0);
+  const counts = {};
+  ACH.forEach(a => { counts[a.id] = a.cat ? keys.filter(k => String((cats[k] || {}).c || '').split(',').includes(a.cat)).length : keys.length; });
+  return counts;
+}
+// Récupérer les récompenses des paliers atteints (tous les succès d'un coup).
+exports.claimAchievements = onCall({ region: 'europe-west1' }, async req => {
+  if (!db) db = admin.database();
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
+  const uid = req.auth.uid, counts = await achievementCounts(uid);
+  let total = 0; const gained = [];
+  for (const a of ACH) {
+    const reached = a.tiers.filter(t => counts[a.id] >= t).length;
+    let from = 0;
+    const res = await db.ref('users/' + uid + '/ach/' + a.id).transaction(cur => { from = cur || 0; return reached > from ? reached : undefined; });
+    if (!res.committed || reached <= from) continue;
+    const reward = REWARDS.slice(from, reached).reduce((s, x) => s + x, 0);
+    total += reward; gained.push({ id: a.id, name: a.name, tier: reached, reward });
+  }
+  if (total > 0) {
+    await db.ref('users/' + uid + '/liens').transaction(v => (v || 0) + total);
+    const ach = (await db.ref('users/' + uid + '/ach').once('value')).val() || {};
+    await db.ref('users/' + uid + '/achTotal').set(Object.values(ach).reduce((s, x) => s + (x || 0), 0));
+    logger.info('Succès récupérés', { uid, total, gained: gained.map(g => g.id + ':' + g.tier) });
+  }
+  return { total, gained, counts };
+});
 
 /* ===================== Marché : revente à la banque et enchères ===================== */
 // Prix de rachat par la banque : 10 Liens par exemplaire, quel que soit le badge (la rareté se joue aux enchères).
@@ -296,11 +367,11 @@ const BANK_PRICE = 10;
 const bankPrice = () => BANK_PRICE;
 const levelOf = xp => { let n = 0, need = 100, cur = Math.max(0, xp || 0); while (cur >= need) { cur -= need; n++; need += 50; } return n; };
 const AUCTION_FEE = 0.05, AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24], SNIPE_MS = 5 * 60 * 1000;
-// Marché : compte Google et niveau 2 minimum (contre les comptes invités créés en série).
+// Marché : compte Google et niveau 1 minimum (contre les comptes invités créés en série).
 async function requireMarket(req) {
   const uid = requireGoogle(req);
   const u = (await db.ref('users/' + uid).once('value')).val() || {};
-  if (levelOf(u.xp) < 2) throw new HttpsError('failed-precondition', 'Le marché s’ouvre au niveau 2.');
+  if (levelOf(u.xp) < 1) throw new HttpsError('failed-precondition', 'Le marché s’ouvre au niveau 1.');
   return { uid, name: String(u.name || 'Joueur').slice(0, 16) };
 }
 const validKey = k => typeof k === 'string' && /^[a-f0-9]{12}$/.test(k);
@@ -429,11 +500,14 @@ exports.closeAuctions = onSchedule({ schedule: 'every 5 minutes', region: 'europ
 });
 exports.quizSoloXp = onValueCreated(Object.assign({ ref: '/quizSolo/{uid}/{id}' }, DB_OPTS), async event => {
   if (!db) db = admin.database();
-  await awardQuiz(event.params.uid);
+  const v = event.data.val() || {};
+  await awardQuiz(event.params.uid, v.score, v.name);
 });
 exports.quizDailyXp = onValueCreated(Object.assign({ ref: '/quizDaily/{date}/{uid}/res' }, DB_OPTS), async event => {
   if (!db) db = admin.database();
-  await awardQuiz(event.params.uid);
+  const v = event.data.val() || {};
+  const name = (await db.ref('quizDaily/' + event.params.date + '/' + event.params.uid + '/name').once('value')).val();
+  await awardQuiz(event.params.uid, v.score, name);
 });
 exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{key}' }, DB_OPTS), async event => {
   if (!db) db = admin.database();

@@ -170,7 +170,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; margin: 0 0 6px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
 .back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
 .seg button { border: 0; background: none; border-radius: 9px; padding: 8px 4px; font: 700 14px var(--display); color: var(--muted); cursor: pointer; }
 .seg button.on { background: var(--ink); color: var(--paper); }
 @media (prefers-reduced-motion: reduce) { .tile { transition: none; } }
@@ -312,7 +312,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
   <div class="wrap">
     <button type="button" class="back-top" id="bBackTop" aria-label="Retour">← Retour</button>
     <div><span class="label" id="bLabel">Quiz du jour</span><h2 style="font-size:30px" id="bTitle">Classement</h2></div>
-    <div class="seg" id="bTabs"><button type="button" data-k="today" class="on">Aujourd’hui</button><button type="button" data-k="yesterday">Hier</button></div>
+    <div class="seg" id="bTabs"><button type="button" data-k="today" class="on">Aujourd’hui</button><button type="button" data-k="yesterday">Hier</button><button type="button" data-k="week">Semaine</button></div>
     <ol class="lb" id="bList"></ol>
     <button class="btn ghost" id="bBack">Retour</button>
   </div>
@@ -630,12 +630,12 @@ function finish() {
   if (G.mode === 'solo') {
     const b = store.get('wq-best') || 0; G.record = G.score > b; if (G.record) store.set('wq-best', G.score); renderBest();
     // Compteur des parties solo terminées (statistiques d'utilisation).
-    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok }).catch(() => {});
+    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok, name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
   }
   if (G.mode === 'daily') saveDaily(ok, marks);
   // Partie entre amis terminée : comptée aussi (elle rapporte de l'XP, comme le solo).
   if (G.mode === 'friends' && G.res.some(r => r)) {
-    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: Math.min(10000, G.score), ok: ok, m: 'amis' }).catch(() => {});
+    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: Math.min(10000, G.score), ok: ok, m: 'amis', name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
   }
   showResults();
 }
@@ -729,8 +729,10 @@ async function showBoard(which) {
   const d = zurichDate(serverNow() - (which === 'yesterday' ? 864e5 : 0));
   [...$('bTabs').children].forEach(b => b.classList.toggle('on', b.dataset.k === which));
   $('bTabs').onclick = e => { const b = e.target.closest('button[data-k]'); if (b && b.dataset.k !== which) showBoard(b.dataset.k); };
-  $('bLabel').textContent = 'Quiz du jour n°' + dailyNum(d) + ' · ' + dateLabel(d);
   $('bList').innerHTML = '<li class="lb-empty">Chargement…</li>';
+  if (which === 'week') return showWeekBoard();
+  $('bTitle').textContent = 'Classement';
+  $('bLabel').textContent = 'Quiz du jour n°' + dailyNum(d) + ' · ' + dateLabel(d);
   try {
     await ready;
     const snap = await db.ref('quizDaily/' + d).orderByChild('score').limitToLast(100).once('value');
@@ -740,6 +742,32 @@ async function showBoard(which) {
     $('bList').innerHTML = rows.length ? rows.map((r, i) => '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span><span><strong>' +
       esc(r.name) + (r.id === uid ? ' (toi)' : '') + '</strong><small>' + r.res.ok + '/10 · ' + marksEmoji(r.res.marks) + '</small></span><span class="sc">' + fmtPts(r.res.score) + '</span></li>').join('')
       : '<li class="lb-empty">Personne n’a encore joué ce quiz.</li>';
+  } catch (e) { $('bList').innerHTML = '<li class="lb-empty">Classement indisponible.</li>'; }
+}
+// Classement de la semaine (lundi → dimanche) : total des points de toutes les parties (solo, amis, quiz du jour).
+function weekKey(t) {
+  const d = new Date(zurichDate(t) + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7) + 3);
+  const y = d.getUTCFullYear(), jan4 = new Date(Date.UTC(y, 0, 4));
+  const w = 1 + Math.round(((d - jan4) / 864e5 - 3 + ((jan4.getUTCDay() + 6) % 7)) / 7);
+  return y + '-W' + String(w).padStart(2, '0');
+}
+async function showWeekBoard() {
+  const now = serverNow(), wk = weekKey(now);
+  const z = new Date(zurichDate(now) + 'T12:00:00Z'), dow = (z.getUTCDay() + 6) % 7;
+  const mon = new Date(z.getTime() - dow * 864e5), sun = new Date(mon.getTime() + 6 * 864e5);
+  const f = x => x.toLocaleDateString('fr-CH', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  $('bTitle').textContent = 'Classement de la semaine';
+  $('bLabel').textContent = 'Du ' + f(mon) + ' au ' + f(sun) + ' · fin dans ' + (7 - dow) + ' j';
+  try {
+    await ready;
+    const snap = await db.ref('quizWeek/' + wk).orderByChild('total').limitToLast(100).once('value');
+    const rows = [];
+    snap.forEach(c => { const v = c.val(); if (v && v.total) rows.push(Object.assign({ id: c.key }, v)); });
+    rows.sort((a, b) => b.total - a.total || b.best - a.best);
+    $('bList').innerHTML = rows.length ? rows.map((r, i) => '<li' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span><span><strong>' +
+      esc(r.name || 'Joueur') + (r.id === uid ? ' (toi)' : '') + '</strong><small>' + r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · meilleur score ' + fmtPts(r.best) + '</small></span><span class="sc">' + fmtPts(r.total) + '</span></li>').join('')
+      : '<li class="lb-empty">Personne n’a encore joué cette semaine. Lance une partie !</li>';
   } catch (e) { $('bList').innerHTML = '<li class="lb-empty">Classement indisponible.</li>'; }
 }
 $('dBoard').onclick = () => showBoard('today');
