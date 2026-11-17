@@ -249,6 +249,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 /* Discret : carte neutre, petite, sous les boutons de jeu */
 .daily { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
 .d-head { display: flex; align-items: baseline; gap: 8px; }
+.daily.themed { border: 2px solid var(--flag); background: linear-gradient(135deg, color-mix(in srgb, var(--flag) 10%, var(--card)), var(--card)); }
+.d-theme { font: 800 16px var(--display); color: var(--flag); }
 .d-num { color: var(--muted); }
 .d-date { margin-left: auto; font: 500 12px var(--display); color: var(--muted); }
 .d-route { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font: 700 16px/1.3 var(--display); }
@@ -645,6 +647,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
           <span class="label">Défi du jour <span class="d-num" id="dNum"></span></span>
           <span class="d-date" id="dDate"></span>
         </div>
+        <div class="d-theme" id="dTheme" hidden></div>
         <div class="d-route"><span id="dStart"></span><span class="d-arrow" aria-hidden="true">→</span><span id="dTarget"></span></div>
         <div class="d-me" id="dMe">Même parcours pour tous, une seule tentative.</div>
         <div class="d-actions">
@@ -2118,9 +2121,9 @@ async function loadDaily() {
   try { await ready; } catch (e) { return; }
   const key = zurichDate(serverNow());
   const val = p => db.ref('daily/' + key + '/' + p).once('value').then(s => s.val()).catch(() => null);
-  const [opensAt, n] = await Promise.all([val('opensAt'), val('n')]);
+  const [opensAt, n, theme] = await Promise.all([val('opensAt'), val('n'), val('theme')]);
   if (!opensAt || opensAt > serverNow()) { S.daily = null; $('dailyBox').hidden = true; return; }
-  S.daily = { key: key, n: n };
+  S.daily = { key: key, n: n, theme: theme };
   const [run, score] = await Promise.all([
     db.ref('dailyRuns/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null),
     db.ref('dailyScores/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null)
@@ -2155,6 +2158,10 @@ function renderDailyCard() {
   $('dailyBox').hidden = false;
   $('dDate').textContent = dateLabel(d.key);
   $('dNum').textContent = d.n ? '· n°' + d.n : '';
+  // Jour thématique (Noël, Halloween, Nouvel An…) : bandeau spécial sur la carte.
+  $('dTheme').hidden = !d.theme;
+  if (d.theme) $('dTheme').textContent = (d.theme.emoji || '') + ' Spécial ' + d.theme.name;
+  $('dailyBox').classList.toggle('themed', !!d.theme);
   const run = d.run, sc = d.score;
   const known = !!(d.start && d.target);
   $('dStart').textContent = known ? d.start : 'Parcours mystère, révélé au lancement';

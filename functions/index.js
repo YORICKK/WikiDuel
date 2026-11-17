@@ -757,6 +757,134 @@ exports.dailyGhosts = onSchedule({ schedule: 'every day 00:10', timeZone: 'Europ
   }
 });
 
+/* ===================== Défis du jour automatiques (et jours thématiques) ===================== */
+// Chaque soir, le serveur s'assure que les défis de demain et d'après-demain existent, et les crée sinon.
+// Un parcours n'est retenu que s'il est faisable en 2 clics (vérifié lien par lien sur Wikipédia),
+// sans être trop évident (cible pas sur la page de départ, peu de « ponts »), et sans pages déjà vues récemment.
+const THEME_DAYS = {
+  '10-31': { name: 'Halloween', emoji: '🎃', targets: ['Halloween', 'Citrouille', 'Vampire', 'Sorcellerie', 'Fantôme', 'Dracula', 'Loup-garou', 'Zombie', 'Squelette humain', 'Chauve-souris'] },
+  '12-06': { name: 'Saint-Nicolas', emoji: '🎅', targets: ['Nicolas de Myre', 'Père Fouettard', 'Pain d\'épices', 'Mandarine'] },
+  '12-24': { name: 'Réveillon de Noël', emoji: '🎄', targets: ['Noël', 'Père Noël', 'Sapin de Noël', 'Renne', 'Bûche de Noël', 'Nativité', 'Crèche de Noël', 'Calendrier de l\'Avent'] },
+  '12-25': { name: 'Noël', emoji: '🎄', targets: ['Noël', 'Père Noël', 'Sapin de Noël', 'Renne', 'Nativité', 'Marché de Noël', 'Cadeau', 'Gui (plante)'] },
+  '12-31': { name: 'Saint-Sylvestre', emoji: '🎆', targets: ['Feu d\'artifice', 'Champagne (AOC)', 'Saint-Sylvestre', 'Réveillon', 'Minuit'] },
+  '01-01': { name: 'Nouvel An', emoji: '🥂', targets: ['Nouvel An', 'Calendrier grégorien', 'Feu d\'artifice', 'Janvier', 'Janus'] },
+  '02-14': { name: 'Saint-Valentin', emoji: '❤️', targets: ['Saint-Valentin', 'Amour', 'Cupidon', 'Rose', 'Roméo et Juliette'] },
+  '03-14': { name: 'Journée de Pi', emoji: 'π', targets: ['Pi', 'Archimède', 'Cercle', 'Nombre irrationnel'] },
+  '04-01': { name: 'Poisson d\'avril', emoji: '🐟', targets: ['Poisson d\'avril', 'Canular', 'Humour'] },
+  '05-04': { name: 'Star Wars Day', emoji: '✨', targets: ['Star Wars', 'Dark Vador', 'Sabre laser', 'Yoda'] },
+  '06-21': { name: 'Fête de la musique', emoji: '🎵', targets: ['Fête de la musique', 'Musique', 'Solstice', 'Orchestre symphonique'] },
+  '07-14': { name: '14 Juillet', emoji: '🇫🇷', targets: ['Prise de la Bastille', 'Révolution française', 'Fête nationale française', 'Marseillaise'] },
+  '08-01': { name: 'Fête nationale suisse', emoji: '🇨🇭', targets: ['Fête nationale suisse', 'Pacte fédéral', 'Guillaume Tell', 'Grütli', 'Cervin'] }
+};
+// Pâques (date variable) : calcul grégorien classique.
+function easterDate(y) {
+  const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  return String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+}
+function themeOf(date) {
+  const md = date.slice(5);
+  if (md === easterDate(+date.slice(0, 4))) return { name: 'Pâques', emoji: '🐣', targets: ['Pâques', 'Œuf de Pâques', 'Lapin de Pâques', 'Chocolat', 'Cloches de Pâques'] };
+  return THEME_DAYS[md] || null;
+}
+function zurichMidnightOf(date) {
+  const [y, m, d] = date.split('-').map(Number);
+  const guess = Date.UTC(y, m - 1, d);
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Zurich', hour: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(guess));
+  return guess - (+parts.find(p => p.type === 'hour').value) * 3600e3;
+}
+const addDays = (date, n) => new Date(Date.parse(date + 'T12:00:00Z') + n * 864e5).toISOString().slice(0, 10);
+const wikiGet = async params => (await fetch(WIKI + '?' + new URLSearchParams(Object.assign({ format: 'json', formatversion: '2' }, params)), { headers: { 'User-Agent': UA } })).json();
+let VITAL = null;
+async function vitalPool() {
+  if (VITAL) return VITAL;
+  const out = []; let cont = {};
+  for (let i = 0; i < 12; i++) {
+    const j = await wikiGet(Object.assign({ action: 'query', prop: 'links', plnamespace: '0', pllimit: 'max', titles: 'Wikipédia:Articles vitaux' }, cont));
+    ((j.query.pages[0] || {}).links || []).forEach(l => out.push(l.title));
+    if (!j.continue) break; cont = { plcontinue: j.continue.plcontinue };
+  }
+  VITAL = out.filter(t => !/^(Liste |Chronologie )/.test(t));
+  return VITAL;
+}
+async function pageLinks(title) {
+  const out = []; let cont = {}, canon = title;
+  for (let i = 0; i < 8; i++) {
+    const j = await wikiGet(Object.assign({ action: 'query', prop: 'links', plnamespace: '0', pllimit: 'max', redirects: '1', titles: title }, cont));
+    const p = j.query.pages[0] || {}; if (p.missing) return null;
+    canon = p.title; (p.links || []).forEach(l => out.push(l.title));
+    if (!j.continue) break; cont = { plcontinue: j.continue.plcontinue };
+  }
+  return { title: canon, links: out };
+}
+// Pages (parmi « from ») qui contiennent un lien vers « target » : ce sont les ponts d'un chemin en 2 clics.
+async function bridgesTo(from, target) {
+  const bridges = [];
+  for (let i = 0; i < from.length; i += 50) {
+    const j = await wikiGet({ action: 'query', prop: 'links', pltitles: target, pllimit: 'max', titles: from.slice(i, i + 50).join('|') });
+    (j.query.pages || []).forEach(p => { if (p.links && p.links.length) bridges.push(p.title); });
+  }
+  return bridges;
+}
+async function canonicalTitle(t) {
+  const j = await wikiGet({ action: 'query', redirects: '1', titles: t });
+  const p = j.query.pages[0];
+  return p && !p.missing ? p.title : null;
+}
+async function generateDaily(date, recent) {
+  const theme = themeOf(process.env.WD_THEME_DATE || date); // WD_THEME_DATE : tests uniquement
+  const pool = (await vitalPool()).filter(t => !recent.has(norm(t)));
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  let targets = [];
+  if (theme) for (const t of theme.targets) { const c = await canonicalTitle(t); if (c && !recent.has(norm(c))) targets.push(c); }
+  let best = null;
+  for (let tries = 0; tries < 25 && !best; tries++) {
+    const target = targets.length ? pick(targets) : pick(pool);
+    const start = pick(pool);
+    if (norm(start) === norm(target)) continue;
+    const s = await pageLinks(start);
+    if (!s || s.links.length < 40 || s.links.length > 1500) continue;               // page trop pauvre ou « carrefour » trop facile
+    if (s.links.some(l => norm(l) === norm(target))) continue;                       // cible en 1 clic : trop facile
+    const bridges = await bridgesTo(s.links, target);
+    const max = theme ? 60 : 25;                                                    // jours thématiques : un peu plus permissif
+    if (bridges.length >= 1 && bridges.length <= max) best = { start: s.title, target, bridges: bridges.length };
+  }
+  if (!best) throw new Error('Aucun parcours trouvé pour le ' + date);
+  return { start: best.start, target: best.target, bridges: best.bridges, theme: theme ? { name: theme.name, emoji: theme.emoji } : null };
+}
+async function planDays(days) {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date());
+  const snap = await db.ref('daily').orderByKey().startAt(addDays(today, -60)).once('value');
+  const all = snap.val() || {};
+  const recent = new Set(); Object.values(all).forEach(d => { if (d && d.start) { recent.add(norm(d.start)); recent.add(norm(d.target)); } });
+  const made = [];
+  for (let i = 1; i <= days; i++) {
+    const date = addDays(today, i);
+    if (all[date]) continue;
+    const prev = all[addDays(date, -1)] || (await db.ref('daily/' + addDays(date, -1)).once('value')).val() || {};
+    const g = await generateDaily(date, recent);
+    const entry = { start: g.start, target: g.target, opensAt: zurichMidnightOf(date), closesAt: zurichMidnightOf(addDays(date, 1)), n: (prev.n || 0) + 1, auto: true };
+    if (g.theme) entry.theme = g.theme;
+    await db.ref('daily/' + date).set(entry);
+    all[date] = entry; recent.add(norm(g.start)); recent.add(norm(g.target));
+    made.push(date + ' n°' + entry.n + (g.theme ? ' ' + g.theme.emoji : '') + ' (' + g.bridges + ' ponts)');
+  }
+  return made;
+}
+exports.planDaily = onSchedule({ schedule: 'every day 21:00', timeZone: 'Europe/Zurich', region: 'europe-west1', timeoutSeconds: 300, memory: '512MiB' }, async () => {
+  if (!db) db = admin.database();
+  const made = await planDays(2);
+  logger.info('Défis du jour préparés', { crees: made });
+});
+// Les jours thématiques déjà programmés à l'avance reçoivent aussi leur thème (affichage seulement).
+exports.planDailyNow = onCall({ region: 'europe-west1', timeoutSeconds: 300, memory: '512MiB' }, async req => {
+  if (!db) db = admin.database();
+  const a = req.auth;
+  if (!a || !ADMIN_UIDS.includes(a.uid) || a.token.firebase.sign_in_provider !== 'google.com') throw new HttpsError('permission-denied', 'Réservé à l\'administrateur.');
+  return { crees: await planDays(Math.min(14, Math.max(1, (req.data && req.data.days) || 2))) };
+});
+
 /* ===================== Aperçus de partage (WhatsApp, etc.) ===================== */
 // WhatsApp ne lit pas le JavaScript : /defi et /jour renvoient une page avec les balises
 // d'aperçu (titre, texte, image) puis redirigent aussitôt vers le jeu.
@@ -1022,7 +1150,7 @@ exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SEC
 /* ===================== Photo de profil : un de ses badges ===================== */
 // Le joueur choisit l'image Wikipédia d'un badge qu'il possède. Contrôles :
 //  - l'image doit être libre, sur Wikimedia Commons (on garde l'auteur et la licence pour la créditer) ;
-//  - pas de photo de personne réelle (droit à l'image, usurpation d'identité) : refusé si Wikidata dit « être humain ».
+//  - personnalités autorisées (attention au droit à l'image : retirer au cas par cas une photo abusive).
 const stripHtml = h => String(h || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 exports.setAvatar = onCall({ region: 'europe-west1' }, async req => {
   if (!db) db = admin.database();
@@ -1036,12 +1164,7 @@ exports.setAvatar = onCall({ region: 'europe-west1' }, async req => {
   const j = await get(WIKI + '?action=query&format=json&formatversion=2&redirects=1&prop=pageimages|pageprops&piprop=thumbnail|name&pithumbsize=240&ppprop=wikibase_item&titles=' + encodeURIComponent(b.t));
   const p = j.query && j.query.pages && j.query.pages[0];
   if (!p || !p.thumbnail || !p.pageimage) throw new HttpsError('failed-precondition', 'Cette page n’a pas d’image utilisable.');
-  const qid = p.pageprops && p.pageprops.wikibase_item;
-  if (qid) {
-    const w = await get('https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&property=P31&entity=' + encodeURIComponent(qid));
-    const kinds = ((w.claims && w.claims.P31) || []).map(c => c.mainsnak && c.mainsnak.datavalue && c.mainsnak.datavalue.value && c.mainsnak.datavalue.value.id);
-    if (kinds.includes('Q5')) throw new HttpsError('failed-precondition', 'Les photos de personnes ne peuvent pas servir de photo de profil (droit à l’image).');
-  }
+  // Les personnalités sont autorisées (choix de l'administrateur) ; seules les images libres de Commons sont acceptées.
   const c = await get('https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&prop=imageinfo&iiprop=url|extmetadata&titles=' + encodeURIComponent('File:' + p.pageimage));
   const ii = c.query && c.query.pages && c.query.pages[0] && c.query.pages[0].imageinfo && c.query.pages[0].imageinfo[0];
   if (!ii) throw new HttpsError('failed-precondition', 'L’image de cette page n’est pas libre de droits.');
