@@ -473,7 +473,15 @@ input.field:focus { border-color: var(--ink); outline: none; }
 
 /* Badges */
 .ach-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.ach-item { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.ach-item { border-radius: 14px; background: var(--card); border: 1px solid var(--line); overflow: hidden; }
+.ach-row { display: grid; grid-template-columns: 48px 1fr auto; gap: 12px; align-items: center; padding: 12px; width: 100%; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ach-row:focus-visible { outline: 2px solid var(--flag); outline-offset: -2px; }
+.ach-more { display: block; font: 600 12px var(--display); color: var(--muted); margin-top: 4px; }
+.ach-detail { padding: 0 12px 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.ach-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 99px; background: var(--paper); border: 1px solid var(--line); font: 600 13px var(--display); max-width: 100%; }
+.ach-chip img, .ach-chip i { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex: none; background: var(--line); }
+.ach-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach-chip em { font-style: normal; color: var(--muted); font-weight: 500; }
 .ach-item.done { border-color: var(--ok); }
 .ach-item.ready { border: 2px solid var(--flag); }
 .ach-emo { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 26px; background: var(--paper); }
@@ -1554,17 +1562,23 @@ async function showAch() {
     const own = snap.val() || {}, keys = Object.keys(own).filter(k => own[k] && own[k].n > 0);
     const claimed = (S.profile && S.profile.ach) || {};
     let ready2 = 0, unlocked = 0;
+    S.achMine = {};
     const rows = ACH.map(a => {
-      const n = a.cat ? keys.filter(k => String((OWNERS[k] || {}).c || '').split(',').includes(a.cat)).length : keys.length;
+      const mine = a.cat ? keys.filter(k => String((OWNERS[k] || {}).c || '').split(',').includes(a.cat)) : keys.slice();
+      S.achMine[a.id] = mine.map(k => ({ t: String(own[k].t || (OWNERS[k] || {}).t || '?'), n: own[k].n })).sort((x, y) => x.t.localeCompare(y.t, 'fr'));
+      const n = mine.length;
       const reached = a.tiers.filter(t => n >= t).length, got = claimed[a.id] || 0;
       const next = a.tiers[reached], prev = reached ? a.tiers[reached - 1] : 0;
       ready2 += ACH_REWARDS.slice(got, reached).reduce((s, x) => s + x, 0); unlocked += reached;
       const pct = next ? Math.round(100 * (n - prev) / (next - prev)) : 100;
       const stars = a.tiers.map((t, i) => i < reached ? '★' : '☆').join('');
-      return '<li class="ach-item' + (reached > got ? ' ready' : next ? '' : ' done') + '"><span class="ach-emo" aria-hidden="true">' + a.emoji + '</span><div style="min-width:0">' +
+      return '<li class="ach-item' + (reached > got ? ' ready' : next ? '' : ' done') + '"><button type="button" class="ach-row" data-ach="' + a.id + '" aria-expanded="false" aria-controls="achD_' + a.id + '">' +
+        '<span class="ach-emo" aria-hidden="true">' + a.emoji + '</span><div style="min-width:0">' +
         '<b>' + esc(a.name) + '</b><small>' + n + ' ' + esc(a.what) + (next ? ' · prochain palier : ' + next : ' · tous les paliers atteints !') + '</small>' +
-        '<div class="ach-bar" aria-hidden="true"><i style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div></div>' +
-        '<span class="ach-stars" aria-label="' + reached + ' paliers sur ' + a.tiers.length + '">' + stars + '</span></li>';
+        '<div class="ach-bar" aria-hidden="true"><i style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div>' +
+        '<span class="ach-more">' + (n ? '▸ Voir mes badges comptés' : '▸ Aucun badge compté pour l’instant') + '</span></div>' +
+        '<span class="ach-stars" aria-label="' + reached + ' paliers sur ' + a.tiers.length + '">' + stars + '</span></button>' +
+        '<div class="ach-detail" id="achD_' + a.id + '" hidden></div></li>';
     });
     $('achList').innerHTML = rows.join('');
     $('achCount').textContent = unlocked + ' palier' + (unlocked > 1 ? 's' : '') + ' débloqué' + (unlocked > 1 ? 's' : '');
@@ -1572,6 +1586,25 @@ async function showAch() {
     $('achClaim').textContent = '🎁 Récupérer ' + ready2 + ' 🔗';
   } catch (e) { $('achList').innerHTML = '<li class="lb-empty">Succès indisponibles.</li>'; }
 }
+// Clic sur un succès : détail des badges qui comptent pour lui.
+$('achList').onclick = e => {
+  const btn = e.target.closest('.ach-row'); if (!btn) return;
+  const id = btn.dataset.ach, box = $('achD_' + id), open = btn.getAttribute('aria-expanded') !== 'true';
+  btn.setAttribute('aria-expanded', open); box.hidden = !open;
+  const more = btn.querySelector('.ach-more'), list = (S.achMine && S.achMine[id]) || [];
+  if (more && list.length) more.textContent = (open ? '▾ Masquer' : '▸ Voir mes badges comptés');
+  if (!open || box.dataset.done) return;
+  box.dataset.done = 1;
+  const draw = () => {
+    box.innerHTML = list.length ? list.map(b => {
+      const img = thumbCache[b.t];
+      return '<span class="ach-chip" title="' + esc(b.t) + '">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<i aria-hidden="true"></i>') +
+        '<span>' + esc(b.t) + '</span>' + (b.n > 1 ? '<em>×' + b.n + '</em>' : '') + '</span>';
+    }).join('') : '<small style="color:var(--muted)">Aucun de tes badges n’entre encore dans cette famille. Termine des courses sur ce genre de pages pour en gagner !</small>';
+  };
+  draw();
+  if (list.length) loadThumbs(list.map(b => b.t)).then(draw);
+};
 $('achClaim').onclick = async () => {
   $('achClaim').disabled = true;
   try {
