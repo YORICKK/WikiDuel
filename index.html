@@ -504,7 +504,6 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .bd.rare .ring { background: linear-gradient(135deg, #ff5a36, #a98bff); }
 .bd .rar { font: 700 10px var(--mono); color: var(--flag); text-transform: uppercase; letter-spacing: .06em; }
 .bd.rare { border-color: #a98bff; box-shadow: 0 0 0 1px #a98bff inset; }
-.ach-chip.rare { border-color: #a98bff; }
 /* Liens 🔗 et marché */
 .mk-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mk-bal { font: 800 20px var(--display); }
@@ -1380,14 +1379,14 @@ async function showBadges() {
     S.badgeList = list;
     const copies = list.reduce((s, b) => s + b.n, 0);
     const uniq = list.filter(b => isUnique(b.key)).length;
-    $('bdCount').textContent = list.length + ' badge' + (list.length > 1 ? 's' : '') + ' · ' + copies + ' exemplaire' + (copies > 1 ? 's' : '') + (uniq ? ' · 🦄 ' + uniq + ' unique' + (uniq > 1 ? 's' : '') : '');
+    $('bdCount').textContent = list.length + ' badge' + (list.length > 1 ? 's' : '') + ' · ' + copies + ' exemplaire' + (copies > 1 ? 's' : '') + (uniq ? ' · ⭐ ' + uniq + ' unique' + (uniq > 1 ? 's' : '') : '');
     if (!list.length) { $('bdGrid').innerHTML = '<p class="lb-empty" style="grid-column:1/-1">Aucun badge pour l’instant. Termine une course pour gagner ton premier !</p>'; return; }
     const draw = () => {
       $('bdGrid').innerHTML = list.map((b, i) => {
         const img = thumbCache[b.t], rare = isUnique(b.key); // personne d'autre ne l'a
         return '<button type="button" class="bd' + (rare ? ' rare' : '') + '" data-i="' + i + '" aria-label="' + esc(b.t) + ', ' + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + (rare ? ', unique : aucun autre joueur ne l’a' : '') + '">' +
           '<span class="ring"><span>' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(b.t.charAt(0))) + '</span></span>' +
-          '<b>' + esc(b.t) + '</b><small>×' + b.n + ' · ' + bankPrice(ownersOf(b.key)) + ' 🔗</small>' + (rare ? '<span class="rar">🦄 Unique</span>' : '') + '</button>';
+          '<b>' + esc(b.t) + '</b><small>×' + b.n + ' · ' + bankPrice(ownersOf(b.key)) + ' 🔗</small>' + (rare ? '<span class="rar">⭐ Unique</span>' : '') + '</button>';
       }).join('');
     };
     draw();
@@ -1401,7 +1400,7 @@ $('bdGrid').onclick = async e => {
   S.badgeOpen = b;
   const own = ownersOf(b.key), price = bankPrice(own);
   $('bdTitle').textContent = b.t;
-  $('bdTier').textContent = (isUnique(b.key) ? '🦄 Unique : aucun autre joueur ne l’a · ' : '') + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + ' · possédé par ' + own + ' joueur' + (own > 1 ? 's' : '');
+  $('bdTier').textContent = (isUnique(b.key) ? '⭐ Unique : aucun autre joueur ne l’a · ' : '') + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + ' · possédé par ' + own + ' joueur' + (own > 1 ? 's' : '');
   $('bdSell').textContent = 'Vendre 1 exemplaire à la banque · ' + price + ' 🔗' + (b.n === 1 ? ' (ton dernier)' : '');
   $('bdStart').value = Math.max(price, 10);
   $('bdErr').textContent = '';
@@ -1570,7 +1569,7 @@ async function showAch() {
     S.achMine = {};
     const rows = ACH.map(a => {
       const mine = a.cat ? keys.filter(k => String((OWNERS[k] || {}).c || '').split(',').includes(a.cat)) : keys.slice();
-      S.achMine[a.id] = mine.map(k => ({ t: String(own[k].t || (OWNERS[k] || {}).t || '?'), n: own[k].n, u: isUnique(k) })).sort((x, y) => x.t.localeCompare(y.t, 'fr'));
+      S.achMine[a.id] = mine.map(k => ({ t: String(own[k].t || (OWNERS[k] || {}).t || '?'), n: own[k].n })).sort((x, y) => x.t.localeCompare(y.t, 'fr'));
       const n = mine.length;
       const reached = a.tiers.filter(t => n >= t).length, got = claimed[a.id] || 0;
       const next = a.tiers[reached], prev = reached ? a.tiers[reached - 1] : 0;
@@ -1603,8 +1602,8 @@ $('achList').onclick = e => {
   const draw = () => {
     box.innerHTML = list.length ? list.map(b => {
       const img = thumbCache[b.t];
-      return '<span class="ach-chip' + (b.u ? ' rare' : '') + '" title="' + esc(b.t) + (b.u ? ' · unique : aucun autre joueur ne l’a' : '') + '">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<i aria-hidden="true"></i>') +
-        '<span>' + esc(b.t) + '</span>' + (b.u ? '<em>🦄</em>' : '') + (b.n > 1 ? '<em>×' + b.n + '</em>' : '') + '</span>';
+      return '<span class="ach-chip" title="' + esc(b.t) + '">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : '<i aria-hidden="true"></i>') +
+        '<span>' + esc(b.t) + '</span>' + (b.n > 1 ? '<em>×' + b.n + '</em>' : '') + '</span>';
     }).join('') : '<small style="color:var(--muted)">Aucun de tes badges n’entre encore dans cette famille. Termine des courses sur ce genre de pages pour en gagner !</small>';
   };
   draw();
