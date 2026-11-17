@@ -366,7 +366,8 @@ exports.claimAchievements = onCall({ region: 'europe-west1' }, async req => {
 const BANK_PRICE = 10;
 const bankPrice = () => BANK_PRICE;
 const levelOf = xp => { let n = 0, need = 100, cur = Math.max(0, xp || 0); while (cur >= need) { cur -= need; n++; need += 50; } return n; };
-const AUCTION_FEE = 0.05, AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24], SNIPE_MS = 5 * 60 * 1000;
+const AUCTION_FEE = 0, // pas de commission : le vendeur reçoit tout le prix
+  AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24], SNIPE_MS = 5 * 60 * 1000;
 // Marché : compte Google et niveau 1 minimum (contre les comptes invités créés en série).
 async function requireMarket(req) {
   const uid = requireGoogle(req);
@@ -466,7 +467,7 @@ exports.cancelAuction = onCall({ region: 'europe-west1' }, async req => {
   return { ok: true };
 });
 
-// Toutes les 5 minutes : clôture des enchères échues (badge à l'acheteur, Liens au vendeur moins 5 %).
+// Toutes les 5 minutes : clôture des enchères échues (badge à l'acheteur, tout le prix au vendeur).
 async function closeAuction(id) {
   let a = null;
   const res = await db.ref('auctions/' + id).transaction(x => {
