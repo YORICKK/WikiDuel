@@ -271,6 +271,9 @@ async function removeCopies(uid, key, count) {
   if (ok && gone) {
     await db.ref('users/' + uid + '/badges').transaction(n => Math.max(0, (n || 0) - 1));
     await db.ref('badgeOwners/' + key + '/owners').transaction(n => Math.max(0, (n || 0) - 1));
+    // Badge parti : s'il servait de photo de profil, on la retire.
+    const av = (await db.ref('users/' + uid + '/avatar/key').once('value')).val();
+    if (av === key) await db.ref('users/' + uid + '/avatar').remove();
   }
   return { ok, title };
 }
@@ -1016,36 +1019,39 @@ exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SEC
   }
 });
 
-/* ===================== Rappel du défi du jour (notifications) ===================== */
-// Chaque matin à 8 h (heure suisse) : une notification aux joueurs qui l'ont demandée
-// et qui n'ont pas encore joué le défi du jour. Clé privée VAPID : secret Firebase.
-const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
-const VAPID_PRIVATE_KEY = defineSecret('VAPID_PRIVATE_KEY');
-exports.dailyReminder = onSchedule({ schedule: 'every day 08:00', timeZone: 'Europe/Zurich', region: 'europe-west1', secrets: [VAPID_PRIVATE_KEY] }, async () => {
+/* ===================== Photo de profil : un de ses badges ===================== */
+// Le joueur choisit l'image Wikipédia d'un badge qu'il possède. Contrôles :
+//  - l'image doit être libre, sur Wikimedia Commons (on garde l'auteur et la licence pour la créditer) ;
+//  - pas de photo de personne réelle (droit à l'image, usurpation d'identité) : refusé si Wikidata dit « être humain ».
+const stripHtml = h => String(h || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+exports.setAvatar = onCall({ region: 'europe-west1' }, async req => {
   if (!db) db = admin.database();
-  const webpush = require('web-push');
-  webpush.setVapidDetails('https://wikiduel.ch', VAPID_PUBLIC, VAPID_PRIVATE_KEY.value().trim());
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-  const [day, subs, runs] = await Promise.all(['daily/' + today, 'pushSubs', 'dailyRuns/' + today].map(p => db.ref(p).once('value').then(s => s.val())));
-  if (!day || !subs) { logger.info('Rappel du défi : rien à envoyer', { defi: !!day }); return; }
-  const payload = JSON.stringify({ title: '🗓️ Défi du jour n°' + (day.n || ''), body: 'Un nouveau parcours mystère t’attend. Une seule tentative, à toi de jouer !',
-    url: '/?src=rappel', tag: 'wikiduel-daily-' + today });
-  let sent = 0, gone = 0, skipped = 0;
-  const drop = {};
-  for (const uid of Object.keys(subs)) {
-    if (runs && runs[uid]) { skipped++; continue; } // déjà joué aujourd'hui
-    for (const [id, s] of Object.entries(subs[uid] || {})) {
-      try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 6 * 3600, urgency: 'normal' });
-        sent++;
-      } catch (e) {
-        if (e.statusCode === 404 || e.statusCode === 410) { drop['pushSubs/' + uid + '/' + id] = null; gone++; } // abonnement expiré
-        else logger.warn('Rappel non envoyé', { uid, code: e.statusCode, error: String(e.body || e.message).slice(0, 200) });
-      }
-    }
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
+  const uid = req.auth.uid, key = req.data && req.data.key;
+  if (key === null) { await db.ref('users/' + uid + '/avatar').remove(); return { ok: true }; }
+  if (!validKey(key)) throw new HttpsError('invalid-argument', 'Demande invalide.');
+  const b = (await db.ref('badges/' + uid + '/' + key).once('value')).val();
+  if (!b || !(b.n > 0)) throw new HttpsError('failed-precondition', 'Tu ne possèdes pas ce badge.');
+  const get = async url => (await fetch(url, { headers: { 'User-Agent': UA } })).json();
+  const j = await get(WIKI + '?action=query&format=json&formatversion=2&redirects=1&prop=pageimages|pageprops&piprop=thumbnail|name&pithumbsize=240&ppprop=wikibase_item&titles=' + encodeURIComponent(b.t));
+  const p = j.query && j.query.pages && j.query.pages[0];
+  if (!p || !p.thumbnail || !p.pageimage) throw new HttpsError('failed-precondition', 'Cette page n’a pas d’image utilisable.');
+  const qid = p.pageprops && p.pageprops.wikibase_item;
+  if (qid) {
+    const w = await get('https://www.wikidata.org/w/api.php?action=wbgetclaims&format=json&property=P31&entity=' + encodeURIComponent(qid));
+    const kinds = ((w.claims && w.claims.P31) || []).map(c => c.mainsnak && c.mainsnak.datavalue && c.mainsnak.datavalue.value && c.mainsnak.datavalue.value.id);
+    if (kinds.includes('Q5')) throw new HttpsError('failed-precondition', 'Les photos de personnes ne peuvent pas servir de photo de profil (droit à l’image).');
   }
-  if (gone) await db.ref().update(drop);
-  logger.info('Rappel du défi envoyé', { date: today, envoyes: sent, expires: gone, dejaJoue: skipped });
+  const c = await get('https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&prop=imageinfo&iiprop=url|extmetadata&titles=' + encodeURIComponent('File:' + p.pageimage));
+  const ii = c.query && c.query.pages && c.query.pages[0] && c.query.pages[0].imageinfo && c.query.pages[0].imageinfo[0];
+  if (!ii) throw new HttpsError('failed-precondition', 'L’image de cette page n’est pas libre de droits.');
+  const m = ii.extmetadata || {};
+  const avatar = { key, t: String(b.t).slice(0, 200), img: p.thumbnail.source,
+    cr: [stripHtml(m.Artist && m.Artist.value).slice(0, 80) || 'Wikimedia Commons', stripHtml(m.LicenseShortName && m.LicenseShortName.value).slice(0, 40)].filter(Boolean).join(' · '),
+    src: ii.descriptionurl };
+  await db.ref('users/' + uid + '/avatar').set(avatar);
+  logger.info('Photo de profil choisie', { uid, key });
+  return { ok: true, avatar };
 });
 
 /* ===================== Stats de l'appli (réservées à l'administrateur) ===================== */

@@ -99,7 +99,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 #home .wrap { min-height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding-block: 32px; }
 .logo { font: 800 clamp(48px, 15vw, 76px)/.9 var(--display); letter-spacing: -.04em; margin: 0; }
 .logo span { color: var(--flag); }
-.back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; margin-bottom: -8px;
+.back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; margin: 0 0 6px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
 .back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 /* Démarrage rapide (premier passage) */
@@ -124,6 +124,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .ad-table tr:last-child td { border-bottom: 0; }
 .ad-bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--flag); vertical-align: middle; min-width: 2px; }
 .ad-err { font: 500 12px/1.4 var(--mono); color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
+/* Sélecteur de jeu : course / quiz */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.modes a { text-align: center; padding: 10px 6px; border-radius: 10px; font: 800 15px var(--display); color: var(--muted); text-decoration: none; }
+.modes a.on { background: var(--ink); color: var(--paper); }
+.modes a:not(.on):hover { background: var(--paper); color: var(--ink); }
+.modes a:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 .quiz-link { display: inline-block; margin-top: 10px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card);
   font: 600 14px var(--display); color: var(--muted); text-decoration: none; }
 .quiz-link b { color: #7b4dff; }
@@ -143,6 +149,13 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .acc-head { display: flex; align-items: center; gap: 12px; }
 .acc-av { flex: none; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 800 24px var(--display); }
 .acc-av.prem { background: linear-gradient(135deg, #3fb8ff, #7b4dff); color: #fff; }
+.acc-av, .pf-av { overflow: hidden; }
+.acc-av img, .pf-av img, .vs-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.acc-av.has-img { padding: 0; box-shadow: 0 0 0 2px var(--line); }
+.acc-av.prem.has-img { box-shadow: 0 0 0 3px #7b4dff; }
+.lb-av { width: 26px; height: 26px; border-radius: 8px; object-fit: cover; vertical-align: -7px; margin-right: 6px; background: var(--line); }
+.pf-cr { font: 500 11px/1.4 var(--mono); color: var(--muted); margin: -6px 0 0; }
+.pf-cr a { color: inherit; }
 .acc-info { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .acc-info strong { font: 800 21px/1.15 var(--display); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .acc-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -457,7 +470,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .toast small { display: block; font: 600 13px var(--display); opacity: .8; }
 
 /* Badges */
-#badges .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
+#badges .wrap, #market .wrap { display: grid; gap: 16px; padding-block: 24px 40px; }
 .bd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
 .bd { display: grid; justify-items: center; gap: 6px; padding: 10px 4px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); cursor: pointer; text-align: center; }
 .bd:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
@@ -500,7 +513,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .vs-card { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 18px; color: #f6f7fb;
   background: linear-gradient(135deg, #1d2b52, #14213d); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 16px 40px rgba(0,0,0,.35); }
 .vs-card.opp { background: linear-gradient(135deg, #5a1f1a, #2a1530); }
-.vs-av { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font: 800 26px var(--display); background: rgba(255,255,255,.12); }
+.vs-av { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font: 800 26px var(--display); background: rgba(255,255,255,.12); overflow: hidden; }
 .vs-card strong { font: 800 20px/1.15 var(--display); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vs-card small { font: 600 13px var(--display); color: #c7cfe6; }
 .vs-elo { font: 800 22px var(--mono); text-align: right; }
@@ -559,9 +572,9 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 <!-- ACCUEIL -->
 <section id="home" class="screen">
   <div class="wrap">
+    <nav class="modes" aria-label="Choisir le jeu"><a href="/" class="on" aria-current="page">🏁 Course</a><a href="/quiz">🖼️ Quiz</a></nav>
     <div>
       <h1 class="logo">Wiki<span>Duel</span></h1>
-      <a class="quiz-link" href="/quiz">🖼️ Nouveau : <b>WikiDuel Quiz</b> →</a>
     </div>
     <p class="pitch">Même page de départ, même cible. Seuls les liens de l'article comptent. Le premier arrivé gagne.</p>
     <div class="route" id="demoRoute" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>
@@ -599,7 +612,6 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
           <button type="button" role="menuitem" id="badgesBtn">🏅 Mes badges</button>
           <button type="button" role="menuitem" id="marketBtn">🛒 Marché</button>
           <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
-          <button type="button" role="menuitem" id="pushBtn">🔔 Rappel du défi chaque matin</button>
           <button type="button" role="menuitem" id="installBtn" hidden>📲 Installer l'appli</button>
           <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
           <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
@@ -627,6 +639,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <div class="or">ou t'entraîner seul</div>
       <button id="solo" class="btn ghost">Jouer en solo</button>
       <div id="homeErr" class="err" role="alert"></div>
+      <span id="dailyHome" hidden></span>
       <div class="daily" id="dailyBox" hidden>
         <div class="d-head">
           <span class="label">Défi du jour <span class="d-num" id="dNum"></span></span>
@@ -637,7 +650,6 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
         <div class="d-actions">
           <button id="dPlay" class="btn small">Jouer</button>
           <button id="dBoard" class="d-link">Classement du jour</button>
-          <button id="dRemind" class="d-link" hidden>🔔 Me le rappeler</button>
         </div>
       </div>
       <div class="home-links">
@@ -735,6 +747,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <h3 id="bdTitle" style="margin:0;font-size:24px;padding-right:36px"></h3>
     <p id="bdText"></p>
     <a class="btn ghost" id="bdLink" href="#" target="_blank" rel="noopener">Voir la page Wikipédia ↗</a>
+    <button type="button" class="btn ghost" id="bdAvatar">🖼️ Utiliser comme photo de profil</button>
     <div class="bd-trade" id="bdTrade">
       <button type="button" class="btn" id="bdSell">Vendre 1 exemplaire à la banque</button>
       <div class="bd-auc" id="bdAuc">
@@ -1141,7 +1154,9 @@ function renderXp() {
   $('accLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
   // Carte du compte : avatar (initiale) et trois pastilles Niveau / Badges / Liens.
   const nm = ($('accName').textContent || '?').trim();
-  $('accAv').textContent = (nm.charAt(0) || '?').toUpperCase();
+  const av = p.avatar && p.avatar.img;
+  if (av) $('accAv').innerHTML = '<img src="' + esc(av) + '" alt="">'; else $('accAv').textContent = (nm.charAt(0) || '?').toUpperCase();
+  $('accAv').classList.toggle('has-img', !!av);
   $('accAv').classList.toggle('prem', isMePremium());
   $('cLvl').textContent = L.n; $('cBadges').textContent = p.badges || 0; $('cLiens').textContent = p.liens || 0;
   $('chipLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
@@ -1260,60 +1275,28 @@ function markStart(via) {
 }
 setupQuickStart();
 
-/* ---------- Application installable et rappel du défi du jour ---------- */
-const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
+/* ---------- Application installable ---------- */
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 let deferredInstall = null, swReg = null;
 if ('serviceWorker' in navigator && !/\.github\.io$/i.test(location.hostname)) {
   navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; renderAppMenu(); }).catch(() => {});
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; renderAppMenu(); });
 addEventListener('appinstalled', () => { deferredInstall = null; renderAppMenu(); toast('📲 WikiDuel est installé !'); });
-function pushOn() { return !!store.get('wd-push') && 'Notification' in window && Notification.permission === 'granted'; }
 function renderAppMenu() {
   $('installBtn').hidden = isStandalone() || !(deferredInstall || isIOS);
-  $('pushBtn').textContent = pushOn() ? '🔕 Arrêter le rappel du défi' : '🔔 Rappel du défi chaque matin';
-  $('dRemind').hidden = pushOn();
 }
 $('installBtn').onclick = async () => {
   closeAccMenu();
   if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; renderAppMenu(); }
   else toast('📲 Sur iPhone : touche <b>Partager</b> ⬆️<small>puis « Sur l’écran d’accueil »</small>', 7000);
 };
-const b64u = s => { const b = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
-async function subId(endpoint) {
-  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(endpoint));
-  return Array.from(new Uint8Array(h)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+// Rappel du défi du jour retiré : on désabonne proprement les appareils qui l'avaient activé.
+if (store.get('wd-push') && 'serviceWorker' in navigator) {
+  store.del('wd-push');
+  navigator.serviceWorker.ready.then(r => r.pushManager && r.pushManager.getSubscription()).then(s => s && s.unsubscribe()).catch(() => {});
 }
-async function enablePush() {
-  if (!pushSupported()) {
-    toast(isIOS && !isStandalone() ? '🔔 Sur iPhone, installe d’abord WikiDuel<small>Partager ⬆️ puis « Sur l’écran d’accueil », et active le rappel depuis l’appli.</small>'
-      : 'Ton navigateur ne gère pas les notifications.', 8000);
-    return;
-  }
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') { toast('Notifications refusées<small>Tu peux les autoriser dans les réglages du navigateur.</small>', 5000); return; }
-  try {
-    const reg = swReg || await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
-    const j = sub.toJSON(), id = await subId(j.endpoint);
-    await ready;
-    await db.ref('pushSubs/' + uid + '/' + id).set({ endpoint: j.endpoint, keys: { p256dh: j.keys.p256dh, auth: j.keys.auth }, at: NOW() });
-    store.set('wd-push', id); renderAppMenu();
-    toast('🔔 Rappel activé<small>Chaque matin à 8 h, si tu n’as pas encore joué le défi.</small>', 4500);
-  } catch (e) { toast('Rappel impossible<small>' + esc(e.message || String(e)) + '</small>', 6000); }
-}
-async function disablePush() {
-  const id = store.get('wd-push'); store.del('wd-push');
-  try { const reg = swReg || await navigator.serviceWorker.ready; const sub = await reg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (e) {}
-  try { await ready; if (id) await db.ref('pushSubs/' + uid + '/' + id).remove(); } catch (e) {}
-  renderAppMenu(); toast('🔕 Rappel désactivé');
-}
-$('pushBtn').onclick = () => { closeAccMenu(); return pushOn() ? disablePush() : enablePush(); };
-$('dRemind').onclick = enablePush;
 renderAppMenu();
 
 /* ---------- Mes badges ---------- */
@@ -1380,6 +1363,9 @@ $('bdGrid').onclick = async e => {
   $('bdSell').textContent = 'Vendre 1 exemplaire à la banque · ' + price + ' 🔗' + (b.n === 1 ? ' (ton dernier)' : '');
   $('bdStart').value = Math.max(price, 10);
   $('bdErr').textContent = '';
+  const isAv = !!(S.profile && S.profile.avatar && S.profile.avatar.key === b.key);
+  $('bdAvatar').textContent = isAv ? '✖️ Retirer ma photo de profil' : '🖼️ Utiliser comme photo de profil';
+  $('bdAvatar').dataset.on = isAv ? '1' : '';
   $('bdAuc').hidden = !canMarket(); $('bdGate').hidden = canMarket(); $('bdGate').textContent = canMarket() ? '' : marketGateText();
   $('bdText').textContent = 'Chargement…'; $('bdImg').hidden = true;
   $('bdLink').href = WIKI + '/wiki/' + encodeURIComponent(b.t.replace(/ /g, '_'));
@@ -1411,6 +1397,18 @@ $('bdSell').onclick = async () => {
     closeBadge(); showBadges();
   } catch (e) { $('bdErr').textContent = errText(e); }
   $('bdSell').disabled = false;
+};
+// Photo de profil : l'image Wikipédia d'un de ses badges (contrôlée par le serveur : image libre, pas de personne).
+$('bdAvatar').onclick = async () => {
+  const b = S.badgeOpen; if (!b) return;
+  const off = $('bdAvatar').dataset.on === '1';
+  $('bdAvatar').disabled = true; $('bdErr').textContent = '';
+  try {
+    await call('setAvatar')({ key: off ? null : b.key });
+    toast(off ? 'Photo de profil retirée' : '🖼️ Nouvelle photo de profil<small>« ' + esc(b.t) + ' »</small>');
+    closeBadge();
+  } catch (e) { $('bdErr').textContent = errText(e); }
+  $('bdAvatar').disabled = false;
 };
 $('bdAucBtn').onclick = async () => {
   const b = S.badgeOpen; if (!b) return;
@@ -1518,11 +1516,13 @@ async function showVersus(room) {
   else if (oppP) {
     const v = (await db.ref('users/' + oppP.id).once('value').catch(() => null));
     const u = (v && v.val()) || {};
-    opp = { name: u.name || oppP.name, lvl: levelOf(u.xp).n, elo: u.elo || 1200, prem: u.premium === true, badges: u.badges || 0, emoji: (u.name || oppP.name || '?').charAt(0).toUpperCase() };
+    opp = { name: u.name || oppP.name, lvl: levelOf(u.xp).n, elo: u.elo || 1200, prem: u.premium === true, badges: u.badges || 0,
+      emoji: u.avatar && u.avatar.img ? '<img src="' + esc(u.avatar.img) + '" alt="">' : esc((u.name || oppP.name || '?').charAt(0).toUpperCase()) };
   } else return;
   const myName = me.name || (S.me && S.me.name) || 'Toi';
   $('vs').innerHTML = '<div class="vs-in"><div class="vs-sub">Partie classée</div>' +
-    card('me', myName, levelOf(me.xp).n, me.elo || 1200, me.premium === true, me.badges || 0, myName.charAt(0).toUpperCase()) +
+    card('me', myName, levelOf(me.xp).n, me.elo || 1200, me.premium === true, me.badges || 0,
+      me.avatar && me.avatar.img ? '<img src="' + esc(me.avatar.img) + '" alt="">' : esc(myName.charAt(0).toUpperCase())) +
     '<div class="vs-mid">VS</div>' + card('opp', opp.name, opp.lvl, opp.elo, opp.prem, opp.badges, opp.emoji) + '</div>';
   $('vs').classList.remove('out'); $('vs').hidden = false;
   setTimeout(() => { $('vs').classList.add('out'); setTimeout(() => { $('vs').hidden = true; }, 350); }, 2700);
@@ -1644,7 +1644,8 @@ function setLbTabs(tabs, active, onPick) {
 }
 function lbRow(r, i, small, score) {
   return '<li data-uid="' + esc(r.id || '') + '" tabindex="0" role="button" aria-label="Voir le profil de ' + esc(r.name || 'Joueur') + '"' + (r.id === uid ? ' class="me"' : '') + '><span class="pos">' + (i + 1) + '</span>' +
-    '<span class="who"><strong>' + esc(r.name || 'Joueur') + (r.premium === true ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
+    '<span class="who"><strong>' + (r.avatar && r.avatar.img ? '<img class="lb-av" src="' + esc(r.avatar.img) + '" alt="" loading="lazy">' : '') +
+      esc(r.name || 'Joueur') + (r.premium === true ? DIA : '') + (r.id === uid ? ' (toi)' : '') + '</strong>' +
     '<small>' + small + '</small></span>' + score + '</li>';
 }
 async function showGeneralBoard(tab) {
@@ -1686,7 +1687,7 @@ async function showProfile(id) {
   const L = levelOf(v.xp), name = v.name || 'Joueur';
   const stat = (n, l) => '<div class="pf-stat"><b>' + n + '</b><small>' + l + '</small></div>';
   $('pfBody').innerHTML =
-    '<div class="pf-head"><div class="pf-av" aria-hidden="true">' + esc(name.charAt(0).toUpperCase()) + '</div><div style="min-width:0">' +
+    '<div class="pf-head"><div class="pf-av" aria-hidden="true">' + (v.avatar && v.avatar.img ? '<img src="' + esc(v.avatar.img) + '" alt="">' : esc(name.charAt(0).toUpperCase())) + '</div><div style="min-width:0">' +
       '<h3 id="pfTitle">' + esc(name) + (v.premium === true ? ' ' + DIA : '') + (id === uid ? ' <span style="font:500 14px var(--display);color:var(--muted)">(toi)</span>' : '') + '</h3>' +
       '<div class="acc-xp"><span>Niv. ' + L.n + '</span><span class="xpbar" aria-hidden="true"><i style="width:' + Math.round(100 * L.cur / L.need) + '%"></i></span><span>' + L.cur + '/' + L.need + ' XP</span></div></div></div>' +
     '<div class="pf-grid">' +
@@ -1697,7 +1698,9 @@ async function showProfile(id) {
       stat((v.dailyStreak || 0) + (v.dailyBest > (v.dailyStreak || 0) ? '<small> / ' + v.dailyBest + '</small>' : ''), 'série au défi du jour' + (v.dailyBest > (v.dailyStreak || 0) ? ' (record)' : '')) +
       stat('🏅 ' + (v.badges || 0), 'badges différents') +
       stat('🔗 ' + (v.liens || 0), 'Liens') +
-    '</div>' + (v.premium === true ? '<p class="theme-note">' + DIA + ' Membre WikiDuel+</p>' : '');
+    '</div>' + (v.premium === true ? '<p class="theme-note">' + DIA + ' Membre WikiDuel+</p>' : '') +
+    (v.avatar && v.avatar.img ? '<p class="pf-cr">Photo de profil : badge « ' + esc(v.avatar.t) + ' » · ' + esc(v.avatar.cr || 'Wikimedia Commons') +
+      (v.avatar.src ? ' · <a href="' + esc(v.avatar.src) + '" target="_blank" rel="noopener">source</a>' : '') + '</p>' : '');
 }
 function closeProfile() { $('pfSheet').hidden = true; if (history.state && history.state.wdProfile) { try { history.back(); } catch (e) {} } }
 $('lbList').addEventListener('click', e => { const li = e.target.closest('li[data-uid]'); if (li && li.dataset.uid) showProfile(li.dataset.uid); });
@@ -2158,6 +2161,9 @@ function renderDailyCard() {
   $('dTarget').textContent = known ? d.target : '';
   $('dailyBox').classList.toggle('mystery', !known);
   const done = run && (run.finishedAt || run.gaveUp);
+  // Pas encore joué : la carte remonte juste sous le compte ; une fois fait, elle reprend sa place en bas.
+  if (done) { if ($('dailyHome').nextElementSibling !== $('dailyBox')) $('dailyHome').after($('dailyBox')); }
+  else if ($('account').nextElementSibling !== $('dailyBox')) $('account').after($('dailyBox'));
   $('dPlay').hidden = !!done;
   $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
   if (!done) {

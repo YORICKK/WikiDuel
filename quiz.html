@@ -70,6 +70,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 
 /* Accueil */
 .back { font: 700 14px var(--display); text-decoration: none; color: var(--muted); }
+/* Sélecteur de jeu : course / quiz (même composant que la course) */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+.modes a { text-align: center; padding: 10px 6px; border-radius: 10px; font: 800 15px var(--display); color: var(--muted); text-decoration: none; }
+.modes a.on { background: var(--quiz); color: #fff; }
+.modes a:not(.on):hover { background: var(--paper); color: var(--ink); }
+.modes a:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 .logo { font: 800 clamp(44px, 13vw, 68px)/.9 var(--display); letter-spacing: -.04em; }
 .logo span { color: var(--flag); }
 .logo em { font-style: normal; color: var(--quiz); display: block; font-size: .62em; letter-spacing: -.02em; margin-top: 4px; }
@@ -161,7 +167,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .lb small { display: block; font: 500 12px var(--mono); color: var(--muted); }
 .lb .sc { font: 800 17px var(--mono); }
 .lb-empty { justify-content: center; text-align: center; color: var(--muted); grid-template-columns: 1fr !important; }
-.back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; margin-bottom: -8px;
+.back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; margin: 0 0 6px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
 .back-top:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
@@ -193,7 +199,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 <!-- ACCUEIL -->
 <section id="home" class="screen">
   <div class="wrap">
-    <a class="back" href="/">← WikiDuel, la course sur Wikipédia</a>
+    <nav class="modes" aria-label="Choisir le jeu"><a href="/">🏁 Course</a><a href="/quiz" class="on" aria-current="page">🖼️ Quiz</a></nav>
     <h1 class="logo">Wiki<span>Duel</span><em>Quiz</em></h1>
     <p class="pitch">Un nom, quatre photos tirées de Wikipédia. Touche la bonne, le plus vite possible. 10 questions, 10 secondes chacune.</p>
     <div class="demo" aria-hidden="true"><i>🏔️</i><i class="ok">🌊</i><i>🦁</i><i>🚗</i></div>
