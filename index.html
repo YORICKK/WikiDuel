@@ -188,7 +188,28 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .verdict { font: 600 12px var(--display); color: var(--flag); }
 
 /* WikiDuel+ */
-.home-links { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.home-links { display: flex; flex-wrap: wrap; gap: 6px 22px; justify-content: center; padding: 4px 0; }
+.home-link { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; background: none; border: 0; padding: 0 4px; font: 700 15px var(--display); color: var(--link); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; }
+.home-link:hover { text-decoration-color: currentColor; }
+.home-link:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; border-radius: 6px; }
+/* Tuiles de jeu */
+.play { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tile { display: grid; gap: 12px; align-content: space-between; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
+.tile.friends { grid-column: 1 / -1; border: 2px solid var(--link); background: linear-gradient(135deg, color-mix(in srgb, var(--link) 9%, var(--card)), var(--card)); }
+.t-head { display: flex; gap: 12px; align-items: flex-start; }
+.t-ico { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--paper); }
+.t-head h3 { margin: 0; font: 800 19px/1.2 var(--display); }
+.t-head p { margin: 2px 0 0; font: 500 13px/1.4 var(--display); color: var(--muted); }
+.tile .btn { font-size: 16px; padding: 0 10px; }
+.tile.friends .btn:not(.ghost) { background: var(--link); border-color: var(--link); color: var(--card); }
+@media (max-width: 420px) { .tile:not(.friends) .t-head { flex-direction: column; gap: 8px; } }
+.d-left { margin-left: auto; font: 600 12px var(--mono); color: var(--muted); white-space: nowrap; }
+.d-actions .d-link { white-space: nowrap; }
+.account.guest .acc-top { display: none; }
+/* Compte invité : version compacte */
+.account.guest { gap: 0; padding: 12px 14px; }
+.account.guest .acc-av { width: 40px; height: 40px; border-radius: 12px; font-size: 18px; }
+.account.guest .acc-info strong { font-size: 17px; }
 .premium-btn { border-color: #3fb8ff; }
 #premium .wrap { display: grid; gap: 20px; padding-block: 32px; }
 .locked { display: grid; gap: 10px; padding: 18px; background: var(--card); border: 2px solid #3fb8ff; border-radius: 16px; font: 500 15px/1.45 var(--display); }
@@ -613,6 +634,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       </div>
       <button id="chGo" class="btn ranked">Relever le défi</button>
     </div>
+    <span id="dailyTop" hidden></span>
     <div class="account" id="account">
       <div class="acc-head">
       <div class="acc-av" id="accAv" aria-hidden="true">?</div>
@@ -647,40 +669,46 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
         <button type="button" class="acc-chip" id="chipLiens"><b id="cLiens">0</b><small>🔗 Liens</small></button>
       </div>
     </div>
-    <div class="stack">
-      <label class="label" for="name" id="nameLabel">Ton pseudo</label>
-      <input id="name" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
-      <div class="create-row">
-        <button id="create" class="btn">Salon entre amis</button>
-        <button id="createRanked" class="btn ranked">Partie classée</button>
-      </div>
-      <div class="or">ou rejoindre avec un code</div>
-      <div class="join-row">
-        <input id="codeIn" class="field" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="ABCD" aria-label="Code du salon">
-        <button id="join" class="btn ghost">Rejoindre</button>
-      </div>
-      <div class="or">ou t'entraîner seul</div>
-      <button id="solo" class="btn ghost">Jouer en solo</button>
-      <div id="homeErr" class="err" role="alert"></div>
-      <span id="dailyHome" hidden></span>
-      <div class="daily" id="dailyBox" hidden>
-        <div class="d-head">
-          <span class="label">Défi du jour <span class="d-num" id="dNum"></span></span>
-          <span class="d-date" id="dDate"></span>
-        </div>
-        <div class="d-theme" id="dTheme" hidden></div>
-        <div class="d-route"><span id="dStart"></span><span class="d-arrow" aria-hidden="true">→</span><span id="dTarget"></span></div>
-        <div class="d-me" id="dMe">Même parcours pour tous, une seule tentative.</div>
-        <div class="d-actions">
-          <button id="dPlay" class="btn small">Jouer</button>
-          <button id="dBoard" class="d-link">Classement du jour</button>
+    <input id="name" type="hidden">
+    <!-- Trois façons de jouer : les salons entre amis en premier (80 % des parties) -->
+    <div class="play">
+      <div class="tile friends">
+        <div class="t-head"><span class="t-ico" aria-hidden="true">👥</span><div><h3>Avec des amis</h3><p>Crée un salon et envoie le code à tes amis.</p></div></div>
+        <button id="create" class="btn">Créer un salon</button>
+        <div class="join-row">
+          <input id="codeIn" class="field" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="CODE" aria-label="Code du salon">
+          <button id="join" class="btn ghost">Rejoindre</button>
         </div>
       </div>
-      <div class="home-links">
-        <button id="rankBtn" class="btn ghost small">Voir le classement</button>
-        <button id="premiumBtn" class="btn ghost small premium-btn">Mes parties et stats</button>
+      <div class="tile">
+        <div class="t-head"><span class="t-ico" aria-hidden="true">🏆</span><div><h3>Classé</h3><p id="rankedTxt">1 contre 1, ton Elo en jeu.</p></div></div>
+        <button id="createRanked" class="btn ranked">Jouer</button>
+      </div>
+      <div class="tile">
+        <div class="t-head"><span class="t-ico" aria-hidden="true">🎯</span><div><h3>Solo</h3><p>Un parcours au hasard, à ton rythme.</p></div></div>
+        <button id="solo" class="btn ghost">Jouer</button>
       </div>
     </div>
+    <div id="homeErr" class="err" role="alert"></div>
+    <span id="dailyHome" hidden></span>
+    <div class="daily" id="dailyBox" hidden>
+      <div class="d-head">
+        <span class="label">Défi du jour <span class="d-num" id="dNum"></span></span>
+        <span class="d-date" id="dDate"></span>
+      </div>
+      <div class="d-theme" id="dTheme" hidden></div>
+      <div class="d-route"><span id="dStart"></span><span class="d-arrow" aria-hidden="true">→</span><span id="dTarget"></span></div>
+      <div class="d-me" id="dMe">Même parcours pour tous, une seule tentative.</div>
+      <div class="d-actions">
+        <button id="dPlay" class="btn small">Jouer</button>
+        <button id="dBoard" class="d-link">Classement du jour</button>
+        <span class="d-left" id="dLeft"></span>
+      </div>
+    </div>
+    <nav class="home-links" aria-label="Classements et statistiques">
+      <button id="rankBtn" class="home-link">🏆 Classement</button>
+      <button id="premiumBtn" class="home-link premium-btn">Mes parties et stats</button>
+    </nav>
     <p class="credits">Articles : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a>, contributeurs de Wikipédia, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a>. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br><a href="/comment-jouer">Comment jouer</a> · <a href="/course-wikipedia">Course Wikipédia</a> · <a href="/defis">Défis passés</a><br><a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a> · <button type="button" class="link-btn" id="delAccBtn">Supprimer mon compte</button></p>
   </div>
 </section>
@@ -1156,12 +1184,13 @@ const ready = (async () => {
 function renderAccount() {
   const u = firebase.auth().currentUser;
   $('googleBtn').disabled = false;
+  $('rankedTxt').textContent = S.google ? '1 contre 1, ton Elo en jeu.' : '1 contre 1. Compte Google requis.';
   $('googleBtn').hidden = !!S.google; $('logoutBtn').hidden = !S.google;
   renderXp();
   if (!S.google) {
     const n = $('name').value.trim();
     $('accName').textContent = n || 'Invité';
-    $('accElo').textContent = (n ? 'Invité · c' : 'C') + 'onnecte-toi pour jouer en classé';
+    $('accElo').textContent = 'Connecte-toi pour garder tes badges';
     syncNameField(); renderXp(); return;
   }
   const p = S.profile || {};
@@ -1198,6 +1227,10 @@ function renderXp() {
   $('accAv').classList.toggle('prem', isMePremium());
   $('cLvl').textContent = L.n; $('cBadges').textContent = p.badges || 0; $('cLiens').textContent = p.liens || 0;
   $('chipLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
+  // Invité sans progression : carte réduite (pas de pastilles à zéro).
+  const empty = !S.google && !p.xp && !p.badges && !p.liens;
+  $('account').classList.toggle('guest', empty);
+  document.querySelector('.acc-chips').hidden = empty;
 }
 $('chipLvl').onclick = () => { const L = levelOf(S.profile && S.profile.xp); toast('Niveau ' + L.n + '<small>' + L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1) + '</small>'); };
 $('chipBadges').onclick = () => showBadges();
@@ -1228,9 +1261,11 @@ function openNameSheet(required) {
   $('nameSheet').hidden = false; $('nameEdit').focus(); $('nameEdit').select();
 }
 // Une fois le pseudo choisi, le champ disparaît de l'accueil : on le change par le menu ⚙.
-function syncNameField() {
-  const has = !!$('name').value.trim();
-  $('name').hidden = has; $('nameLabel').hidden = has;
+function syncNameField() {}
+// Pseudo demandé seulement au moment de jouer (petite fenêtre), puis retenu.
+function closeNameSheet(n) {
+  $('nameSheet').hidden = true; S.nameRequired = false;
+  const w = S.nameWait; S.nameWait = null; if (w) w(n || null);
 }
 function closeAccMenu() { $('accMenu').hidden = true; $('gearBtn').setAttribute('aria-expanded', 'false'); }
 $('gearBtn').onclick = e => {
@@ -1243,7 +1278,7 @@ document.addEventListener('click', e => { if (!$('accMenu').hidden && !e.target.
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!$('accMenu').hidden) { closeAccMenu(); $('gearBtn').focus(); }
-  else if (!$('nameSheet').hidden && !S.nameRequired) $('nameSheet').hidden = true;
+  else if (!$('nameSheet').hidden && !S.nameRequired) closeNameSheet(null);
 });
 $('nameBtn').onclick = () => { closeAccMenu(); openNameSheet(false); };
 $('statsBtn').onclick = () => { closeAccMenu(); showAdmin(); };
@@ -1716,14 +1751,14 @@ function renderAdmin(d) {
 }
 $('adRefresh').onclick = showAdmin;
 $('adBackTop').onclick = () => show('home');
-$('nameCancel').onclick = () => { $('nameSheet').hidden = true; };
+$('nameCancel').onclick = () => closeNameSheet(null);
 $('nameForm').onsubmit = async e => {
   e.preventDefault();
   const n = $('nameEdit').value.trim();
   if (!n) { $('nameErr').textContent = 'Le pseudo ne peut pas être vide.'; $('nameEdit').focus(); return; }
   $('name').value = n; store.set('wd-name', n);
   if (S.google) { S.profile = Object.assign({}, S.profile, { name: n }); await saveProfileName(n); }
-  $('nameSheet').hidden = true; S.nameRequired = false;
+  closeNameSheet(n);
   renderAccount();
 };
 $('googleBtn').onclick = async () => {
@@ -2238,6 +2273,16 @@ function dateLabel(key) {
   const [y, m, d] = key.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
 }
+// Temps restant avant le prochain défi (minuit, heure suisse).
+function dailyCountdown() {
+  const d = S.daily, run = d && d.run, done = run && (run.finishedAt || run.gaveUp);
+  if (!d || done) { $('dLeft').textContent = ''; return; }
+  const parts = new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date(serverNow()));
+  const v = t => +parts.find(p => p.type === t).value;
+  const left = 24 * 60 - (v('hour') * 60 + v('minute')), hh = Math.floor(left / 60), mm = left % 60;
+  $('dLeft').textContent = '⏳ ' + (hh ? hh + ' h ' + String(mm).padStart(2, '0') : mm + ' min');
+}
+setInterval(dailyCountdown, 30000);
 async function loadDaily() {
   try { await ready; } catch (e) { return; }
   const key = zurichDate(serverNow());
@@ -2291,7 +2336,8 @@ function renderDailyCard() {
   const done = run && (run.finishedAt || run.gaveUp);
   // Pas encore joué : la carte remonte juste sous le compte ; une fois fait, elle reprend sa place en bas.
   if (done) { if ($('dailyHome').nextElementSibling !== $('dailyBox')) $('dailyHome').after($('dailyBox')); }
-  else if ($('account').nextElementSibling !== $('dailyBox')) $('account').after($('dailyBox'));
+  else if ($('dailyTop').nextElementSibling !== $('dailyBox')) $('dailyTop').after($('dailyBox'));
+  dailyCountdown();
   $('dPlay').hidden = !!done;
   $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
   if (!done) {
@@ -2324,7 +2370,7 @@ async function dailyRank(key) {
   } catch (e) { return null; }
 }
 $('dPlay').onclick = async () => {
-  const name = getName(); if (!name) return;
+  const name = await getName(); if (!name) return;
   const d = S.daily; if (!d) return;
   $('dPlay').disabled = true;
   try {
@@ -2486,12 +2532,14 @@ if (params.get('salon')) $('codeIn').value = params.get('salon').toUpperCase();
 
 function getName() {
   const n = $('name').value.trim();
-  if (!n) { $('homeErr').textContent = 'Choisis un pseudo pour commencer.'; $('name').focus(); return null; }
-  store.set('wd-name', n);
-  return n;
+  if (n) { store.set('wd-name', n); return Promise.resolve(n); }
+  return new Promise(res => {
+    S.nameWait = res; openNameSheet(false);
+    $('nameTitle').textContent = 'Choisis ton pseudo'; $('nameIntro').hidden = false;
+  });
 }
 $('create').onclick = async () => {
-  const name = getName(); if (!name) return;
+  const name = await getName(); if (!name) return;
   $('create').disabled = true;
   try { const code = await createRoom(name, false); markStart('salon'); enterRoom({ code: code, name: name }); }
   catch (e) { $('homeErr').textContent = e.message; }
@@ -2499,7 +2547,7 @@ $('create').onclick = async () => {
 };
 $('createRanked').onclick = async () => {
   if (!S.google) { $('homeErr').textContent = 'Connecte-toi avec Google pour jouer en classé.'; return; }
-  const name = getName(); if (!name) return;
+  const name = await getName(); if (!name) return;
   markStart('classe');
   enterQueue(name);
 };
@@ -2580,7 +2628,7 @@ function stopQueue(removeEntry) {
 }
 $('qCancel').onclick = () => { stopQueue(true); show('home'); };
 $('join').onclick = async () => {
-  const name = getName(); if (!name) return;
+  const name = await getName(); if (!name) return;
   const code = $('codeIn').value.trim().toUpperCase();
   if (code.length !== 4) { $('homeErr').textContent = 'Le code fait 4 lettres.'; return; }
   $('join').disabled = true;
