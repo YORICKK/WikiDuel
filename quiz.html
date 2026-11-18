@@ -72,6 +72,13 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .back { font: 700 14px var(--display); text-decoration: none; color: var(--muted); }
 /* Sélecteur de jeu : course / quiz (même composant que la course) */
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+/* Icônes */
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; display: inline-block; }
+.ic.liens { color: var(--link); }
+.ic.gold { color: #d99a1e; }
+.ic.fire { color: #ff6a3d; }
+.ic.ok { color: var(--ok); }
+@media (prefers-color-scheme: dark) { .ic.gold { color: #f2b84b; } }
 .modes a { text-align: center; padding: 10px 6px; border-radius: 10px; font: 800 15px var(--display); color: var(--muted); text-decoration: none; }
 .modes a.on { background: var(--quiz); color: #fff; }
 .modes a:not(.on):hover { background: var(--paper); color: var(--ink); }
@@ -83,6 +90,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .demo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-width: 280px; }
 .demo i { aspect-ratio: 1; border-radius: 10px; background: var(--card); border: 1px solid var(--line); display: grid; place-items: center; font-style: normal; font-size: 26px; }
 .demo i.ok { border: 2px solid var(--ok); }
+.demo i .ic { width: 30px; height: 30px; vertical-align: 0; color: var(--muted); }
+.demo i.ok .ic { color: var(--ok); }
+.menu .ic { margin-right: 8px; color: var(--muted); }
 .daily-q .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .daily-q strong { font: 800 20px/1.2 var(--display); }
 .daily-q .acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
@@ -199,10 +209,10 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 <!-- ACCUEIL -->
 <section id="home" class="screen">
   <div class="wrap">
-    <nav class="modes" aria-label="Choisir le jeu"><a href="/">🏁 Course</a><a href="/quiz" class="on" aria-current="page">🖼️ Quiz</a></nav>
+    <nav class="modes" aria-label="Choisir le jeu"><a href="/"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg> Course</a><a href="/quiz" class="on" aria-current="page"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Quiz</a></nav>
     <h1 class="logo">Wiki<span>Duel</span><em>Quiz</em></h1>
     <p class="pitch">Un nom, quatre photos tirées de Wikipédia. Touche la bonne, le plus vite possible. 10 questions, 10 secondes chacune.</p>
-    <div class="demo" aria-hidden="true"><i>🏔️</i><i class="ok">🌊</i><i>🦁</i><i>🚗</i></div>
+    <div class="demo" aria-hidden="true"><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#mountain"></use></svg></i><i class="ok"><svg class="ic" aria-hidden="true"><use href="/icons.svg#wave"></use></svg></i><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#paw"></use></svg></i><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#car"></use></svg></i></div>
 
     <div class="acc" id="accCard">
       <div class="acc-info"><span class="label">Compte</span><strong id="accName">Invité</strong><span id="accSub">Invité · connecte-toi avec Google pour garder ta progression sur tous tes appareils.</span></div>
@@ -215,9 +225,9 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <div class="menu" id="accMenu" role="menu" hidden>
-          <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
-          <a role="menuitem" href="/">🏁 Retour à la course</a>
-          <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
+          <button type="button" role="menuitem" id="nameBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#pencil"></use></svg>Changer de pseudo</button>
+          <a role="menuitem" href="/"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg>Retour à la course</a>
+          <button type="button" role="menuitem" id="logoutBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#logout"></use></svg>Se déconnecter</button>
         </div>
       </div>
     </div>
@@ -325,6 +335,8 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
+// Icônes (sprite /icons.svg) : IC('liens'), IC('badge', 'gold')…
+const IC = (n, c) => '<svg class="ic' + (c ? ' ' + c : '') + '" aria-hidden="true"><use href="/icons.svg#' + n + '"></use></svg>';
 const QN = 10, QDUR = 10000, REVEAL = 2600, SLOT = QDUR + 3500;
 const LAUNCH = '2026-11-13'; // quiz du jour n°1
 const S = { clockOffset: 0, bank: null };
@@ -815,7 +827,7 @@ function onRoom() {
     if (!(G && G.over && G.g === d.g)) show('lobby');
     $('lWait').textContent = missed ? 'Partie terminée. L’hôte peut en lancer une nouvelle.' : 'En attente de l’hôte…';
     $('lStart').textContent = missed ? 'Nouvelle partie' : 'Lancer la partie';
-    $('lPlayers').innerHTML = ps.map(p => '<li class="' + (p.id === uid ? 'me' : '') + (p.online === false ? ' off' : '') + '"><span>' + esc(p.name) + (p.id === d.hostId ? ' 👑' : '') +
+    $('lPlayers').innerHTML = ps.map(p => '<li class="' + (p.id === uid ? 'me' : '') + (p.online === false ? ' off' : '') + '"><span>' + esc(p.name) + (p.id === d.hostId ? ' ' + IC('crown', 'gold') : '') +
       (p.id === uid ? ' (toi)' : '') + '</span><small>' + (p.online === false ? 'parti' : 'prêt') + '</small></li>').join('');
     $('lStart').hidden = !host; $('lWait').hidden = host;
     return;

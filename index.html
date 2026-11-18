@@ -126,6 +126,13 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .ad-err { font: 500 12px/1.4 var(--mono); color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
 /* Sélecteur de jeu : course / quiz */
 .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
+/* Icônes */
+.ic { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex: none; display: inline-block; }
+.ic.liens { color: var(--link); }
+.ic.gold { color: #d99a1e; }
+.ic.fire { color: #ff6a3d; }
+.ic.ok { color: var(--ok); }
+@media (prefers-color-scheme: dark) { .ic.gold { color: #f2b84b; } }
 .modes a { text-align: center; padding: 10px 6px; border-radius: 10px; font: 800 15px var(--display); color: var(--muted); text-decoration: none; }
 .modes a.on { background: var(--ink); color: var(--paper); }
 .modes a:not(.on):hover { background: var(--paper); color: var(--ink); }
@@ -173,6 +180,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .gear:focus-visible { outline: 2px solid var(--flag); outline-offset: 2px; }
 .menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 15; min-width: 210px; display: grid; gap: 2px; padding: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 30px rgba(10,20,50,.18); }
 .menu[hidden] { display: none; }
+.menu button .ic { margin-right: 8px; color: var(--muted); }
 .menu button { text-align: left; border: 0; background: none; padding: 11px 12px; border-radius: 8px; font: 700 15px var(--display); color: var(--ink); cursor: pointer; }
 .menu button[hidden], #name[hidden], #nameLabel[hidden] { display: none; }
 .menu button:hover, .menu button:focus-visible { background: var(--paper); outline: none; }
@@ -197,7 +205,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .tile { display: grid; gap: 12px; align-content: space-between; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
 .tile.friends { grid-column: 1 / -1; border: 2px solid var(--link); background: linear-gradient(135deg, color-mix(in srgb, var(--link) 9%, var(--card)), var(--card)); }
 .t-head { display: flex; gap: 12px; align-items: flex-start; }
-.t-ico { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--paper); }
+.t-ico { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--paper); color: var(--link); }
+.t-ico .ic { width: 24px; height: 24px; vertical-align: 0; }
+.tile:nth-child(2) .t-ico { color: var(--flag); }
 .t-head h3 { margin: 0; font: 800 19px/1.2 var(--display); }
 .t-head p { margin: 2px 0 0; font: 500 13px/1.4 var(--display); color: var(--muted); }
 .tile .btn { font-size: 16px; padding: 0 10px; }
@@ -310,10 +320,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 @media (prefers-reduced-motion: reduce) { .dots::after { animation: none; content: "…"; } }
 .ghost-offer { display: grid; gap: 8px; padding: 16px; border: 2px dashed var(--muted); border-radius: 16px; background: var(--card); font: 500 15px/1.4 var(--display); }
 .ghost-offer strong { font: 800 20px/1.2 var(--display); }
-.ghost-offer strong::before { content: "👻 "; }
 .ghost-offer small { color: var(--muted); font-size: 12px; line-height: 1.4; }
 .rival.ghost { border: 1px dashed rgba(255,255,255,.5); background: transparent; }
-.rival.ghost::before { content: "👻"; }
 
 /* Classement */
 #ranking .wrap { display: grid; gap: 20px; padding-block: 32px; }
@@ -505,7 +513,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .ach-chip em { font-style: normal; color: var(--muted); font-weight: 500; }
 .ach-item.done { border-color: var(--ok); }
 .ach-item.ready { border: 2px solid var(--flag); }
-.ach-emo { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 26px; background: var(--paper); }
+.ach-emo { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; font-size: 26px; background: var(--paper); color: var(--link); }
+.ach-emo .ic { width: 26px; height: 26px; vertical-align: 0; }
+.ach-item.done .ach-emo { color: var(--ok); }
+.ach-item.ready .ach-emo { color: var(--flag); }
 .ach-item b { font: 800 16px/1.2 var(--display); }
 .ach-item small { display: block; font: 500 12px var(--display); color: var(--muted); }
 .ach-bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin-top: 6px; }
@@ -525,7 +536,7 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .bd.rare .ring { background: linear-gradient(135deg, #ff5a36, #a98bff); }
 .bd .rar { font: 700 10px var(--mono); color: var(--flag); text-transform: uppercase; letter-spacing: .06em; }
 .bd.rare { border-color: #a98bff; box-shadow: 0 0 0 1px #a98bff inset; }
-/* Liens 🔗 et marché */
+/* Liens et marché */
 .mk-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mk-bal { font: 800 20px var(--display); }
 .bd-trade { display: grid; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
@@ -556,6 +567,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .vs-card { display: grid; grid-template-columns: 56px 1fr auto; gap: 12px; align-items: center; padding: 14px 16px; border-radius: 18px; color: #f6f7fb;
   background: linear-gradient(135deg, #1d2b52, #14213d); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 16px 40px rgba(0,0,0,.35); }
 .vs-card.opp { background: linear-gradient(135deg, #5a1f1a, #2a1530); }
+.vs-av .ic { width: 30px; height: 30px; vertical-align: 0; }
 .vs-av { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; font: 800 26px var(--display); background: rgba(255,255,255,.12); overflow: hidden; }
 .vs-card strong { font: 800 20px/1.15 var(--display); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vs-card small { font: 600 13px var(--display); color: #c7cfe6; }
@@ -615,7 +627,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 <!-- ACCUEIL -->
 <section id="home" class="screen">
   <div class="wrap">
-    <nav class="modes" aria-label="Choisir le jeu"><a href="/" class="on" aria-current="page">🏁 Course</a><a href="/quiz">🖼️ Quiz</a></nav>
+    <nav class="modes" aria-label="Choisir le jeu"><a href="/" class="on" aria-current="page"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg> Course</a><a href="/quiz"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Quiz</a></nav>
     <div>
       <h1 class="logo">Wiki<span>Duel</span></h1>
     </div>
@@ -623,7 +635,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <div class="route" id="demoRoute" aria-hidden="true"><b>Pizza</b>→ Italie → Rome → <b>Jules César</b></div>
     <!-- Premier passage : une course facile en un geste (pseudo proposé automatiquement) -->
     <div class="quick" id="quickBox" hidden>
-      <button id="quickBtn" class="btn quick-btn">▶ Jouer maintenant</button>
+      <button id="quickBtn" class="btn quick-btn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#play"></use></svg> Jouer maintenant</button>
       <p class="quick-txt" id="quickTxt"></p>
     </div>
     <div class="challenge" id="challengeBox" hidden>
@@ -653,27 +665,27 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
         <div class="menu" id="accMenu" role="menu" hidden>
-          <button type="button" role="menuitem" id="badgesBtn">🏅 Mes badges</button>
-          <button type="button" role="menuitem" id="marketBtn">🛒 Marché</button>
-          <button type="button" role="menuitem" id="achBtn">🏆 Succès</button>
-          <button type="button" role="menuitem" id="nameBtn">✏️ Changer de pseudo</button>
-          <button type="button" role="menuitem" id="installBtn" hidden>📲 Installer l'appli</button>
-          <button type="button" role="menuitem" id="statsBtn" hidden>📊 Stats de l'appli</button>
-          <button type="button" role="menuitem" id="logoutBtn" hidden>↪️ Se déconnecter</button>
+          <button type="button" role="menuitem" id="badgesBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#badge"></use></svg>Mes badges</button>
+          <button type="button" role="menuitem" id="marketBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cart"></use></svg>Marché</button>
+          <button type="button" role="menuitem" id="achBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg>Succès</button>
+          <button type="button" role="menuitem" id="nameBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#pencil"></use></svg>Changer de pseudo</button>
+          <button type="button" role="menuitem" id="installBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#install"></use></svg>Installer l'appli</button>
+          <button type="button" role="menuitem" id="statsBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#chart"></use></svg>Stats de l'appli</button>
+          <button type="button" role="menuitem" id="logoutBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#logout"></use></svg>Se déconnecter</button>
         </div>
       </div>
       </div>
       <div class="acc-chips">
         <button type="button" class="acc-chip" id="chipLvl"><b id="cLvl">0</b><small>Niveau</small></button>
-        <button type="button" class="acc-chip" id="chipBadges"><b id="cBadges">0</b><small>🏅 Badges</small></button>
-        <button type="button" class="acc-chip" id="chipLiens"><b id="cLiens">0</b><small>🔗 Liens</small></button>
+        <button type="button" class="acc-chip" id="chipBadges"><b id="cBadges">0</b><small><svg class="ic gold" aria-hidden="true"><use href="/icons.svg#badge"></use></svg> Badges</small></button>
+        <button type="button" class="acc-chip" id="chipLiens"><b id="cLiens">0</b><small><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> Liens</small></button>
       </div>
     </div>
     <input id="name" type="hidden">
     <!-- Trois façons de jouer : les salons entre amis en premier (80 % des parties) -->
     <div class="play">
       <div class="tile friends">
-        <div class="t-head"><span class="t-ico" aria-hidden="true">👥</span><div><h3>Avec des amis</h3><p>Crée un salon et envoie le code à tes amis.</p></div></div>
+        <div class="t-head"><span class="t-ico" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="/icons.svg#users"></use></svg></span><div><h3>Avec des amis</h3><p>Crée un salon et envoie le code à tes amis.</p></div></div>
         <button id="create" class="btn">Créer un salon</button>
         <div class="join-row">
           <input id="codeIn" class="field" maxlength="4" autocapitalize="characters" autocomplete="off" placeholder="CODE" aria-label="Code du salon">
@@ -681,11 +693,11 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
         </div>
       </div>
       <div class="tile">
-        <div class="t-head"><span class="t-ico" aria-hidden="true">🏆</span><div><h3>Classé</h3><p id="rankedTxt">1 contre 1, ton Elo en jeu.</p></div></div>
+        <div class="t-head"><span class="t-ico" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg></span><div><h3>Classé</h3><p id="rankedTxt">1 contre 1, ton Elo en jeu.</p></div></div>
         <button id="createRanked" class="btn ranked">Jouer</button>
       </div>
       <div class="tile">
-        <div class="t-head"><span class="t-ico" aria-hidden="true">🎯</span><div><h3>Solo</h3><p>Un parcours au hasard, à ton rythme.</p></div></div>
+        <div class="t-head"><span class="t-ico" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="/icons.svg#target"></use></svg></span><div><h3>Solo</h3><p>Un parcours au hasard, à ton rythme.</p></div></div>
         <button id="solo" class="btn ghost">Jouer</button>
       </div>
     </div>
@@ -706,7 +718,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       </div>
     </div>
     <nav class="home-links" aria-label="Classements et statistiques">
-      <button id="rankBtn" class="home-link">🏆 Classement</button>
+      <button id="rankBtn" class="home-link"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg> Classement</button>
       <button id="premiumBtn" class="home-link premium-btn">Mes parties et stats</button>
     </nav>
     <p class="credits">Articles : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a>, contributeurs de Wikipédia, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a>. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br><a href="/comment-jouer">Comment jouer</a> · <a href="/course-wikipedia">Course Wikipédia</a> · <a href="/defis">Défis passés</a><br><a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a> · <button type="button" class="link-btn" id="delAccBtn">Supprimer mon compte</button></p>
@@ -727,7 +739,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     </div>
     <div class="ghost-offer" id="ghostOffer" hidden>
       <span class="label">Personne n'est disponible pour l'instant</span>
-      <strong id="ghostName"></strong>
+      <strong><svg class="ic" aria-hidden="true"><use href="/icons.svg#ghost"></use></svg> <span id="ghostName"></span></strong>
       <span id="ghostText"></span>
       <button id="ghostGo" class="btn">Affronter le fantôme</button>
       <small>Tant que tu n'acceptes pas, tu restes dans la file : un vrai joueur peut encore arriver. Contre un fantôme, l'Elo compte à moitié.</small>
@@ -786,8 +798,8 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <div class="label" id="bdCount">Mes badges</div>
       <h2 class="big">Mes badges</h2>
     </div>
-    <p style="margin:0;color:var(--muted);font-size:15px">Chaque course réussie te donne <b>un exemplaire</b> du badge de sa page d'arrivée. Vends tes doubles à la banque ou aux enchères contre des <b>Liens 🔗</b>, et achète les badges qui te manquent au marché.</p>
-    <div class="mk-bar"><span class="mk-bal" id="bdBal">🔗 0</span><button type="button" class="btn small" id="bdMarket">🛒 Marché</button></div>
+    <p style="margin:0;color:var(--muted);font-size:15px">Chaque course réussie te donne <b>un exemplaire</b> du badge de sa page d'arrivée. Vends tes doubles à la banque ou aux enchères contre des <b>Liens</b> <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg>, et achète les badges qui te manquent au marché.</p>
+    <div class="mk-bar"><span class="mk-bal" id="bdBal"><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> 0</span><button type="button" class="btn small" id="bdMarket"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cart"></use></svg> Marché</button></div>
     <div class="bd-grid" id="bdGrid"></div>
   </div>
 </section>
@@ -798,8 +810,8 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <div class="label" id="bdTier"></div>
     <h3 id="bdTitle" style="margin:0;font-size:24px;padding-right:36px"></h3>
     <p id="bdText"></p>
-    <a class="btn ghost" id="bdLink" href="#" target="_blank" rel="noopener">Voir la page Wikipédia ↗</a>
-    <button type="button" class="btn ghost" id="bdAvatar">🖼️ Utiliser comme photo de profil</button>
+    <a class="btn ghost" id="bdLink" href="#" target="_blank" rel="noopener">Voir la page Wikipédia <svg class="ic" aria-hidden="true"><use href="/icons.svg#external"></use></svg></a>
+    <button type="button" class="btn ghost" id="bdAvatar"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Utiliser comme photo de profil</button>
     <div class="bd-trade" id="bdTrade">
       <button type="button" class="btn" id="bdSell">Vendre 1 exemplaire à la banque</button>
       <div class="bd-auc" id="bdAuc">
@@ -826,7 +838,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <div class="label" id="achCount">Succès</div>
       <h2 class="big">Succès</h2>
     </div>
-    <p style="margin:0;color:var(--muted);font-size:15px">Collectionne des badges d'une même famille (pays, consoles, animaux…) pour débloquer des paliers. Chaque palier rapporte des <b>Liens 🔗</b> : 10, 25, 50 puis 100.</p>
+    <p style="margin:0;color:var(--muted);font-size:15px">Collectionne des badges d'une même famille (pays, consoles, animaux…) pour débloquer des paliers. Chaque palier rapporte des <b>Liens</b> <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> : 10, 25, 50 puis 100.</p>
     <button type="button" class="btn" id="achClaim" hidden></button>
     <ul class="ach-list" id="achList"></ul>
   </div>
@@ -840,13 +852,13 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <div class="label">Enchères entre joueurs</div>
       <h2 class="big">Marché</h2>
     </div>
-    <div class="mk-bar"><span class="mk-bal" id="mkBal">🔗 0</span><button type="button" class="btn ghost small" id="mkMine">🏅 Mes badges</button></div>
+    <div class="mk-bar"><span class="mk-bal" id="mkBal"><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> 0</span><button type="button" class="btn ghost small" id="mkMine"><svg class="ic" aria-hidden="true"><use href="/icons.svg#badge"></use></svg> Mes badges</button></div>
     <p class="theme-note" id="mkGate" hidden></p>
     <div class="seg" id="mkTabs" style="grid-template-columns:repeat(3,minmax(0,1fr))">
       <button type="button" data-t="open" class="on">En cours</button><button type="button" data-t="bids">Mes offres</button><button type="button" data-t="sales">Mes ventes</button>
     </div>
     <ul class="mk-list" id="mkList"></ul>
-    <p style="margin:0;color:var(--muted);font-size:13px">Ton offre est bloquée tout de suite ; si quelqu'un fait mieux, tu es remboursé. Une offre dans les 5 dernières minutes prolonge la vente de 5 minutes. Le vendeur reçoit tout le prix. Les Liens 🔗 sont fictifs : ils ne s'achètent pas et ne valent rien en argent réel.</p>
+    <p style="margin:0;color:var(--muted);font-size:13px">Ton offre est bloquée tout de suite ; si quelqu'un fait mieux, tu es remboursé. Une offre dans les 5 dernières minutes prolonge la vente de 5 minutes. Le vendeur reçoit tout le prix. Les Liens <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> sont fictifs : ils ne s'achètent pas et ne valent rien en argent réel.</p>
   </div>
 </section>
 
@@ -879,7 +891,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 <div class="overlay" id="nameSheet" hidden>
   <form class="sheet" id="nameForm" role="dialog" aria-modal="true" aria-labelledby="nameTitle">
     <h3 id="nameTitle" style="margin:0;font-size:22px">Changer de pseudo</h3>
-    <p id="nameIntro" hidden>C'est le nom affiché dans les classements et à tes adversaires. Tu pourras le changer plus tard avec ⚙.</p>
+    <p id="nameIntro" hidden>C'est le nom affiché dans les classements et à tes adversaires. Tu pourras le changer plus tard avec <svg class="ic" aria-hidden="true"><use href="/icons.svg#gear"></use></svg>.</p>
     <label class="label" for="nameEdit">Nouveau pseudo</label>
     <input id="nameEdit" class="field" maxlength="16" autocomplete="nickname" placeholder="Ex. Greg">
     <div class="err" id="nameErr" role="alert"></div>
@@ -921,8 +933,8 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <button type="button" class="on" role="tab" aria-selected="true">Classé (Elo)</button>
     </div>
     <div class="seg seg-sort" id="lbSort" role="group" aria-label="Trier le classement" hidden>
-      <button type="button" data-s="time" class="on" aria-pressed="true">⏱ Par temps</button>
-      <button type="button" data-s="clicks" aria-pressed="false">🖱 Par clics</button>
+      <button type="button" data-s="time" class="on" aria-pressed="true"><svg class="ic" aria-hidden="true"><use href="/icons.svg#timer"></use></svg> Par temps</button>
+      <button type="button" data-s="clicks" aria-pressed="false"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cursor"></use></svg> Par clics</button>
     </div>
     <ol class="lb" id="lbList"><li class="lb-empty">Chargement…</li></ol>
     <button id="rankBack" class="btn ghost">Retour</button>
@@ -1060,6 +1072,9 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 const WIKI = 'https://fr.wikipedia.org';
 const NS = /^(Fichier|File|Catégorie|Category|Aide|Help|Portail|Portal|Spécial|Special|Modèle|Template|Wikipédia|Wikipedia|Projet|Discussion|Utilisateur|User|Référence|Module|MediaWiki|Image|Média|Media|Sujet|Talk):/i;
 const $ = id => document.getElementById(id);
+// Icônes (sprite /icons.svg) : IC('liens'), IC('badge', 'gold')…
+const IC = (n, c) => '<svg class="ic' + (c ? ' ' + c : '') + '" aria-hidden="true"><use href="/icons.svg#' + n + '"></use></svg>';
+const THEME_IC = { personnalites: 'user', histoire: 'columns', geographie: 'globe', arts: 'palette', vie: 'food', societe: 'scale', sciences: 'flask', technologie: 'cpu', jeuxvideo: 'gamepad', sport: 'ball' };
 
 const S = {
   me: null,        // { code, playerId, name }
@@ -1215,9 +1230,9 @@ const lvlTag = xp => '<span class="lvl" title="Niveau">Niv. ' + levelOf(xp).n + 
 // Carte du compte : juste le niveau et les médailles, à droite de « Compte » (discret).
 function renderXp() {
   const p = S.profile || {}, L = levelOf(p.xp);
-  $('accLvl').innerHTML = '<b>Niv. ' + L.n + '</b>' + (p.badges ? ' · 🏅 ' + p.badges : '') + (p.liens ? ' · 🔗 ' + p.liens : '');
-  if (!$('market').hidden) $('mkBal').textContent = '🔗 ' + (p.liens || 0);
-  if (!$('badges').hidden) $('bdBal').textContent = '🔗 ' + (p.liens || 0);
+  $('accLvl').innerHTML = '<b>Niv. ' + L.n + '</b>' + (p.badges ? ' · ' + IC('badge', 'gold') + ' ' + p.badges : '') + (p.liens ? ' · ' + IC('liens', 'liens') + ' ' + p.liens : '');
+  if (!$('market').hidden) $('mkBal').innerHTML = IC('liens', 'liens') + ' ' + (p.liens || 0);
+  if (!$('badges').hidden) $('bdBal').innerHTML = IC('liens', 'liens') + ' ' + (p.liens || 0);
   $('accLvl').title = L.cur + ' / ' + L.need + ' XP avant le niveau ' + (L.n + 1);
   // Carte du compte : avatar (initiale) et trois pastilles Niveau / Badges / Liens.
   const nm = ($('accName').textContent || '?').trim();
@@ -1247,8 +1262,8 @@ function notifyProgress(prev, cur) {
   if (gain <= 0) return;
   const a = levelOf(prev.xp).n, b = levelOf(cur.xp).n;
   const newBadge = (cur.badges || 0) > (prev.badges || 0);
-  if (b > a) toast('⭐ Niveau ' + b + ' !<small>+' + gain + ' XP' + (newBadge ? ' · nouveau badge 🏅' : '') + '</small>', 4200);
-  else toast('+' + gain + ' XP' + (newBadge ? '<small>Nouveau badge 🏅</small>' : ''));
+  if (b > a) toast(IC('star', 'gold') + ' Niveau ' + b + ' !<small>+' + gain + ' XP' + (newBadge ? ' · nouveau badge ' + IC('badge', 'gold') : '') + '</small>', 4200);
+  else toast('+' + gain + ' XP' + (newBadge ? '<small>Nouveau badge ' + IC('badge', 'gold') + '</small>' : ''));
 }
 function openNameSheet(required) {
   const u = firebase.auth().currentUser;
@@ -1356,14 +1371,14 @@ if ('serviceWorker' in navigator && !/\.github\.io$/i.test(location.hostname)) {
   navigator.serviceWorker.register('/sw.js').then(r => { swReg = r; renderAppMenu(); }).catch(() => {});
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; renderAppMenu(); });
-addEventListener('appinstalled', () => { deferredInstall = null; renderAppMenu(); toast('📲 WikiDuel est installé !'); });
+addEventListener('appinstalled', () => { deferredInstall = null; renderAppMenu(); toast(IC('install') + ' WikiDuel est installé !'); });
 function renderAppMenu() {
   $('installBtn').hidden = isStandalone() || !(deferredInstall || isIOS);
 }
 $('installBtn').onclick = async () => {
   closeAccMenu();
   if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; renderAppMenu(); }
-  else toast('📲 Sur iPhone : touche <b>Partager</b> ⬆️<small>puis « Sur l’écran d’accueil »</small>', 7000);
+  else toast(IC('install') + ' Sur iPhone : touche <b>Partager</b> ' + IC('share') + '<small>puis « Sur l’écran d’accueil »</small>', 7000);
 };
 // Rappel du défi du jour retiré : on désabonne proprement les appareils qui l'avaient activé.
 if (store.get('wd-push') && 'serviceWorker' in navigator) {
@@ -1404,7 +1419,7 @@ async function loadThumbs(titles) {
 async function showBadges() {
   show('badges');
   $('bdGrid').innerHTML = '<p class="lb-empty">Chargement…</p>';
-  $('bdBal').textContent = '🔗 ' + liens();
+  $('bdBal').innerHTML = IC('liens', 'liens') + ' ' + liens();
   try {
     await ready;
     const [snap] = await Promise.all([db.ref('badges/' + uid).once('value'), loadOwners()]);
@@ -1414,14 +1429,14 @@ async function showBadges() {
     S.badgeList = list;
     const copies = list.reduce((s, b) => s + b.n, 0);
     const uniq = list.filter(b => isUnique(b.key)).length;
-    $('bdCount').textContent = list.length + ' badge' + (list.length > 1 ? 's' : '') + ' · ' + copies + ' exemplaire' + (copies > 1 ? 's' : '') + (uniq ? ' · ⭐ ' + uniq + ' unique' + (uniq > 1 ? 's' : '') : '');
+    $('bdCount').innerHTML = list.length + ' badge' + (list.length > 1 ? 's' : '') + ' · ' + copies + ' exemplaire' + (copies > 1 ? 's' : '') + (uniq ? ' · ' + IC('star', 'gold') + ' ' + uniq + ' unique' + (uniq > 1 ? 's' : '') : '');
     if (!list.length) { $('bdGrid').innerHTML = '<p class="lb-empty" style="grid-column:1/-1">Aucun badge pour l’instant. Termine une course pour gagner ton premier !</p>'; return; }
     const draw = () => {
       $('bdGrid').innerHTML = list.map((b, i) => {
         const img = thumbCache[b.t], rare = isUnique(b.key); // personne d'autre ne l'a
         return '<button type="button" class="bd' + (rare ? ' rare' : '') + '" data-i="' + i + '" aria-label="' + esc(b.t) + ', ' + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + (rare ? ', unique : aucun autre joueur ne l’a' : '') + '">' +
           '<span class="ring"><span>' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(b.t.charAt(0))) + '</span></span>' +
-          '<b>' + esc(b.t) + '</b><small>×' + b.n + ' · ' + bankPrice(ownersOf(b.key)) + ' 🔗</small>' + (rare ? '<span class="rar">⭐ Unique</span>' : '') + '</button>';
+          '<b>' + esc(b.t) + '</b><small>×' + b.n + ' · ' + bankPrice(ownersOf(b.key)) + ' ' + IC('liens', 'liens') + '</small>' + (rare ? '<span class="rar">' + IC('star', 'gold') + ' Unique</span>' : '') + '</button>';
       }).join('');
     };
     draw();
@@ -1435,12 +1450,12 @@ $('bdGrid').onclick = async e => {
   S.badgeOpen = b;
   const own = ownersOf(b.key), price = bankPrice(own);
   $('bdTitle').textContent = b.t;
-  $('bdTier').textContent = (isUnique(b.key) ? '⭐ Unique : aucun autre joueur ne l’a · ' : '') + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + ' · possédé par ' + own + ' joueur' + (own > 1 ? 's' : '');
-  $('bdSell').textContent = 'Vendre 1 exemplaire à la banque · ' + price + ' 🔗' + (b.n === 1 ? ' (ton dernier)' : '');
+  $('bdTier').innerHTML = (isUnique(b.key) ? IC('star', 'gold') + ' Unique : aucun autre joueur ne l’a · ' : '') + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + ' · possédé par ' + own + ' joueur' + (own > 1 ? 's' : '');
+  $('bdSell').innerHTML = 'Vendre 1 exemplaire à la banque · ' + price + ' ' + IC('liens') + (b.n === 1 ? ' (ton dernier)' : '');
   $('bdStart').value = Math.max(price, 10);
   $('bdErr').textContent = '';
   const isAv = !!(S.profile && S.profile.avatar && S.profile.avatar.key === b.key);
-  $('bdAvatar').textContent = isAv ? '✖️ Retirer ma photo de profil' : '🖼️ Utiliser comme photo de profil';
+  $('bdAvatar').innerHTML = isAv ? IC('close') + ' Retirer ma photo de profil' : IC('image') + ' Utiliser comme photo de profil';
   $('bdAvatar').dataset.on = isAv ? '1' : '';
   $('bdAuc').hidden = !canMarket(); $('bdGate').hidden = canMarket(); $('bdGate').textContent = canMarket() ? '' : marketGateText();
   $('bdText').textContent = 'Chargement…'; $('bdImg').hidden = true;
@@ -1469,7 +1484,7 @@ $('bdSell').onclick = async () => {
   $('bdSell').disabled = true; $('bdErr').textContent = '';
   try {
     const r = await call('sellBadge')({ key: b.key, count: 1 });
-    toast('+' + r.data.liens + ' 🔗<small>« ' + esc(b.t) + ' » vendu à la banque</small>');
+    toast('+' + r.data.liens + ' ' + IC('liens', 'liens') + '<small>« ' + esc(b.t) + ' » vendu à la banque</small>');
     closeBadge(); showBadges();
   } catch (e) { $('bdErr').textContent = errText(e); }
   $('bdSell').disabled = false;
@@ -1481,7 +1496,7 @@ $('bdAvatar').onclick = async () => {
   $('bdAvatar').disabled = true; $('bdErr').textContent = '';
   try {
     await call('setAvatar')({ key: off ? null : b.key });
-    toast(off ? 'Photo de profil retirée' : '🖼️ Nouvelle photo de profil<small>« ' + esc(b.t) + ' »</small>');
+    toast(off ? 'Photo de profil retirée' : IC('image') + ' Nouvelle photo de profil<small>« ' + esc(b.t) + ' »</small>');
     closeBadge();
   } catch (e) { $('bdErr').textContent = errText(e); }
   $('bdAvatar').disabled = false;
@@ -1489,12 +1504,12 @@ $('bdAvatar').onclick = async () => {
 $('bdAucBtn').onclick = async () => {
   const b = S.badgeOpen; if (!b) return;
   const start = Math.floor(+$('bdStart').value), hours = +$('bdHours').value;
-  if (!(start >= 1 && start <= 100000)) { $('bdErr').textContent = 'Prix de départ entre 1 et 100 000 🔗.'; return; }
+  if (!(start >= 1 && start <= 100000)) { $('bdErr').textContent = 'Prix de départ entre 1 et 100 000 Liens.'; return; }
   if (b.n === 1 && !confirm('C’est ton dernier exemplaire : il quitte ta collection pendant la vente (il revient si personne n’achète). Continuer ?')) return;
   $('bdAucBtn').disabled = true; $('bdErr').textContent = '';
   try {
     await call('createAuction')({ key: b.key, start: start, hours: hours });
-    toast('🛒 Mis aux enchères<small>« ' + esc(b.t) + ' » à partir de ' + start + ' 🔗, pendant ' + hours + ' h</small>', 4500);
+    toast(IC('cart') + ' Mis aux enchères<small>« ' + esc(b.t) + ' » à partir de ' + start + ' Liens, pendant ' + hours + ' h</small>', 4500);
     closeBadge(); showMarket('sales');
   } catch (e) { $('bdErr').textContent = errText(e); }
   $('bdAucBtn').disabled = false;
@@ -1506,7 +1521,7 @@ async function showMarket(tab) {
   show('market');
   S.mkTab = tab || S.mkTab || 'open';
   [...$('mkTabs').children].forEach(b => b.classList.toggle('on', b.dataset.t === S.mkTab));
-  $('mkBal').textContent = '🔗 ' + liens();
+  $('mkBal').innerHTML = IC('liens', 'liens') + ' ' + liens();
   $('mkGate').hidden = canMarket(); $('mkGate').textContent = canMarket() ? '' : marketGateText();
   $('mkList').innerHTML = '<li class="lb-empty">Chargement…</li>';
   await ready;
@@ -1519,7 +1534,7 @@ async function showMarket(tab) {
 }
 function renderMarket() {
   const all = S.mkAll || [], now = serverNow(), tab = S.mkTab;
-  $('mkBal').textContent = '🔗 ' + liens();
+  $('mkBal').innerHTML = IC('liens', 'liens') + ' ' + liens();
   let list;
   if (tab === 'open') list = all.filter(a => a.status === 'open' && a.endsAt > now).sort((a, b) => a.endsAt - b.endsAt);
   else if (tab === 'bids') list = all.filter(a => a.bidder === uid).sort((a, b) => (b.closedAt || b.endsAt) - (a.closedAt || a.endsAt));
@@ -1533,7 +1548,7 @@ function renderMarket() {
     const img = thumbCache[a.t], mine = a.seller === uid, best = a.bidder === uid, open = a.status === 'open' && a.endsAt > now;
     const min = a.bidder ? a.price + Math.max(1, Math.ceil(a.price * 0.05)) : a.start;
     let state = '';
-    if (a.status === 'sold') state = best ? '<span class="mk-msg ok">✅ Gagné ! Le badge est dans ta collection.</span>' : mine ? '<span class="mk-msg ok">Vendu : +' + (a.sellerGain || '') + ' 🔗</span>' : '<span class="mk-msg">Vendu</span>';
+    if (a.status === 'sold') state = best ? '<span class="mk-msg ok">' + IC('check') + ' Gagné ! Le badge est dans ta collection.</span>' : mine ? '<span class="mk-msg ok">Vendu : +' + (a.sellerGain || '') + ' ' + IC('liens') + '</span>' : '<span class="mk-msg">Vendu</span>';
     else if (a.status === 'unsold') state = '<span class="mk-msg">Invendu : le badge est revenu' + (mine ? ' dans ta collection' : '') + '.</span>';
     else if (a.status === 'cancelled') state = '<span class="mk-msg">Vente annulée.</span>';
     else if (!open) state = '<span class="mk-msg">Clôture en cours…</span>';
@@ -1545,7 +1560,7 @@ function renderMarket() {
       '<button type="button" class="btn small" data-bid="' + a.id + '">Enchérir</button>';
     return '<li class="mk-item' + (mine || best ? ' mine' : '') + '"><span class="mk-img">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(String(a.t || '?').charAt(0))) + '</span><div style="min-width:0">' +
       '<b>' + esc(a.t) + '</b><small>vendu par ' + esc(a.sellerName || 'Joueur') + (open ? ' · reste ' + leftText(a.endsAt - now) : '') + '</small>' +
-      '<div class="mk-price">' + a.price + ' 🔗 <small style="display:inline">' + (a.bidder ? '· ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') + (best ? ' (toi)' : '') : '· prix de départ') + '</small></div>' +
+      '<div class="mk-price">' + a.price + ' ' + IC('liens', 'liens') + ' <small style="display:inline">' + (a.bidder ? '· ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') + (best ? ' (toi)' : '') : '· prix de départ') + '</small></div>' +
       (state || act ? '<div class="mk-act">' + (state || act) + '</div>' : '') + '<div class="mk-msg ko" data-err="' + a.id + '"></div></div></li>';
   }).join('');
   loadThumbs(list.map(a => a.t)).then(() => { if (!$('market').hidden && list.some(a => thumbCache[a.t] && !$('mkList').querySelector('img[src="' + CSS.escape(thumbCache[a.t]) + '"]'))) renderMarketSoon(); });
@@ -1557,9 +1572,9 @@ $('mkList').addEventListener('click', async e => {
   if (bid) {
     const id = bid.dataset.bid, inp = $('mkList').querySelector('[data-amt="' + id + '"]'), err = $('mkList').querySelector('[data-err="' + id + '"]');
     const amount = Math.floor(+inp.value);
-    if (amount > liens()) { err.textContent = 'Solde insuffisant (' + liens() + ' 🔗).'; return; }
+    if (amount > liens()) { err.textContent = 'Solde insuffisant (' + liens() + ' Liens).'; return; }
     bid.disabled = true; err.textContent = '';
-    try { await call('bid')({ id: id, amount: amount }); toast('🛒 Offre placée : ' + amount + ' 🔗<small>La somme est bloquée ; tu seras remboursé si quelqu’un fait mieux.</small>', 4500); }
+    try { await call('bid')({ id: id, amount: amount }); toast(IC('cart') + ' Offre placée : ' + amount + ' ' + IC('liens', 'liens') + '<small>La somme est bloquée ; tu seras remboursé si quelqu’un fait mieux.</small>', 4500); }
     catch (x) { err.textContent = errText(x); bid.disabled = false; }
   } else if (cancel) {
     const id = cancel.dataset.cancel, err = $('mkList').querySelector('[data-err="' + id + '"]');
@@ -1577,19 +1592,19 @@ $('mkBackTop').onclick = () => show('home');
 /* ---------- Succès (familles de badges) ---------- */
 // Même liste que le serveur (functions/achievements.js), qui vérifie et verse les récompenses.
 const ACH = [
-  { id: 'collection', cat: null, emoji: '🏅', name: 'Collectionneur', what: 'badges différents', tiers: [10, 50, 100, 250] },
-  { id: 'pays', cat: 'pays', emoji: '🌍', name: 'Globe-trotter', what: 'pays', tiers: [3, 10, 25] },
-  { id: 'ville', cat: 'ville', emoji: '🏙️', name: 'Citadin', what: 'villes', tiers: [3, 10, 25] },
-  { id: 'jeuvideo', cat: 'jeuvideo', emoji: '🎮', name: 'Gamer', what: 'consoles ou jeux vidéo', tiers: [2, 4, 8] },
-  { id: 'personnalite', cat: 'personnalite', emoji: '👤', name: 'Carnet d’adresses', what: 'personnalités', tiers: [5, 15, 30] },
-  { id: 'artiste', cat: 'artiste', emoji: '🎭', name: 'Fan d’artistes', what: 'artistes (peintres, musiciens, écrivains…)', tiers: [3, 8, 15] },
-  { id: 'sport', cat: 'sport', emoji: '⚽', name: 'Sportif', what: 'sports, clubs ou sportifs', tiers: [3, 8, 15] },
-  { id: 'vivant', cat: 'vivant', emoji: '🐾', name: 'Naturaliste', what: 'animaux ou plantes', tiers: [3, 10, 25] },
-  { id: 'nature', cat: 'nature', emoji: '🏔️', name: 'Explorateur', what: 'montagnes, fleuves, lacs, îles…', tiers: [3, 8, 15] },
-  { id: 'espace', cat: 'espace', emoji: '🪐', name: 'Astronaute', what: 'astres (planètes, étoiles, lunes…)', tiers: [2, 5, 8] },
-  { id: 'oeuvre', cat: 'oeuvre', emoji: '🎨', name: 'Mécène', what: 'œuvres (tableaux, films, livres, chansons…)', tiers: [2, 5, 10] },
-  { id: 'histoire', cat: 'histoire', emoji: '🏛️', name: 'Historien', what: 'pages d’histoire', tiers: [3, 10, 20] },
-  { id: 'sciences', cat: 'sciences', emoji: '🔬', name: 'Savant', what: 'pages de sciences', tiers: [3, 10, 20] }
+  { id: 'collection', cat: null, emoji: 'badge', name: 'Collectionneur', what: 'badges différents', tiers: [10, 50, 100, 250] },
+  { id: 'pays', cat: 'pays', emoji: 'globe', name: 'Globe-trotter', what: 'pays', tiers: [3, 10, 25] },
+  { id: 'ville', cat: 'ville', emoji: 'city', name: 'Citadin', what: 'villes', tiers: [3, 10, 25] },
+  { id: 'jeuvideo', cat: 'jeuvideo', emoji: 'gamepad', name: 'Gamer', what: 'consoles ou jeux vidéo', tiers: [2, 4, 8] },
+  { id: 'personnalite', cat: 'personnalite', emoji: 'user', name: 'Carnet d’adresses', what: 'personnalités', tiers: [5, 15, 30] },
+  { id: 'artiste', cat: 'artiste', emoji: 'music', name: 'Fan d’artistes', what: 'artistes (peintres, musiciens, écrivains…)', tiers: [3, 8, 15] },
+  { id: 'sport', cat: 'sport', emoji: 'ball', name: 'Sportif', what: 'sports, clubs ou sportifs', tiers: [3, 8, 15] },
+  { id: 'vivant', cat: 'vivant', emoji: 'paw', name: 'Naturaliste', what: 'animaux ou plantes', tiers: [3, 10, 25] },
+  { id: 'nature', cat: 'nature', emoji: 'mountain', name: 'Explorateur', what: 'montagnes, fleuves, lacs, îles…', tiers: [3, 8, 15] },
+  { id: 'espace', cat: 'espace', emoji: 'planet', name: 'Astronaute', what: 'astres (planètes, étoiles, lunes…)', tiers: [2, 5, 8] },
+  { id: 'oeuvre', cat: 'oeuvre', emoji: 'palette', name: 'Mécène', what: 'œuvres (tableaux, films, livres, chansons…)', tiers: [2, 5, 10] },
+  { id: 'histoire', cat: 'histoire', emoji: 'columns', name: 'Historien', what: 'pages d’histoire', tiers: [3, 10, 20] },
+  { id: 'sciences', cat: 'sciences', emoji: 'flask', name: 'Savant', what: 'pages de sciences', tiers: [3, 10, 20] }
 ];
 const ACH_REWARDS = [10, 25, 50, 100];
 async function showAch() {
@@ -1612,7 +1627,7 @@ async function showAch() {
       const pct = next ? Math.round(100 * (n - prev) / (next - prev)) : 100;
       const stars = a.tiers.map((t, i) => i < reached ? '★' : '☆').join('');
       return '<li class="ach-item' + (reached > got ? ' ready' : next ? '' : ' done') + '"><button type="button" class="ach-row" data-ach="' + a.id + '" aria-expanded="false" aria-controls="achD_' + a.id + '">' +
-        '<span class="ach-emo" aria-hidden="true">' + a.emoji + '</span><div style="min-width:0">' +
+        '<span class="ach-emo" aria-hidden="true">' + IC(a.emoji) + '</span><div style="min-width:0">' +
         '<b>' + esc(a.name) + '</b><small>' + n + ' ' + esc(a.what) + (next ? ' · prochain palier : ' + next : ' · tous les paliers atteints !') + '</small>' +
         '<div class="ach-bar" aria-hidden="true"><i style="width:' + Math.max(0, Math.min(100, pct)) + '%"></i></div>' +
         '<span class="ach-more">' + (n ? '▸ Voir mes badges comptés' : '▸ Aucun badge compté pour l’instant') + '</span></div>' +
@@ -1622,7 +1637,7 @@ async function showAch() {
     $('achList').innerHTML = rows.join('');
     $('achCount').textContent = unlocked + ' palier' + (unlocked > 1 ? 's' : '') + ' débloqué' + (unlocked > 1 ? 's' : '');
     $('achClaim').hidden = !ready2;
-    $('achClaim').textContent = '🎁 Récupérer ' + ready2 + ' 🔗';
+    $('achClaim').innerHTML = IC('gift') + ' Récupérer ' + ready2 + ' Liens';
   } catch (e) { $('achList').innerHTML = '<li class="lb-empty">Succès indisponibles.</li>'; }
 }
 // Clic sur un succès : détail des badges qui comptent pour lui.
@@ -1648,7 +1663,7 @@ $('achClaim').onclick = async () => {
   $('achClaim').disabled = true;
   try {
     const r = await call('claimAchievements')({});
-    if (r.data.total) toast('🏆 +' + r.data.total + ' 🔗<small>' + r.data.gained.map(g => esc(g.name) + ' ' + '★'.repeat(g.tier)).join(' · ') + '</small>', 5000);
+    if (r.data.total) toast(IC('trophy', 'gold') + ' +' + r.data.total + ' Liens<small>' + r.data.gained.map(g => esc(g.name) + ' ' + '★'.repeat(g.tier)).join(' · ') + '</small>', 5000);
     setTimeout(showAch, 600);
   } catch (e) { toast('Récupération impossible<small>' + esc(errText(e)) + '</small>'); }
   $('achClaim').disabled = false;
@@ -1667,10 +1682,10 @@ async function showVersus(room) {
   const oppP = room.players.find(p => p.id !== uid);
   const card = (cls, name, lvl, elo, prem, badges, emoji) =>
     '<div class="vs-card ' + cls + '"><div class="vs-av" aria-hidden="true">' + emoji + '</div><div style="min-width:0"><strong>' + esc(name) + (prem ? ' ' + DIA : '') + '</strong>' +
-    '<small>' + (lvl == null ? 'Course enregistrée' : 'Niveau ' + lvl) + (badges ? ' · 🏅 ' + badges : '') + '</small></div>' +
+    '<small>' + (lvl == null ? 'Course enregistrée' : 'Niveau ' + lvl) + (badges ? ' · ' + IC('badge') + ' ' + badges : '') + '</small></div>' +
     '<div class="vs-elo">' + (elo || '—') + '<small>ELO</small></div></div>';
   let opp;
-  if (room.ghost) opp = { name: 'Fantôme de ' + (room.ghost.name || 'Joueur'), lvl: null, elo: room.ghost.elo, prem: false, badges: 0, emoji: '👻' };
+  if (room.ghost) opp = { name: 'Fantôme de ' + (room.ghost.name || 'Joueur'), lvl: null, elo: room.ghost.elo, prem: false, badges: 0, emoji: IC('ghost') };
   else if (oppP) {
     const v = (await db.ref('users/' + oppP.id).once('value').catch(() => null));
     const u = (v && v.val()) || {};
@@ -1854,9 +1869,9 @@ async function showProfile(id) {
       stat(v.wins || 0, 'victoires en classé') +
       stat(v.soloDone || 0, 'parcours solo réussis') +
       stat((v.dailyStreak || 0) + (v.dailyBest > (v.dailyStreak || 0) ? '<small> / ' + v.dailyBest + '</small>' : ''), 'série au défi du jour' + (v.dailyBest > (v.dailyStreak || 0) ? ' (record)' : '')) +
-      stat('🏅 ' + (v.badges || 0), 'badges différents') +
-      stat('🔗 ' + (v.liens || 0), 'Liens') +
-      stat('🏆 ' + (v.achTotal || 0), 'paliers de succès') +
+      stat(IC('badge', 'gold') + ' ' + (v.badges || 0), 'badges différents') +
+      stat(IC('liens', 'liens') + ' ' + (v.liens || 0), 'Liens') +
+      stat(IC('trophy', 'gold') + ' ' + (v.achTotal || 0), 'paliers de succès') +
     '</div>' + (v.premium === true ? '<p class="theme-note">' + DIA + ' Membre WikiDuel+</p>' : '') +
     (v.avatar && v.avatar.img ? '<p class="pf-cr">Photo de profil : badge « ' + esc(v.avatar.t) + ' » · ' + esc(v.avatar.cr || 'Wikimedia Commons') +
       (v.avatar.src ? ' · <a href="' + esc(v.avatar.src) + '" target="_blank" rel="noopener">source</a>' : '') + '</p>' : '');
@@ -2239,7 +2254,7 @@ function soloEnd() {
   S.solo.rec = p.finishedAt ? saveSoloRecord(S.solo, p.finishedAt - S.solo.startedAt, p.path.length - 1) : null;
   if (S.firstRun) {  // première course du « Jouer maintenant » : on montre la suite
     S.firstRun = false;
-    if (p.finishedAt) setTimeout(() => toast('🎉 Première course réussie !<small>Essaie le défi du jour, ou défie un ami avec le bouton WhatsApp.</small>', 6500), 900);
+    if (p.finishedAt) setTimeout(() => toast(IC('sparkle', 'gold') + ' Première course réussie !<small>Essaie le défi du jour, ou défie un ami avec le bouton WhatsApp.</small>', 6500), 900);
   }
   saveSoloHistory(S.solo);
   if (S.solo.daily) finishDaily(S.solo);
@@ -2280,7 +2295,7 @@ function dailyCountdown() {
   const parts = new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date(serverNow()));
   const v = t => +parts.find(p => p.type === t).value;
   const left = 24 * 60 - (v('hour') * 60 + v('minute')), hh = Math.floor(left / 60), mm = left % 60;
-  $('dLeft').textContent = '⏳ ' + (hh ? hh + ' h ' + String(mm).padStart(2, '0') : mm + ' min');
+  $('dLeft').innerHTML = IC('hourglass') + ' ' + (hh ? hh + ' h ' + String(mm).padStart(2, '0') : mm + ' min');
 }
 setInterval(dailyCountdown, 30000);
 async function loadDaily() {
@@ -2316,7 +2331,7 @@ async function loadStreak(todayKey) {
 }
 function streakText() {
   if (!S.streak) return '';
-  return '🔥 ' + S.streak + ' jour' + (S.streak > 1 ? 's' : '') + ' d’affilée' + (S.streakToday ? '' : ' : joue aujourd’hui pour continuer !');
+  return IC('flame', 'fire') + ' ' + S.streak + ' jour' + (S.streak > 1 ? 's' : '') + ' d’affilée' + (S.streakToday ? '' : ' : joue aujourd’hui pour continuer !');
 }
 function ordinal(n) { return n + '<sup>' + (n === 1 ? 'er' : 'e') + '</sup>'; }
 function renderDailyCard() {
@@ -2341,7 +2356,7 @@ function renderDailyCard() {
   $('dPlay').hidden = !!done;
   $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
   if (!done) {
-    $('dMe').textContent = S.streak ? streakText() : 'Même parcours pour tous, une seule tentative.';
+    $('dMe').innerHTML = S.streak ? streakText() : 'Même parcours pour tous, une seule tentative.';
   } else if (run.gaveUp) {
     $('dMe').innerHTML = 'Tu as abandonné aujourd’hui. Nouveau défi demain à minuit !';
   } else if (!sc) {
@@ -2350,7 +2365,7 @@ function renderDailyCard() {
     $('dMe').innerHTML = 'Chemin refusé (' + esc(sc.reason || 'invalide') + ').';
   } else {
     $('dMe').innerHTML = 'Ton résultat : <b>' + fmtC(sc.time) + '</b> · ' + sc.clicks + ' clic' + (sc.clicks > 1 ? 's' : '') + (d.rank ? ' · <b>' + ordinal(d.rank) + '</b> sur ' + d.total : '') +
-      (S.streak > 1 ? '<br>' + esc(streakText()) : '');
+      (S.streak > 1 ? '<br>' + streakText() : '');
     dailyRank(d.key).then(r => { if (r && S.daily === d && !d.rank) { d.rank = r.rank; d.total = r.total; renderDailyCard(); } });
   }
 }
@@ -2741,8 +2756,8 @@ function renderThemes(host) {
   if (box.hidden) return;
   const cur = S.raw && S.raw.theme || '';
   const can = host && isMePremium();
-  $('themeList').innerHTML = [{ id: '', name: 'Mélange', emoji: '🎲' }].concat(THEMES).map(t =>
-    '<button type="button" data-th="' + t.id + '"' + (t.id === cur ? ' class="on"' : '') + (can ? '' : ' disabled') + '>' + t.emoji + ' ' + esc(t.name) + '</button>').join('');
+  $('themeList').innerHTML = [{ id: '' , name: 'Mélange' }].concat(THEMES).map(t =>
+    '<button type="button" data-th="' + t.id + '"' + (t.id === cur ? ' class="on"' : '') + (can ? '' : ' disabled') + '>' + IC(THEME_IC[t.id] || 'dice') + ' ' + esc(t.name) + '</button>').join('');
   $('themeNote').innerHTML = can ? 'Les pages de départ et d’arrivée seront tirées dans ce thème.'
     : host ? DIA + ' Choisir un thème est réservé aux membres <b>WikiDuel+</b>. Tes amis n’ont pas besoin d’être membres.'
     : (cur ? 'Thème choisi par l’hôte.' : 'L’hôte peut choisir un thème s’il est membre WikiDuel+.');
@@ -2866,7 +2881,7 @@ function renderHud() {
     const label = p.finishedAt ? '✓' : (p.clicks + ' clic' + (p.clicks > 1 ? 's' : ''));
     // Entre amis : la page où se trouve chaque adversaire est visible.
     const page = p.current && p.id !== S.me.playerId && !p.finishedAt && !p.gaveUp ? ' <span class="pg">' + esc(p.current) + '</span>' : '';
-    return '<span class="' + cls + '">' + esc(p.id === S.me.playerId ? 'Toi' : p.name) + dia(p.id, redraw.hud) + ' <span class="n">' + label + '</span>' + page + '</span>';
+    return '<span class="' + cls + '">' + (p.ghost ? IC('ghost') : '') + esc(p.id === S.me.playerId ? 'Toi' : p.name) + dia(p.id, redraw.hud) + ' <span class="n">' + label + '</span>' + page + '</span>';
   }).join('');
   if (me && (me.finishedAt || me.gaveUp)) {
     $('giveupBtn').hidden = true;
@@ -3187,7 +3202,7 @@ function renderChallengeResult(room) {
     box.className = 'challenge-res' + (dr.state === 'ok' ? ' won' : dr.state === 'bad' || dr.state === 'error' ? ' lost' : '');
     box.innerHTML = dr.state === 'gaveup' ? 'Abandon enregistré. Nouveau défi demain à minuit !'
       : dr.state === 'ok' ? 'Temps officiel <b>' + fmtC(dr.score.time) + '</b>' + (dr.rank ? ' · <b>' + ordinal(dr.rank) + '</b> sur ' + dr.total : '') + ' au classement du jour.' +
-        (S.streak > 1 ? '<br>🔥 ' + S.streak + ' jours d’affilée' : '')
+        (S.streak > 1 ? '<br>' + IC('flame', 'fire') + ' ' + S.streak + ' jours d’affilée' : '')
       : dr.state === 'bad' ? 'Chemin refusé : ' + esc(dr.score.reason || 'invalide') + '.'
       : dr.state === 'error' ? 'Résultat non enregistré (' + esc(dr.error) + ').'
       : 'Vérification de ton chemin et calcul du temps officiel…';
