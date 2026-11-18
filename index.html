@@ -196,10 +196,13 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .verdict { font: 600 12px var(--display); color: var(--flag); }
 
 /* WikiDuel+ */
-.home-links { display: flex; flex-wrap: wrap; gap: 6px 22px; justify-content: center; padding: 4px 0; }
-.home-link { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; background: none; border: 0; padding: 0 4px; font: 700 15px var(--display); color: var(--link); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 4px; }
-.home-link:hover { text-decoration-color: currentColor; }
-.home-link:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; border-radius: 6px; }
+.home-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+#homeErr:empty { display: none; }
+.home-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); font: 800 15px/1.2 var(--display); color: var(--ink); cursor: pointer; text-align: center; box-shadow: 0 4px 14px rgba(10,20,50,.08); }
+.home-link .ic, .home-link .dia { width: 20px; height: 20px; color: var(--link); flex: none; }
+.home-link:hover { border-color: var(--link); }
+.home-link:active { transform: scale(.98); }
+.home-link:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 /* Tuiles de jeu */
 .play { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tile { display: grid; gap: 12px; align-content: space-between; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
