@@ -2292,7 +2292,12 @@ function toState(code, v) {
 async function startRound() {
   await poolReady;
   const th = S.raw && S.raw.theme ? (await themesReady, themeById(S.raw.theme)) : null;
-  const pair = pickPair(th && th.pages.length > 10 ? th.pages : null);
+  // Thème : seule la page d'arrivée est tirée dans le thème ; le départ reste un article au hasard.
+  const pair = pickPair();
+  if (th && th.pages.length > 10) {
+    pair.target = pickPair(th.pages).target;
+    while (norm(pair.start) === norm(pair.target)) pair.start = pickPair().start;
+  }
   const upd = { start: pair.start, target: pair.target, status: 'playing', round: S.room.round + 1, winnerId: null, startedAt: serverNow() + 3000 };
   S.room.players.forEach(p => {
     upd['players/' + p.id + '/path'] = [pair.start];
@@ -2842,7 +2847,7 @@ function renderThemes(host) {
   const can = host && isMePremium();
   $('themeList').innerHTML = [{ id: '' , name: 'Mélange' }].concat(THEMES).map(t =>
     '<button type="button" data-th="' + t.id + '"' + (t.id === cur ? ' class="on"' : '') + (can ? '' : ' disabled') + '>' + IC(THEME_IC[t.id] || 'dice') + ' ' + esc(t.name) + '</button>').join('');
-  $('themeNote').innerHTML = can ? 'Les pages de départ et d’arrivée seront tirées dans ce thème.'
+  $('themeNote').innerHTML = can ? 'La page d’arrivée sera tirée dans ce thème ; le départ reste au hasard.'
     : host ? DIA + ' Choisir un thème est réservé aux membres <b>WikiDuel+</b>. Tes amis n’ont pas besoin d’être membres.'
     : (cur ? 'Thème choisi par l’hôte.' : 'L’hôte peut choisir un thème s’il est membre WikiDuel+.');
   $('themeList').onclick = async e => {
