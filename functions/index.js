@@ -242,13 +242,15 @@ const { ACH, REWARDS, classifyTitles } = require('./achievements');
 const LIENS = { course: 2, rankedWin: 5, daily: 3, quiz: 1 };
 const badgeKey = title => crypto.createHash('sha256').update(norm(title)).digest('hex').slice(0, 12);
 // Ajoute un exemplaire d'un badge (gagné ou acheté). Tient à jour le nombre de badges distincts et la rareté.
-async function addCopy(uid, key, title, when) {
+// back : exemplaire rendu au vendeur (enchère invendue ou annulée) : ce n'est pas une nouvelle obtention,
+// donc pas de nouvelle date ; si le badge avait quitté la collection, on remet ses anciennes dates.
+async function addCopy(uid, key, title, when, back) {
   let isNew = false;
   await db.ref('badges/' + uid + '/' + key).transaction(b => {
     isNew = !(b && b.n);
-    b = b || { t: String(title).slice(0, 200), n: 0, d: [] };
+    b = b || { t: String(title).slice(0, 200), n: 0, d: back ? (Array.isArray(back.d) ? back.d.slice(0, 10) : []) : [] };
     b.n = (b.n || 0) + 1;
-    b.d = [when || Date.now()].concat(Array.isArray(b.d) ? b.d : []).slice(0, 10); // 10 dernières dates
+    if (!back) b.d = [when || Date.now()].concat(Array.isArray(b.d) ? b.d : []).slice(0, 10); // 10 dernières dates
     return b;
   });
   if (isNew) {
@@ -264,13 +266,13 @@ async function addCopy(uid, key, title, when) {
 }
 // Retire des exemplaires (vente, mise aux enchères). Échoue si le joueur n'en a pas assez.
 async function removeCopies(uid, key, count) {
-  let ok = false, gone = false, title = '';
+  let ok = false, gone = false, title = '', dates = [];
   // Note : une transaction peut d'abord recevoir « null » (cache vide) ; on renvoie alors null pour qu'elle relise la vraie valeur.
   await db.ref('badges/' + uid + '/' + key).transaction(b => {
     ok = false; gone = false;
     if (b === null) return null;
     if (!(b.n >= count)) return; // abandon : pas assez d'exemplaires
-    ok = true; title = b.t;
+    ok = true; title = b.t; dates = Array.isArray(b.d) ? b.d.slice(0, 10) : [];
     b.n -= count;
     if (b.n <= 0) { gone = true; return null; } // dernier exemplaire : le badge quitte la collection
     return b;
@@ -282,7 +284,7 @@ async function removeCopies(uid, key, count) {
     const av = (await db.ref('users/' + uid + '/avatar/key').once('value')).val();
     if (av === key) await db.ref('users/' + uid + '/avatar').remove();
   }
-  return { ok, title };
+  return { ok, title, dates };
 }
 async function award(uid, xp, target, at, liens) {
   if (!uid || !(xp > 0)) return;
@@ -406,7 +408,7 @@ exports.createAuction = onCall({ region: 'europe-west1' }, async req => {
   const now = Date.now();
   const ref = db.ref('auctions').push();
   await ref.set({ key, t: r.title, seller: me.uid, sellerName: me.name, start, price: start, bids: 0,
-    createdAt: now, endsAt: now + hours * 3600e3, status: 'open' });
+    d: r.dates, createdAt: now, endsAt: now + hours * 3600e3, status: 'open' });
   logger.info('Enchère créée', { id: ref.key, uid: me.uid, key, start, hours });
   return { id: ref.key };
 });
@@ -463,7 +465,7 @@ exports.cancelAuction = onCall({ region: 'europe-west1' }, async req => {
     return x;
   });
   if (!res.committed || !a || a.status !== 'open' || !res.snapshot.exists() || res.snapshot.val().status !== 'cancelled') throw new HttpsError('failed-precondition', 'Impossible d’annuler (déjà une offre, ou vente terminée).');
-  await addCopy(uid, a.key, a.t, Date.now());
+  await addCopy(uid, a.key, a.t, Date.now(), { d: a.d });
   return { ok: true };
 });
 
@@ -485,7 +487,7 @@ async function closeAuction(id) {
     await db.ref('auctions/' + id).update({ status: 'sold', closedAt: now, sellerGain: gain });
     return 'vendu';
   }
-  await addCopy(a.seller, a.key, a.t, now);
+  await addCopy(a.seller, a.key, a.t, now, { d: a.d }); // rendu au vendeur, pas compté comme obtenu
   await db.ref('auctions/' + id).update({ status: 'unsold', closedAt: now });
   return 'invendu';
 }
