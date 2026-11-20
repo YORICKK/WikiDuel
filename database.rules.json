@@ -297,7 +297,7 @@
           },
           "res": {
             ".write": "auth != null && auth.uid === $uid && !data.exists() && data.parent().child('startedAt').exists()",
-            ".validate": "newData.hasChildren(['score', 'ok', 'marks', 'at']) && newData.child('at').val() === now && now - data.parent().child('startedAt').val() <= 300000",
+            ".validate": "newData.hasChildren(['score', 'ok', 'marks', 'at']) && newData.child('at').val() === now && now - data.parent().child('startedAt').val() <= 900000",
             "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
             "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
             "marks": { ".validate": "newData.isString() && newData.val().matches(/^[01]{10}$/)" },

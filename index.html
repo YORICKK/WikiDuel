@@ -68,6 +68,8 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
+/* Pendant une course : pas de « tirer pour actualiser » (une page rechargée interrompt la partie). */
+html.in-game, html.in-game body { overscroll-behavior-y: none; }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
   font: 16px/1.5 var(--read);
@@ -1154,12 +1156,20 @@ const store = {
 function norm(t) { return String(t || '').replace(/_/g, ' ').trim().toLowerCase(); }
 function fmt(ms) { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function serverNow() { return Date.now() + S.clockOffset; }
+// Pages gardées par parcours (même limite que la vérification côté serveur).
+const MAX_PATH = 300;
 function show(id) {
+  document.documentElement.classList.toggle('in-game', id === 'race');
   ['home', 'lobby', 'race', 'results', 'ranking', 'queue', 'premium', 'admin', 'badges', 'market', 'ach'].forEach(s => $(s).hidden = s !== id);
   if (id !== 'market' && S.mkRef) { S.mkRef.off(); S.mkRef = null; } // arrête le suivi du marché en quittant l'écran
   window.scrollTo(0, 0);
   if (id === 'home') refreshDaily(); // met à jour la carte du défi du jour au retour à l'accueil
 }
+// Alerte avant de quitter ou recharger la page pendant une course en cours.
+window.addEventListener('beforeunload', e => {
+  if ($('race').hidden || !S.room || S.room.status !== 'playing') return;
+  e.preventDefault(); e.returnValue = '';
+});
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 /* ---------- Articles tirés au sort (Wikipédia FR) ---------- */
@@ -2358,7 +2368,7 @@ function saveSoloHistory(r) {
   const entry = {
     at: NOW(), mode: 'solo', start: r.start, target: r.target,
     finished: !!p.finishedAt, won: !!p.finishedAt, gaveUp: !!p.gaveUp,
-    clicks: Math.max(0, p.path.length - 1), path: p.path.slice(0, 60)
+    clicks: Math.max(0, p.path.length - 1), path: p.path.slice(0, MAX_PATH)
   };
   if (p.finishedAt) entry.time = Math.max(0, p.finishedAt - r.startedAt);
   if (c && !r.daily) { entry.opponents = [c.name]; entry.challengeTime = c.time; }
@@ -2498,8 +2508,8 @@ $('dBoard').onclick = () => { if (S.daily) showDailyBoard(S.daily.key); };
 // Fin de partie : le serveur horodate l'arrivée (ou l'abandon) et vérifie le chemin.
 function finishDaily(r) {
   const ref = db.ref('dailyRuns/' + r.daily + '/' + uid);
-  const upd = { path: r.me.path.slice(0, 60) };
-  if (r.me.times && r.me.times.length) upd.times = r.me.times.slice(0, 60);
+  const upd = { path: r.me.path.slice(0, MAX_PATH) };
+  if (r.me.times && r.me.times.length) upd.times = r.me.times.slice(0, MAX_PATH);
   if (r.me.finishedAt) upd.finishedAt = NOW(); else upd.gaveUp = true;
   S.dailyResult = { key: r.daily, state: r.me.finishedAt ? 'wait' : 'gaveup' };
   ref.update(upd).then(() => {

@@ -42,6 +42,8 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { min-height: 100%; }
+/* Pendant une partie : pas de « tirer pour actualiser ». */
+html.in-game, html.in-game body { overscroll-behavior-y: none; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--read);
   padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); -webkit-tap-highlight-color: transparent; }
 button, input { font: inherit; color: inherit; }
@@ -366,15 +368,22 @@ const $ = id => document.getElementById(id);
 // Icônes (sprite /icons.svg) : IC('liens'), IC('badge', 'gold')…
 const IC = (n, c) => '<svg class="ic' + (c ? ' ' + c : '') + '" aria-hidden="true"><use href="/icons.svg#' + n + '"></use></svg>';
 const QN = 10, QDUR = 10000, REVEAL = 2600, SLOT = QDUR + 3500;
+const DAILY_LIMIT = 15 * 60000; // délai pour enregistrer le quiz du jour après le départ (voir database.rules.json)
 const LAUNCH = '2026-11-13'; // quiz du jour n°1
 const S = { clockOffset: 0, bank: null };
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
 };
 function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 function serverNow() { return Date.now() + S.clockOffset; }
-function show(id) { ['home', 'lobby', 'game', 'results', 'ranking'].forEach(s => { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
+function show(id) { document.documentElement.classList.toggle('in-game', id === 'game'); ['home', 'lobby', 'game', 'results', 'ranking'].forEach(s => { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
+// Alerte avant de quitter ou recharger la page pendant une partie.
+window.addEventListener('beforeunload', e => {
+  if (typeof G === 'undefined' || !G || G.over || $('game').hidden) return;
+  e.preventDefault(); e.returnValue = '';
+});
 function zurichDate(t) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t)); }
 function dailyNum(d) { return Math.round((Date.parse(d) - Date.parse(LAUNCH)) / 864e5) + 1; }
 function dateLabel(d) { return new Date(d + 'T12:00:00Z').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); }
@@ -591,6 +600,7 @@ function markStart(via) {
 function startGame(opts) {
   markStart('quiz');
   G = Object.assign({ i: -1, score: 0, res: [], locked: true, revealed: false }, opts);
+  if (G.mode === 'daily') saveDailyProgress();
   show('game');
   $('gLive').hidden = G.mode !== 'friends';
   $('gScore').textContent = '0';
@@ -605,6 +615,7 @@ function countdown(n, done, txt) {
 }
 function renderQuestion(i) {
   G.i = i; G.locked = false; G.revealed = false; G.picked = null;
+  if (G.mode === 'daily') saveDailyProgress(); // question affichée : comptée ratée si la page est rechargée
   const q = G.qs[i], cat = S.bank.cats[q.cat];
   $('gNum').textContent = i + 1;
   $('gCat').textContent = cat.name;
@@ -640,6 +651,7 @@ function answer(k) {
   const ok = k === q.good, s = ok ? points(t) : 0;
   G.res[G.i] = { p: k, t: t, s: s };
   G.score += s;
+  if (G.mode === 'daily') saveDailyProgress();
   G.picked = k;
   if (G.mode === 'friends') renderLive();
   if (G.mode === 'friends') {
@@ -678,7 +690,7 @@ function finish() {
     // Compteur des parties solo terminées (statistiques d'utilisation).
     db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok, name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
   }
-  if (G.mode === 'daily') saveDaily(ok, marks);
+  if (G.mode === 'daily') { saveDaily(ok, marks); store.del('wq-daily'); }
   // Partie entre amis terminée : comptée aussi (elle rapporte de l'XP, comme le solo).
   if (G.mode === 'friends' && G.res.some(r => r)) {
     db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: Math.min(10000, G.score), ok: ok, m: 'amis', name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
@@ -742,11 +754,15 @@ async function loadDaily() {
       $('dTitle').textContent = 'Fait : ' + mine.res.ok + '/10 · ' + fmtPts(mine.res.score) + ' pts';
       $('dSub').textContent = marksEmoji(mine.res.marks) + ' Nouveau quiz à minuit.';
       $('dPlay').hidden = true;
+    } else if (mine && mine.startedAt && dailyResumable(d, mine)) {
+      $('dTitle').textContent = 'Partie interrompue';
+      $('dSub').textContent = 'Reprends là où tu t’es arrêté. La question en cours au moment de la coupure compte comme ratée.';
+      $('dPlay').hidden = false; $('dPlay').textContent = 'Reprendre';
     } else if (mine && mine.startedAt) {
       $('dTitle').textContent = 'Partie commencée, non terminée';
       $('dSub').textContent = 'Une seule tentative par jour. Nouveau quiz à minuit.';
       $('dPlay').hidden = true;
-    } else { $('dPlay').hidden = false; }
+    } else { $('dPlay').hidden = false; $('dPlay').textContent = 'Jouer'; }
     // Comme dans la course : en haut tant qu'il reste à jouer, sous les tuiles une fois fait.
     const anchor = $('dPlay').hidden ? $('dailyDone') : $('dailyTop');
     if (anchor.nextElementSibling !== $('dailyCard')) anchor.after($('dailyCard'));
@@ -761,12 +777,32 @@ $('dPlay').onclick = async () => {
     const qs = buildQuiz('daily-' + d, d);
     await preload(qs);
     const ref = db.ref('quizDaily/' + d + '/' + uid);
-    if ((await ref.child('startedAt').once('value')).exists()) { loadDaily(); return; }
+    const mine = (await ref.once('value')).val();
+    if (mine && mine.startedAt) {
+      // Partie interrompue sur cet appareil : on reprend à la question suivante.
+      if (!mine.res && dailyResumable(d, mine)) {
+        const p = store.get('wq-daily'), res = (p.res || []).slice(0, QN);
+        const from = Math.min(QN, Math.max(p.cur + 1, res.length)); // la question coupée compte comme ratée
+        for (let i = 0; i < from; i++) if (!res[i]) res[i] = { p: -1, t: QDUR, s: 0 };
+        startGame({ mode: 'daily', qs: qs, date: d, i: from - 1, res: res, score: res.reduce((s, r) => s + (r ? r.s : 0), 0), resumed: true });
+        return;
+      }
+      loadDaily(); return;
+    }
     await ref.update({ name: name, startedAt: firebase.database.ServerValue.TIMESTAMP });
     startGame({ mode: 'daily', qs: qs, date: d });
   } catch (e) { $('homeErr').textContent = 'Quiz du jour indisponible : ' + e.message; }
   finally { $('dPlay').disabled = false; $('dPlay').textContent = 'Jouer'; }
 };
+// Progression du quiz du jour gardée sur l'appareil, pour reprendre après un rechargement de page.
+function saveDailyProgress() {
+  store.set('wq-daily', { date: G.date, uid: uid, cur: G.i, res: G.res, score: G.score });
+}
+// Reprise possible : même jour, même compte, progression connue ici, et encore dans le délai d'enregistrement.
+function dailyResumable(d, mine) {
+  const p = store.get('wq-daily');
+  return !!(p && p.date === d && p.uid === uid && Array.isArray(p.res) && serverNow() - mine.startedAt < DAILY_LIMIT - 60000);
+}
 function saveDaily(ok, marks) {
   const ms = G.res.reduce((s, r) => s + (r ? r.t : QDUR), 0);
   db.ref('quizDaily/' + G.date + '/' + uid).update({
