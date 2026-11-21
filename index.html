@@ -1979,7 +1979,7 @@ async function saveProfileName(name) {
 }
 
 /* ---------- Classement ---------- */
-// Onglets en haut de l'écran Classement (Elo / Solo, ou Aujourd'hui / Hier pour le défi du jour).
+// Onglets en haut de l'écran Classement (Elo / Badges, ou Aujourd'hui / Hier pour le défi du jour).
 function setLbTabs(tabs, active, onPick) {
   $('lbTabs').style.gridTemplateColumns = 'repeat(' + tabs.length + ', minmax(0, 1fr))';
   $('lbTabs').innerHTML = tabs.map(t => '<button type="button" role="tab" data-t="' + t[0] + '" aria-selected="' + (t[0] === active) + '"' + (t[0] === active ? ' class="on"' : '') + '>' + t[1] + '</button>').join('');
@@ -1993,22 +1993,22 @@ function lbRow(r, i, small, score) {
 }
 async function showGeneralBoard(tab) {
   show('ranking');
-  setLbTabs([['elo', 'Classé (Elo)'], ['solo', 'Solo']], tab, showGeneralBoard);
+  setLbTabs([['elo', 'Classé (Elo)'], ['badges', 'Badges']], tab, showGeneralBoard);
   $('lbSort').hidden = true; S.lbKey = null;
-  $('lbLabel').textContent = tab === 'solo' ? 'Parties solo terminées' : 'Parties classées · Elo';
+  $('lbLabel').textContent = tab === 'badges' ? 'Collection · badges différents' : 'Parties classées · Elo';
   $('lbTitle').textContent = 'Classement';
   $('lbList').innerHTML = '<li class="lb-empty">Chargement…</li>';
   try {
     await ready;
-    const field = tab === 'solo' ? 'soloDone' : 'elo';
+    const field = tab === 'badges' ? 'badges' : 'elo';
     const snap = await db.ref('users').orderByChild(field).limitToLast(50).once('value');
     const rows = [];
-    snap.forEach(c => { const v = c.val(); if (v && (tab === 'solo' ? v.soloDone : v.games)) rows.push(Object.assign({ id: c.key }, v)); });
+    snap.forEach(c => { const v = c.val(); if (v && (tab === 'badges' ? v.badges > 0 : v.games)) rows.push(Object.assign({ id: c.key }, v)); });
     rows.sort((a, b) => b[field] - a[field]);
-    if (tab === 'solo') {
-      $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i, 'Niv. ' + levelOf(r.xp).n + ' · parcours réussis en solo',
-        '<span class="score">' + r.soloDone + '</span>')).join('')
-        : '<li class="lb-empty">Aucune partie solo terminée pour l’instant.</li>';
+    if (tab === 'badges') {
+      $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i, 'Niv. ' + levelOf(r.xp).n + ' · badges différents',
+        '<span class="score">' + r.badges + '</span>')).join('')
+        : '<li class="lb-empty">Aucun badge gagné pour l’instant.</li>';
     } else {
       $('lbList').innerHTML = rows.length ? rows.map((r, i) => lbRow(r, i,
         'Niv. ' + levelOf(r.xp).n + ' · ' + r.games + ' partie' + (r.games > 1 ? 's' : '') + ' · ' + (r.wins || 0) + ' victoire' + ((r.wins || 0) > 1 ? 's' : ''),
