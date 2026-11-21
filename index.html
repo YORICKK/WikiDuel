@@ -3256,9 +3256,11 @@ function renderResults() {
     $('resTitle').textContent = me.finishedAt ? 'Arrivé !' : 'Abandon';
     const rec = S.solo.rec;
     const best = rec ? rec.best : (store.get('wd-records') || {})[soloRecordKey(room)];
-    $('soloRecord').innerHTML = rec && rec.isNew
-      ? (rec.hadOld ? '<strong>Nouveau record !</strong> ' : '<strong>Premier record</strong> sur ce parcours : ') + fmtRec(rec.best)
-      : best ? 'Ton record sur ce parcours : ' + fmtRec(best) : 'Pas encore de record sur ce parcours.';
+    // Record affiché seulement quand le parcours a déjà été joué (pas de « premier record »).
+    const recTxt = rec && rec.isNew ? (rec.hadOld ? '<strong>Nouveau record !</strong> ' + fmtRec(rec.best) : '')
+      : (best && !(rec && !rec.hadOld) ? 'Ton record sur ce parcours : ' + fmtRec(best) : '');
+    $('soloRecord').innerHTML = recTxt;
+    $('soloRecord').hidden = !recTxt;
   }
   renderChallengeResult(room);
   renderShare(room);
