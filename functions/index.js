@@ -235,7 +235,7 @@ const pairPrint = (a, b) => crypto.createHash('sha256').update(norm(a) + '→' +
 // XP : 25 par course arrivée, +10 pour une victoire en classé, +15 pour le défi du jour réussi,
 // 15 par partie de quiz terminée. Niveau 1 à 100 XP, puis 50 XP de plus à chaque niveau (150, 200…).
 // Badge : la page d'arrivée de chaque course réussie. Chaque nouvelle obtention = un exemplaire de plus (n),
-// que l'on peut revendre à la banque ou mettre aux enchères (voir « Marché » plus bas).
+// que l'on peut mettre aux enchères (voir « Marché » plus bas).
 // Liens 🔗 : monnaie du jeu, purement fictive (ni achetable, ni convertible en argent réel).
 const XP = { course: 25, rankedWin: 10, daily: 15, quiz: 15 };
 const { ACH, REWARDS, classifyTitles } = require('./achievements');
@@ -363,10 +363,7 @@ exports.claimAchievements = onCall({ region: 'europe-west1' }, async req => {
   return { total, gained, counts };
 });
 
-/* ===================== Marché : revente à la banque et enchères ===================== */
-// Prix de rachat par la banque : 10 Liens par exemplaire, quel que soit le badge (la rareté se joue aux enchères).
-const BANK_PRICE = 10;
-const bankPrice = () => BANK_PRICE;
+/* ===================== Marché : enchères ===================== */
 const levelOf = xp => { let n = 0, need = 100, cur = Math.max(0, xp || 0); while (cur >= need) { cur -= need; n++; need += 50; } return n; };
 const AUCTION_FEE = 0, // pas de commission : le vendeur reçoit tout le prix
   AUCTION_MAX_OPEN = 5, AUCTION_HOURS = [1, 6, 24], SNIPE_MS = 5 * 60 * 1000;
@@ -379,19 +376,9 @@ async function requireMarket(req) {
 }
 const validKey = k => typeof k === 'string' && /^[a-f0-9]{12}$/.test(k);
 
-// Vendre des exemplaires à la banque (ouvert à tous les joueurs).
-exports.sellBadge = onCall({ region: 'europe-west1' }, async req => {
-  if (!db) db = admin.database();
-  if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
-  const uid = req.auth.uid, key = req.data && req.data.key, count = Math.floor((req.data && req.data.count) || 1);
-  if (!validKey(key) || !(count >= 1 && count <= 100)) throw new HttpsError('invalid-argument', 'Demande invalide.');
-  const price = bankPrice();
-  const r = await removeCopies(uid, key, count);
-  if (!r.ok) throw new HttpsError('failed-precondition', 'Tu n’as pas assez d’exemplaires de ce badge.');
-  const total = price * count;
-  await db.ref('users/' + uid + '/liens').transaction(v => (v || 0) + total);
-  logger.info('Badge vendu à la banque', { uid, key, count, total });
-  return { liens: total, price };
+// Revente à la banque supprimée : la fonction reste en place (anciennes pages encore ouvertes) mais refuse toujours.
+exports.sellBadge = onCall({ region: 'europe-west1' }, async () => {
+  throw new HttpsError('failed-precondition', 'La banque ne rachète plus les badges : mets-les aux enchères.');
 });
 
 // Mettre un exemplaire aux enchères (l'exemplaire est retiré de la collection pendant la vente).

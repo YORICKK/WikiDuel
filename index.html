@@ -607,7 +607,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .bd-wiki .ic { width: 13px; height: 13px; }
 .bd-acts .btn { font-size: 14px; padding: 0 6px; min-height: 46px; gap: 5px; white-space: nowrap; text-decoration: none; }
 .bd-acts .ic { width: 18px; height: 18px; flex: none; }
-#bdSheet #bdSell { font-size: 16px; white-space: nowrap; gap: 6px; }
+#bdErr:empty { display: none; }
 #bdSheet .bd-trade { padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
 .bd-dates { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .bd-dates li { padding: 3px 9px; border-radius: 8px; background: var(--paper); border: 1px solid var(--line); font: 600 12px var(--mono); color: var(--muted); }
@@ -849,7 +849,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <div class="label" id="bdCount">Mes badges</div>
       <h2 class="big">Mes badges</h2>
     </div>
-    <p style="margin:0;color:var(--muted);font-size:15px">Chaque course réussie te donne <b>un exemplaire</b> du badge de sa page d'arrivée. Vends tes doubles à la banque ou aux enchères contre des <b>Liens</b> <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg>, et achète les badges qui te manquent au marché.</p>
+    <p style="margin:0;color:var(--muted);font-size:15px">Chaque course réussie te donne <b>un exemplaire</b> du badge de sa page d'arrivée. Vends tes doubles aux enchères contre des <b>Liens</b> <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg>, et achète les badges qui te manquent au marché.</p>
     <div class="mk-bar"><span class="mk-bal" id="bdBal"><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> 0</span><button type="button" class="btn small" id="bdMarket"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cart"></use></svg> Marché</button></div>
     <div class="bd-sort">
       <label for="bdSort">Trier par</label>
@@ -878,7 +878,6 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <button type="button" class="btn ghost" id="bdAvatar"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Photo de profil</button>
     </div>
     <div class="bd-trade" id="bdTrade">
-      <button type="button" class="btn" id="bdSell">Vendre 1 exemplaire à la banque</button>
       <div class="bd-auc" id="bdAuc">
         <div class="label">Mettre 1 exemplaire aux enchères</div>
         <div class="bd-auc-row">
@@ -1472,8 +1471,6 @@ renderAppMenu();
 
 /* ---------- Mes badges ---------- */
 // Un badge par page d'arrivée atteinte ; chaque obtention = un exemplaire. Rareté = nombre de joueurs qui le possèdent.
-// Prix de rachat par la banque : 10 Liens par exemplaire (le serveur fait foi).
-const bankPrice = () => 10;
 const call = name => firebase.app().functions('europe-west1').httpsCallable(name);
 const liens = () => (S.profile && S.profile.liens) || 0;
 const canMarket = () => S.google && levelOf(S.profile && S.profile.xp).n >= 1;
@@ -1554,18 +1551,16 @@ $('bdGrid').onclick = async e => {
   const el = e.target.closest('.bd'); if (!el) return;
   const b = S.badgeList[+el.dataset.i]; if (!b) return;
   S.badgeOpen = b;
-  const own = ownersOf(b.key), price = bankPrice(own);
+  const own = ownersOf(b.key);
   $('bdTitle').textContent = b.t;
   const uq = isUnique(b.key), chip = (t, c) => '<span class="bd-chip' + (c ? ' ' + c : '') + '">' + t + '</span>';
   $('bdTier').innerHTML = (uq ? chip(IC('star') + ' Unique : personne d’autre ne l’a', 'gold') : '') +
     chip(IC('badge') + ' ' + b.n + ' exemplaire' + (b.n > 1 ? 's' : '')) +
-    (uq ? '' : chip(IC('users') + ' ' + own + ' joueurs l’ont')) +
-    chip(IC('liens', 'liens') + ' ' + price + ' à la banque');
+    (uq ? '' : chip(IC('users') + ' ' + own + ' joueurs l’ont'));
   $('bdCard').classList.toggle('rare', uq);
   $('bdCard').style.setProperty('--h', hueOf(b.t));
   setBadgeImg(thumbCache[b.t], b.t.charAt(0).toUpperCase());
-  $('bdSell').innerHTML = (b.n === 1 ? 'Vendre mon dernier' : 'Vendre à la banque') + ' · ' + price + ' ' + IC('liens');
-  $('bdStart').value = Math.max(price, 10);
+  $('bdStart').value = 10;
   $('bdErr').textContent = '';
   const isAv = !!(S.profile && S.profile.avatar && S.profile.avatar.key === b.key);
   $('bdAvatar').innerHTML = isAv ? IC('close') + ' Retirer la photo' : IC('image') + ' Photo de profil';
@@ -1592,17 +1587,6 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('bdShee
 $('badgesBtn').onclick = () => { closeAccMenu(); showBadges(); };
 $('bdBackTop').onclick = () => show('home');
 const errText = e => (e && e.message ? String(e.message).replace(/^.*?:\s*/, '') : 'Erreur, réessaie.');
-$('bdSell').onclick = async () => {
-  const b = S.badgeOpen; if (!b) return;
-  if (b.n === 1 && !confirm('C’est ton dernier exemplaire : « ' + b.t + ' » quittera ta collection. Vendre quand même ?')) return;
-  $('bdSell').disabled = true; $('bdErr').textContent = '';
-  try {
-    const r = await call('sellBadge')({ key: b.key, count: 1 });
-    toast('+' + r.data.liens + ' ' + IC('liens', 'liens') + '<small>« ' + esc(b.t) + ' » vendu à la banque</small>');
-    closeBadge(); showBadges();
-  } catch (e) { $('bdErr').textContent = errText(e); }
-  $('bdSell').disabled = false;
-};
 // Photo de profil : l'image Wikipédia d'un de ses badges (contrôlée par le serveur : image libre, pas de personne).
 $('bdAvatar').onclick = async () => {
   const b = S.badgeOpen; if (!b) return;
