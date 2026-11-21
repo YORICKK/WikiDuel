@@ -493,6 +493,13 @@ input.field:focus { border-color: var(--ink); outline: none; }
 /* Feuille cible / compte à rebours */
 .overlay { position: fixed; inset: 0; z-index: 20; background: var(--paper); background: color-mix(in srgb, var(--paper) 92%, transparent); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
 .sheet { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 22px; display: grid; gap: 14px; box-shadow: 0 20px 60px rgba(10,20,50,.25); }
+.overlay.ask { z-index: 25; }
+.ask .sheet { text-align: center; justify-items: center; }
+.ask h3 { margin: 0; font: 800 22px/1.2 var(--display); }
+.ask p { color: var(--muted); line-height: 1.45; }
+.ask .btn { width: 100%; }
+.ask-ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--flag) 16%, var(--card)); color: var(--flag); }
+.ask-ic .ic { width: 28px; height: 28px; margin: 0; }
 .sheet .route { font-size: 14px; }
 .sheet img { width: 100%; max-height: 180px; object-fit: cover; border-radius: 12px; background: var(--line); }
 .sheet p { margin: 0; font-size: 15px; }
@@ -979,6 +986,17 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <button type="submit" class="btn">Enregistrer</button>
     <button type="button" class="btn ghost" id="nameCancel">Annuler</button>
   </form>
+</div>
+
+<!-- Confirmation aux couleurs du jeu (remplace confirm() du navigateur) -->
+<div class="overlay ask" id="askSheet" hidden>
+  <div class="sheet" role="alertdialog" aria-modal="true" aria-labelledby="askTitle" aria-describedby="askText">
+    <span class="ask-ic" id="askIc" aria-hidden="true"></span>
+    <h3 id="askTitle"></h3>
+    <p id="askText"></p>
+    <button type="button" class="btn" id="askOk"></button>
+    <button type="button" class="btn ghost" id="askNo">Annuler</button>
+  </div>
 </div>
 
 <!-- Suppression du compte (lien en pied de page) -->
@@ -1643,11 +1661,26 @@ $('bdAvatar').onclick = async () => {
   } catch (e) { $('bdErr').textContent = errText(e); }
   $('bdAvatar').disabled = false;
 };
+// Fenêtre de confirmation dans le thème du jeu. Renvoie true si le joueur confirme.
+function askConfirm(o) {
+  return new Promise(res => {
+    $('askIc').innerHTML = IC(o.icon || 'badge');
+    $('askTitle').textContent = o.title; $('askText').textContent = o.text;
+    $('askOk').textContent = o.ok || 'Continuer'; $('askNo').textContent = o.no || 'Annuler';
+    const done = v => { $('askSheet').hidden = true; document.removeEventListener('keydown', key); res(v); };
+    const key = e => { if (e.key === 'Escape') done(false); };
+    $('askOk').onclick = () => done(true); $('askNo').onclick = () => done(false);
+    $('askSheet').onclick = e => { if (e.target === $('askSheet')) done(false); };
+    document.addEventListener('keydown', key);
+    $('askSheet').hidden = false; $('askOk').focus();
+  });
+}
 $('bdAucBtn').onclick = async () => {
   const b = S.badgeOpen; if (!b) return;
   const start = Math.floor(+$('bdStart').value), hours = +$('bdHours').value;
   if (!(start >= 1 && start <= 100000)) { $('bdErr').textContent = 'Prix de départ entre 1 et 100 000 Liens.'; return; }
-  if (b.n === 1 && !confirm('C’est ton dernier exemplaire : il quitte ta collection pendant la vente (il revient si personne n’achète). Continuer ?')) return;
+  if (b.n === 1 && !(await askConfirm({ icon: 'badge', title: 'C’est ton dernier exemplaire',
+    text: '« ' + b.t + ' » quitte ta collection pendant la vente. S’il ne trouve pas d’acheteur, il te revient.', ok: 'Mettre aux enchères' }))) return;
   $('bdAucBtn').disabled = true; $('bdErr').textContent = '';
   try {
     await call('createAuction')({ key: b.key, start: start, hours: hours });
