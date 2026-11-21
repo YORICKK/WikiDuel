@@ -655,7 +655,7 @@ function requireGoogle(req) {
   return req.auth.uid;
 }
 
-// Appelé par le jeu après 25 s de file : propose un fantôme (sans révéler le parcours).
+// Appelé par le jeu après 8 s de file : propose un fantôme (sans révéler le parcours).
 exports.findGhost = onCall({ region: 'europe-west1' }, async req => {
   if (!db) db = admin.database();
   const uid = requireGoogle(req);

@@ -2776,8 +2776,8 @@ async function enterQueue(name) {
       mRef.remove().catch(() => {});
       enterRoom({ code: m.code, name: q.name });
     });
-    // Après 25 s sans adversaire : proposition d'un fantôme (le joueur reste dans la file).
-    S.qGhostTimer = setTimeout(askGhost, 25000);
+    // Après 8 s sans adversaire : proposition d'un fantôme (le joueur reste dans la file).
+    S.qGhostTimer = setTimeout(askGhost, 8000);
   } catch (e) {
     stopQueue(true); show('home');
     $('homeErr').textContent = 'Impossible de rejoindre la file : ' + e.message;
