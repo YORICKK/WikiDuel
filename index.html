@@ -3101,13 +3101,15 @@ function renderHud() {
   const me = room.players.find(p => p.id === S.me.playerId);
   $('clicks').textContent = me ? me.clicks : 0;
   $('rivals').hidden = !!S.solo; // pas d'adversaires en solo
-  $('rivals').innerHTML = room.players.map(p => {
+  const rivals = room.players.map(p => {
     const cls = 'rival' + (p.ghost ? ' ghost' : '') + (p.id === S.me.playerId ? ' me' : '') + (p.finishedAt ? ' done' : '') + (p.gaveUp ? ' out' : '');
     const label = p.finishedAt ? '✓' : (p.clicks + ' clic' + (p.clicks > 1 ? 's' : ''));
     // Entre amis : la page où se trouve chaque adversaire est visible.
     const page = p.current && p.id !== S.me.playerId && !p.finishedAt && !p.gaveUp ? ' <span class="pg">' + esc(p.current) + '</span>' : '';
     return '<span class="' + cls + '">' + (p.ghost ? IC('ghost') : '') + esc(p.id === S.me.playerId ? 'Toi' : p.name) + dia(p.id, redraw.hud) + ' <span class="n">' + label + '</span>' + page + '</span>';
   }).join('');
+  // Contre un fantôme, le HUD est recalculé 4 fois par seconde : on ne réécrit que si quelque chose a changé (sinon les icônes clignotent).
+  if (rivals !== S.rivalsHtml || !$('rivals').firstChild) { $('rivals').innerHTML = rivals; S.rivalsHtml = rivals; }
   if (me && (me.finishedAt || me.gaveUp)) {
     $('giveupBtn').hidden = true;
     if (!$('artErr').dataset.waiting) {
