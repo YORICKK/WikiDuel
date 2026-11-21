@@ -304,6 +304,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .lb .meta-time small { display: block; font: 500 11px var(--display); color: var(--muted); }
 
 /* Défis WhatsApp */
+.guest-cta { display: grid; gap: 10px; justify-items: center; text-align: center; padding: 16px; border-radius: 18px; border: 2px solid var(--link); background: linear-gradient(135deg, color-mix(in srgb, var(--link) 9%, var(--card)), var(--card)); }
+.guest-cta strong { font: 800 19px var(--display); }
+.guest-cta p { margin: 0; font-size: 15px; color: var(--muted); }
+.guest-cta .btn { width: 100%; background: var(--card); color: var(--ink); border-color: var(--line); }
+.guest-cta .linkbtn { background: none; border: 0; padding: 6px; color: var(--link); font: 700 15px var(--display); text-decoration: underline; cursor: pointer; }
+.guest-cta .err:empty { display: none; }
 .share-box { display: grid; gap: 10px; justify-items: center; }
 .btn.wa { background: #1fa855; border-color: #1fa855; color: #fff; text-decoration: none; }
 .challenge { display: grid; gap: 12px; padding: 14px; border: 2px solid var(--flag); border-radius: 14px; background: var(--card); }
@@ -344,6 +350,11 @@ input.field:focus { border-color: var(--ink); outline: none; }
 /* Salon */
 #lobby .wrap { display: grid; gap: 24px; padding-block: 32px; }
 .code { font: 700 clamp(56px, 20vw, 88px)/1 var(--mono); letter-spacing: .12em; margin: 4px 0 0; }
+.invite { display: grid; gap: 8px; margin-top: 10px; }
+.invite .btn.wa { width: 100%; }
+.invite-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.invite-row .btn { flex: 1; }
+.invite code { font: 500 12px var(--mono); color: var(--muted); word-break: break-all; text-align: center; }
 .share { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .share code { font: 500 13px var(--mono); color: var(--muted); word-break: break-all; }
 .players { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
@@ -1002,8 +1013,12 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <div>
       <div class="label">Code du salon <span class="pill" id="lobbyMode">Entre amis</span></div>
       <p class="code" id="lobbyCode">----</p>
-      <div class="share">
-        <button id="copyLink" class="btn ghost small">Copier le lien d'invitation</button>
+      <div class="invite" id="inviteBox">
+        <a id="lobbyWa" class="btn wa" href="#" target="_blank" rel="noopener"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.5 1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg> Inviter sur WhatsApp</a>
+        <div class="invite-row">
+          <button id="copyLink" class="btn ghost small">Copier le lien</button>
+          <button id="nativeShare" class="btn ghost small" hidden>Autre appli…</button>
+        </div>
         <code id="shareUrl"></code>
       </div>
     </div>
@@ -1070,6 +1085,13 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <button id="shareCopy" class="btn ghost small">Copier le lien du défi</button>
     </div>
     <p class="record" id="soloRecord" hidden></p>
+    <div class="guest-cta" id="guestCta" hidden>
+      <strong id="gcTitle">Ça t’a plu ?</strong>
+      <p id="gcText"></p>
+      <button type="button" class="btn" id="gcGoogle"><svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg> Garder mes badges avec Google</button>
+      <button type="button" class="linkbtn" id="gcOwn">Organiser ma propre partie</button>
+      <p class="err" id="gcErr" role="alert"></p>
+    </div>
     <button id="againBtn" class="btn">Nouvelle course</button>
     <button id="retryBtn" class="btn ghost" hidden>Rejouer ce parcours</button>
     <button id="lobbyBackBtn" class="btn ghost" hidden>Retour au salon</button>
@@ -2579,7 +2601,15 @@ function renderDailyRows(isToday) {
     : '<li class="lb-empty">' + (isToday ? 'Personne n’a encore réussi le défi du jour. Sois le premier !' : 'Personne n’a réussi le défi d’hier.') + '</li>';
 }
 function fmtRec(b) { return b.clicks + ' clic' + (b.clicks > 1 ? 's' : '') + ' en ' + fmt(b.time); }
-$('solo').onclick = async () => { $('homeErr').textContent = ''; S.solo = null; await poolReady; startSolo(); };
+$('solo').onclick = async () => {
+  $('homeErr').textContent = ''; S.solo = null; await poolReady;
+  // Toute première partie du joueur : un parcours facile (2 clics), pour commencer par une réussite.
+  if (!store.get('wd-started') && !store.get('wd-records')) {
+    const pair = EASY[Math.floor(Math.random() * EASY.length)];
+    S.firstRun = true; startSolo({ start: pair[0], target: pair[1] }); return;
+  }
+  startSolo();
+};
 $('retryBtn').onclick = () => startSolo({ start: S.solo.start, target: S.solo.target });
 
 // Records personnels par parcours (gardés sur le téléphone).
@@ -2831,6 +2861,11 @@ function renderLobby() {
   $('lobbyCode').textContent = S.room.code;
   const url = location.origin + location.pathname + '?salon=' + S.room.code;
   $('shareUrl').textContent = url;
+  // Invitation prête à envoyer (le lien ouvre directement le salon).
+  S.inviteText = 'Viens jouer à WikiDuel avec moi ! 🏁 On part d’une page Wikipédia et le premier qui arrive sur la page cible gagne. Salon ' + S.room.code + ' : ' + url;
+  $('lobbyWa').href = 'https://wa.me/?text=' + encodeURIComponent(S.inviteText);
+  $('inviteBox').hidden = !!S.room.ranked;
+  $('nativeShare').hidden = !navigator.share;
   $('lobbyMode').textContent = S.room.ranked ? 'Classée · 1 contre 1' : 'Entre amis';
   $('lobbyMode').className = 'pill' + (S.room.ranked ? ' ranked' : '');
   $('lobbyPlayers').innerHTML = S.room.players.map(p =>
@@ -2865,10 +2900,11 @@ function renderThemes(host) {
     try { await S.ref.child('theme').set(b.dataset.th || null); } catch (err) { $('themeNote').textContent = 'Thème non enregistré : ' + (err.code || err.message); }
   };
 }
+$('nativeShare').onclick = () => { if (navigator.share) navigator.share({ title: 'WikiDuel', text: S.inviteText }).catch(() => {}); };
 $('copyLink').onclick = async () => {
   try { await navigator.clipboard.writeText($('shareUrl').textContent); $('copyLink').textContent = 'Lien copié'; }
   catch (e) { const r = document.createRange(); r.selectNodeContents($('shareUrl')); getSelection().removeAllRanges(); getSelection().addRange(r); }
-  setTimeout(() => $('copyLink').textContent = "Copier le lien d'invitation", 2000);
+  setTimeout(() => $('copyLink').textContent = 'Copier le lien', 2000);
 };
 $('startBtn').onclick = async () => {
   $('startBtn').disabled = true;
@@ -3145,6 +3181,25 @@ $('giveupBtn').onclick = async () => {
 };
 
 /* ---------- Résultats ---------- */
+// Fin de manche entre amis : on propose à l'invité de garder sa progression et d'organiser sa partie.
+function renderGuestCta(room, host) {
+  const show = !S.solo && !room.ranked && !S.google && !store.get('wd-cta-off');
+  $('guestCta').hidden = !show; if (!show) return;
+  $('gcErr').textContent = '';
+  const me = room.players.find(p => p.id === S.me.playerId), won = me && me.id === room.winnerId;
+  $('gcTitle').textContent = won ? 'Bien joué !' : 'Ça t’a plu ?';
+  $('gcText').textContent = 'Tes badges et ton XP sont gardés sur ce téléphone seulement. Connecte-toi avec Google pour les garder partout (tu restes dans le salon).';
+  $('gcOwn').hidden = host; // l'hôte a déjà son salon
+}
+$('gcGoogle').onclick = async () => {
+  $('gcErr').textContent = ''; $('homeErr').textContent = '';
+  await $('googleBtn').onclick(); // après connexion, la page se recharge et revient dans le salon
+  if ($('homeErr').textContent) $('gcErr').textContent = $('homeErr').textContent;
+};
+$('gcOwn').onclick = async () => {
+  // Quitte le salon de l'ami et ouvre le sien, prêt à partager.
+  await leave(); $('create').click();
+};
 function renderResults() {
   stopTick(); $('overlay').hidden = true; show('results');
   const room = S.room;
@@ -3184,6 +3239,7 @@ function renderResults() {
   $('againWait').textContent = 'L’hôte peut lancer une nouvelle course ou revenir au salon.';
 
   const solo = !!S.solo;
+  renderGuestCta(room, host);
   $('retryBtn').hidden = !solo;
   $('soloRecord').hidden = !solo;
   $('againBtn').textContent = solo ? 'Nouveau parcours' : 'Nouvelle course';
