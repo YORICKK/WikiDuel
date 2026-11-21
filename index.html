@@ -177,6 +177,20 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .acc-elo b { font: 700 13px var(--mono); color: var(--ink); }
 .account .btn { flex: none; }
 .acc-menu { position: relative; flex: none; }
+/* Pastilles de notification (nouveaux badges, succès à récupérer) */
+.gear, .acc-chip { position: relative; }
+.ndot { display: inline-grid; place-items: center; width: 10px; height: 10px; border-radius: 50%; background: #e5352b; box-shadow: 0 0 0 2px var(--card); vertical-align: middle; margin-left: 8px; }
+.ndot[hidden] { display: none; }
+.ndot.gift { width: 20px; height: 20px; color: #fff; }
+.menu .ndot.gift .ic { width: 12px; height: 12px; margin: 0; color: #fff; }
+.ndot.gearn { position: absolute; top: -4px; right: -4px; margin: 0; }
+.ndot.gearn.gift { width: 20px; height: 20px; top: -8px; right: -8px; }
+.ndot.gearn.gift .ic { width: 12px; height: 12px; color: #fff; }
+.ndot.chip { position: absolute; top: 6px; right: 6px; margin: 0; }
+.bd-new { position: absolute; left: 5px; bottom: 5px; padding: 2px 7px; border-radius: 99px; background: #e5352b; color: #fff; font: 800 10px/1.4 var(--mono); letter-spacing: .06em; }
+.bd-day { grid-column: 1 / -1; margin: 6px 0 -4px; font: 800 15px var(--display); color: var(--ink); display: flex; align-items: baseline; gap: 8px; }
+.bd-day small { font: 600 12px var(--display); color: var(--muted); }
+.bd-day:first-child { margin-top: 0; }
 .gear { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: none; color: var(--ink); display: grid; place-items: center; cursor: pointer; }
 .gear[aria-expanded="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .gear:focus-visible { outline: 2px solid var(--flag); outline-offset: 2px; }
@@ -714,11 +728,11 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <div class="acc-menu">
         <button type="button" id="gearBtn" class="gear" aria-label="Réglages du compte" aria-haspopup="menu" aria-expanded="false" aria-controls="accMenu">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
+        <span class="ndot gearn" id="gearDot" hidden></span></button>
         <div class="menu" id="accMenu" role="menu" hidden>
-          <button type="button" role="menuitem" id="badgesBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#badge"></use></svg>Mes badges</button>
+          <button type="button" role="menuitem" id="badgesBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#badge"></use></svg>Mes badges<span class="ndot" id="bdDot" hidden aria-label="Nouveaux badges"></span></button>
           <button type="button" role="menuitem" id="marketBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cart"></use></svg>Marché</button>
-          <button type="button" role="menuitem" id="achBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg>Succès</button>
+          <button type="button" role="menuitem" id="achBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg>Succès<span class="ndot gift" id="achDot" hidden aria-label="Récompense à récupérer"><svg class="ic" aria-hidden="true"><use href="/icons.svg#gift"></use></svg></span></button>
           <button type="button" role="menuitem" id="nameBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#pencil"></use></svg>Changer de pseudo</button>
           <button type="button" role="menuitem" id="installBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#install"></use></svg>Installer l'appli</button>
           <button type="button" role="menuitem" id="statsBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#chart"></use></svg>Stats de l'appli</button>
@@ -728,7 +742,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       </div>
       <div class="acc-chips">
         <button type="button" class="acc-chip" id="chipLvl"><b id="cLvl">0</b><small>Niveau</small></button>
-        <button type="button" class="acc-chip" id="chipBadges"><b id="cBadges">0</b><small><svg class="ic gold" aria-hidden="true"><use href="/icons.svg#badge"></use></svg> Badges</small></button>
+        <button type="button" class="acc-chip" id="chipBadges"><b id="cBadges">0</b><span class="ndot chip" id="chipDot" hidden></span><small><svg class="ic gold" aria-hidden="true"><use href="/icons.svg#badge"></use></svg> Badges</small></button>
         <button type="button" class="acc-chip" id="chipLiens"><b id="cLiens">0</b><small><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> Liens</small></button>
       </div>
     </div>
@@ -858,7 +872,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
         <option value="old">Plus anciens</option>
         <option value="az">Nom (A → Z)</option>
         <option value="copies">Plus d’exemplaires</option>
-        <option value="rare">Plus rares d’abord</option>
+        <option value="rare">Uniques</option>
       </select>
     </div>
     <div class="bd-grid" id="bdGrid"></div>
@@ -1273,6 +1287,7 @@ const ready = (async () => {
   await new Promise(res => db.ref('users/' + uid).on('value', s => {
     const prev = S.profile; S.profile = s.val() || {};
     renderAccount(); notifyProgress(prev, S.profile); res();
+    if (typeof scheduleNotifs === 'function') scheduleNotifs();
   }, () => res()));
   renderAccount();
 })();
@@ -1508,15 +1523,29 @@ const BD_SORTS = {
   old: (a, b) => (firstGot(a) - firstGot(b)),
   az: (a, b) => a.t.localeCompare(b.t, 'fr', { sensitivity: 'base' }),
   copies: (a, b) => b.n - a.n || a.t.localeCompare(b.t, 'fr'),
-  rare: (a, b) => ownersOf(a.key) - ownersOf(b.key) || a.t.localeCompare(b.t, 'fr')
+  rare: (a, b) => (isUnique(b.key) - isUnique(a.key)) || ((b.d[0] || 0) - (a.d[0] || 0)) // uniques d'abord, puis les plus récents
 };
 // Première obtention connue (les dates sont rangées de la plus récente à la plus ancienne).
 function firstGot(b) { return b.d.length ? b.d[b.d.length - 1] : 0; }
 function sortBadges(list) { return list.slice().sort(BD_SORTS[$('bdSort').value] || BD_SORTS.recent); }
-{ const s = store.get('wd-bdsort'); if (s && BD_SORTS[s]) $('bdSort').value = s; }
-$('bdSort').onchange = () => { store.set('wd-bdsort', $('bdSort').value); if (S.badgeDraw) S.badgeDraw(); };
+$('bdSort').onchange = () => { if (S.badgeDraw) S.badgeDraw(); };
+// Date d'obtention utilisée par le tri par date (dernier exemplaire pour « récents », premier pour « anciens »).
+const bdDate = (b, old) => old ? firstGot(b) : (b.d[0] || 0);
+const zDay = t => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
+function dayTitle(t) {
+  const d = zDay(t), today = zDay(serverNow()), yest = zDay(serverNow() - 864e5);
+  if (d === today) return 'Aujourd’hui';
+  if (d === yest) return 'Hier';
+  const s = new Date(d + 'T12:00:00Z').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 async function showBadges() {
   show('badges');
+  $('bdSort').value = 'recent'; // tri par défaut à chaque visite
+  const seen = store.get('wd-bd-seen');
+  S.bdSeenPrev = seen && seen.uid === uid ? seen.t : 0;
+  store.set('wd-bd-seen', { uid: uid, t: serverNow() });
+  S.notif.badges = 0; renderNotifs();
   $('bdGrid').innerHTML = '<p class="lb-empty">Chargement…</p>';
   $('bdBal').innerHTML = IC('liens', 'liens') + ' ' + liens();
   try {
@@ -1531,13 +1560,25 @@ async function showBadges() {
     $('bdCount').innerHTML = list.length + ' badge' + (list.length > 1 ? 's' : '') + ' · ' + copies + ' exemplaire' + (copies > 1 ? 's' : '') + (uniq ? ' · ' + IC('star', 'gold') + ' ' + uniq + ' unique' + (uniq > 1 ? 's' : '') : '');
     if (!list.length) { $('bdGrid').innerHTML = '<p class="lb-empty" style="grid-column:1/-1">Aucun badge pour l’instant. Termine une course pour gagner ton premier !</p>'; return; }
     const draw = () => {
-      const list = sortBadges(S.badgeAll);
+      const list = sortBadges(S.badgeAll), mode = $('bdSort').value, byDay = mode === 'recent' || mode === 'old';
       S.badgeList = list;
+      let lastDay = '';
       $('bdGrid').innerHTML = list.map((b, i) => {
         const img = thumbCache[b.t], rare = isUnique(b.key); // personne d'autre ne l'a
-        return '<button type="button" class="bd' + (rare ? ' rare' : '') + (b.n > 1 ? ' multi' : '') + '" data-i="' + i + '" style="--h:' + hueOf(b.t) + '" aria-label="' + esc(b.t) + ', ' + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + (rare ? ', unique : aucun autre joueur ne l’a' : '') + '">' +
+        const isNew = S.bdSeenPrev && (b.d[0] || 0) > S.bdSeenPrev;
+        // Tri par date : un titre par jour, puis les badges obtenus ce jour-là.
+        let head = '';
+        if (byDay) {
+          const t = bdDate(b, mode === 'old'), dk = t ? zDay(t) : '?';
+          if (dk !== lastDay) {
+            lastDay = dk;
+            const n = list.filter(x => { const tx = bdDate(x, mode === 'old'); return (tx ? zDay(tx) : '?') === dk; }).length;
+            head = '<h3 class="bd-day">' + (t ? esc(dayTitle(t)) : 'Date inconnue') + '<small>' + n + ' badge' + (n > 1 ? 's' : '') + '</small></h3>';
+          }
+        }
+        return head + '<button type="button" class="bd' + (rare ? ' rare' : '') + (b.n > 1 ? ' multi' : '') + '" data-i="' + i + '" style="--h:' + hueOf(b.t) + '" aria-label="' + esc(b.t) + ', ' + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + (rare ? ', unique : aucun autre joueur ne l’a' : '') + '">' +
           '<span class="bd-pic">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(b.t.charAt(0).toUpperCase())) +
-          (rare ? '<span class="bd-u">' + IC('star') + ' Unique</span>' : '') + '</span>' +
+          (rare ? '<span class="bd-u">' + IC('star') + ' Unique</span>' : '') + (isNew ? '<span class="bd-new">NEW</span>' : '') + '</span>' +
           '<b>' + esc(b.t) + '</b><small' + (b.n > 1 ? ' class="many"' : '') + '>' + b.n + ' exemplaire' + (b.n > 1 ? 's' : '') + '</small></button>';
       }).join('');
     };
@@ -1705,6 +1746,37 @@ const ACH = [
   { id: 'sciences', cat: 'sciences', emoji: 'flask', name: 'Savant', what: 'pages de sciences', tiers: [3, 10, 20] }
 ];
 const ACH_REWARDS = [10, 25, 50, 100];
+// Pastilles : nouveaux badges depuis la dernière visite de « Mes badges », succès à récupérer.
+S.notif = { badges: 0, ach: 0 };
+function renderNotifs() {
+  const nb = S.notif.badges > 0, na = S.notif.ach > 0;
+  $('bdDot').hidden = !nb; $('chipDot').hidden = !nb; $('achDot').hidden = !na;
+  const g = $('gearDot');
+  g.hidden = !nb && !na;
+  g.classList.toggle('gift', na && !nb);
+  g.innerHTML = na && !nb ? IC('gift') : '';
+  $('gearBtn').setAttribute('aria-label', 'Réglages du compte' + (nb ? ' · nouveaux badges' : '') + (na ? ' · récompense à récupérer' : ''));
+}
+async function refreshNotifs() {
+  try {
+    await ready;
+    if (!uid) return;
+    const [snap] = await Promise.all([db.ref('badges/' + uid).once('value'), Object.keys(OWNERS).length ? null : loadOwners()]);
+    const own = snap.val() || {}, keys = Object.keys(own).filter(k => own[k] && own[k].n > 0);
+    let seen = store.get('wd-bd-seen');
+    // Première fois sur cet appareil : rien n'est « nouveau ».
+    if (!seen || seen.uid !== uid) { seen = { uid: uid, t: serverNow() }; store.set('wd-bd-seen', seen); }
+    S.notif.badges = $('badges').hidden ? keys.filter(k => Array.isArray(own[k].d) && own[k].d[0] > seen.t).length : 0;
+    const claimed = (S.profile && S.profile.ach) || {};
+    S.notif.ach = ACH.filter(a => {
+      const n = a.cat ? keys.filter(k => String((OWNERS[k] || {}).c || '').split(',').includes(a.cat)).length : keys.length;
+      return a.tiers.filter(t => n >= t).length > (claimed[a.id] || 0);
+    }).length;
+    renderNotifs();
+  } catch (e) {}
+}
+// Après chaque changement du profil (XP, badges gagnés en fin de partie) : on recalcule, sans s'emballer.
+function scheduleNotifs() { clearTimeout(S.notifT); S.notifT = setTimeout(refreshNotifs, 2500); }
 async function showAch() {
   show('ach');
   $('achList').innerHTML = '<li class="lb-empty">Chargement…</li>'; $('achClaim').hidden = true;
@@ -1762,7 +1834,7 @@ $('achClaim').onclick = async () => {
   try {
     const r = await call('claimAchievements')({});
     if (r.data.total) toast(IC('trophy', 'gold') + ' +' + r.data.total + ' Liens<small>' + r.data.gained.map(g => esc(g.name) + ' ' + '★'.repeat(g.tier)).join(' · ') + '</small>', 5000);
-    setTimeout(showAch, 600);
+    setTimeout(() => { showAch(); refreshNotifs(); }, 600);
   } catch (e) { toast('Récupération impossible<small>' + esc(errText(e)) + '</small>'); }
   $('achClaim').disabled = false;
 };
