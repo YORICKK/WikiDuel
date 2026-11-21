@@ -582,9 +582,12 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .bd.rare { border-color: #e9a21b; background: linear-gradient(180deg, color-mix(in srgb, #ffd56a 16%, var(--card)), var(--card) 60%); }
 .bd.rare .bd-pic { box-shadow: 0 0 0 2px #e9a21b; }
 /* Liens et marché */
-.bd-sort { display: flex; align-items: center; gap: 10px; }
-.bd-sort label { font: 700 14px var(--display); color: var(--muted); white-space: nowrap; }
-.bd-sort select.field { flex: 1; min-height: 44px; }
+.bd-sort { display: grid; gap: 8px; }
+.bd-sort[hidden] { display: none; }
+.bd-sort-l { font: 700 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.bd-sorts { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.bd-sorts button { flex: none; min-height: 40px; padding: 0 16px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; white-space: nowrap; }
+.bd-sorts button[aria-checked="true"] { background: var(--ink); border-color: var(--ink); color: var(--card); }
 .mk-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .mk-bal { font: 800 20px var(--display); }
 .bd-trade { display: grid; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
@@ -876,14 +879,14 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <p style="margin:0;color:var(--muted);font-size:15px">Chaque course réussie te donne <b>un exemplaire</b> du badge de sa page d'arrivée. Vends tes doubles aux enchères contre des <b>Liens</b> <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg>, et achète les badges qui te manquent au marché.</p>
     <div class="mk-bar"><span class="mk-bal" id="bdBal"><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> 0</span><button type="button" class="btn small" id="bdMarket"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cart"></use></svg> Marché</button></div>
     <div class="bd-sort">
-      <label for="bdSort">Trier par</label>
-      <select id="bdSort" class="field">
-        <option value="recent">Plus récents</option>
-        <option value="old">Plus anciens</option>
-        <option value="az">Nom (A → Z)</option>
-        <option value="copies">Plus d’exemplaires</option>
-        <option value="rare">Uniques</option>
-      </select>
+      <span class="bd-sort-l" id="bdSortL">Trier</span>
+      <div class="bd-sorts" id="bdSort" role="radiogroup" aria-labelledby="bdSortL">
+        <button type="button" role="radio" data-v="recent">Plus récents</button>
+        <button type="button" role="radio" data-v="old">Plus anciens</button>
+        <button type="button" role="radio" data-v="az">A → Z</button>
+        <button type="button" role="radio" data-v="copies">Exemplaires</button>
+        <button type="button" role="radio" data-v="rare">Uniques</button>
+      </div>
     </div>
     <div class="bd-grid" id="bdGrid"></div>
   </div>
@@ -1548,8 +1551,18 @@ const BD_SORTS = {
 };
 // Première obtention connue (les dates sont rangées de la plus récente à la plus ancienne).
 function firstGot(b) { return b.d.length ? b.d[b.d.length - 1] : 0; }
-function sortBadges(list) { return list.slice().sort(BD_SORTS[$('bdSort').value] || BD_SORTS.recent); }
-$('bdSort').onchange = () => { if (S.badgeDraw) S.badgeDraw(); };
+function sortBadges(list) { return list.slice().sort(BD_SORTS[S.bdSort] || BD_SORTS.recent); }
+// Puces de tri (aux couleurs du jeu, au lieu d'une liste déroulante du navigateur).
+function setBdSort(v) {
+  S.bdSort = BD_SORTS[v] ? v : 'recent';
+  $('bdSort').querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', String(b.dataset.v === S.bdSort)));
+}
+$('bdSort').onclick = e => {
+  const b = e.target.closest('button[data-v]'); if (!b || b.dataset.v === S.bdSort) return;
+  setBdSort(b.dataset.v);
+  if (S.badgeDraw) S.badgeDraw();
+};
+setBdSort('recent');
 // Date d'obtention utilisée par le tri par date (dernier exemplaire pour « récents », premier pour « anciens »).
 const bdDate = (b, old) => old ? firstGot(b) : (b.d[0] || 0);
 const zDay = t => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(t));
@@ -1562,7 +1575,7 @@ function dayTitle(t) {
 }
 async function showBadges() {
   show('badges');
-  $('bdSort').value = 'recent'; // tri par défaut à chaque visite
+  setBdSort('recent'); // tri par défaut à chaque visite
   const seen = store.get('wd-bd-seen');
   S.bdSeenPrev = seen && seen.uid === uid ? seen.t : 0;
   store.set('wd-bd-seen', { uid: uid, t: serverNow() });
@@ -1581,7 +1594,7 @@ async function showBadges() {
     $('bdCount').innerHTML = list.length + ' badge' + (list.length > 1 ? 's' : '') + ' · ' + copies + ' exemplaire' + (copies > 1 ? 's' : '') + (uniq ? ' · ' + IC('star', 'gold') + ' ' + uniq + ' unique' + (uniq > 1 ? 's' : '') : '');
     if (!list.length) { $('bdGrid').innerHTML = '<p class="lb-empty" style="grid-column:1/-1">Aucun badge pour l’instant. Termine une course pour gagner ton premier !</p>'; return; }
     const draw = () => {
-      const list = sortBadges(S.badgeAll), mode = $('bdSort').value, byDay = mode === 'recent' || mode === 'old';
+      const list = sortBadges(S.badgeAll), mode = S.bdSort, byDay = mode === 'recent' || mode === 'old';
       S.badgeList = list;
       let lastDay = '';
       $('bdGrid').innerHTML = list.map((b, i) => {
