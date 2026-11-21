@@ -292,6 +292,8 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .del-note { color: var(--muted); font-size: 13px !important; }
 
 /* Mention de licence */
+.insta { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--line); color: var(--ink); text-decoration: none; font: 700 14px var(--display); }
+.insta:hover { border-color: #d62976; color: #d62976; }
 .credits { margin: 0; text-align: center; font: 500 12px/1.5 var(--display); color: var(--muted); }
 .credits a { color: inherit; }
 
@@ -786,6 +788,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <button id="rankBtn" class="home-link"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg> Classement</button>
       <button id="premiumBtn" class="home-link premium-btn">Mes parties et stats</button>
     </nav>
+    <a class="insta" href="https://www.instagram.com/wikiduel/" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor"/></svg> Suis WikiDuel sur Instagram</a>
     <p class="credits">Articles : <a href="https://fr.wikipedia.org" target="_blank" rel="noopener">Wikipédia</a>, contributeurs de Wikipédia, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a>. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br><a href="/comment-jouer">Comment jouer</a> · <a href="/course-wikipedia">Course Wikipédia</a> · <a href="/defis">Défis passés</a><br><a href="/cgv">Conditions de vente</a> · <a href="/confidentialite">Confidentialité</a> · <button type="button" class="link-btn" id="delAccBtn">Supprimer mon compte</button></p>
   </div>
 </section>
