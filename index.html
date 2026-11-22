@@ -625,7 +625,12 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .img-cr:empty { display: none; }
 .img-cr a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 #bdCr { margin-top: -10px; }
-.mk-img { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; background: var(--line); display: grid; place-items: center; font: 800 20px var(--display); color: var(--muted); }
+.mk-img { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; background: var(--line); display: grid; place-items: center; font: 800 20px var(--display); color: var(--muted); padding: 0; border: 0; cursor: pointer; }
+.mk-img:focus-visible, .mk-t:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
+.mk-t { display: block; padding: 0; border: 0; background: none; color: var(--ink); font: 800 16px/1.2 var(--display); text-align: left; cursor: pointer; }
+.mk-t:hover { text-decoration: underline; text-underline-offset: 3px; }
+/* Fiche ouverte depuis le marché : pas d'actions ni de dates (le badge n'est pas à toi) */
+#bdCard.view .bd-acts, #bdCard.view #bdTrade, #bdCard.view #bdDatesL, #bdCard.view #bdDates { display: none; }
 .mk-img img { width: 100%; height: 100%; object-fit: cover; }
 .mk-item b { font: 800 16px/1.2 var(--display); }
 .mk-item small { display: block; font: 500 12px var(--display); color: var(--muted); }
@@ -1727,6 +1732,7 @@ $('bdGrid').onclick = async e => {
   const el = e.target.closest('.bd'); if (!el) return;
   const b = S.badgeList[+el.dataset.i]; if (!b) return;
   S.badgeOpen = b;
+  $('bdCard').classList.remove('view');
   const own = ownersOf(b.key);
   $('bdTitle').textContent = b.t;
   const uq = isUnique(b.key), chip = (t, c) => '<span class="bd-chip' + (c ? ' ' + c : '') + '">' + t + '</span>';
@@ -1758,6 +1764,34 @@ $('bdGrid').onclick = async e => {
   $('bdText').textContent = text || 'Résumé indisponible.';
   if (s && s.thumbnail) setBadgeImg(s.thumbnail.source, '');
 };
+// Fiche d'un badge en vente : image, résumé, crédit de l'image, prix et vendeur.
+async function openMarketBadge(a) {
+  const b = { t: a.t, key: a.key, view: true };
+  S.badgeOpen = b;
+  $('bdCard').classList.add('view');
+  const now = serverNow(), open = a.status === 'open' && a.endsAt > now, uq = a.key && isUnique(a.key), own = a.key ? ownersOf(a.key) : 0;
+  const chip = (t, c) => '<span class="bd-chip' + (c ? ' ' + c : '') + '">' + t + '</span>';
+  $('bdTitle').textContent = a.t;
+  $('bdTier').innerHTML = chip(IC('liens', 'liens') + ' ' + a.price + ' Liens' + (a.bids ? ' · ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') : ' · départ')) +
+    chip(IC('user') + ' vendu par ' + esc(a.sellerName || 'Joueur')) +
+    (open ? chip(IC('hourglass') + ' reste ' + leftText(a.endsAt - now)) : '') +
+    (uq ? chip(IC('star') + ' Unique', 'gold') : own ? chip(IC('users') + ' ' + own + (own > 1 ? ' joueurs l’ont' : ' joueur l’a')) : '');
+  $('bdCard').classList.toggle('rare', !!uq);
+  $('bdCard').style.setProperty('--h', hueOf(a.t));
+  setBadgeImg(thumbCache[a.t], String(a.t || '?').charAt(0).toUpperCase());
+  $('bdText').textContent = 'Chargement…';
+  $('bdLink').href = WIKI + '/wiki/' + encodeURIComponent(String(a.t).replace(/ /g, '_'));
+  $('bdCr').innerHTML = creditHtml(a.t);
+  loadCredits([a.t]).then(() => { if (S.badgeOpen === b) $('bdCr').innerHTML = creditHtml(a.t); });
+  $('bdSheet').hidden = false;
+  try { history.pushState({ wdBadge: 1 }, ''); } catch (err) {}
+  const s = await loadSummary(a.t);
+  if (S.badgeOpen !== b) return;
+  let text = (s && s.extract) || '';
+  if (text.length > 600) text = text.slice(0, 600).replace(/\s+\S*$/, '') + '…';
+  $('bdText').textContent = text || 'Résumé indisponible.';
+  if (s && s.thumbnail) setBadgeImg(s.thumbnail.source, '');
+}
 function closeBadge() { $('bdSheet').hidden = true; if (history.state && history.state.wdBadge) { try { history.back(); } catch (e) {} } }
 $('bdX').onclick = closeBadge;
 $('bdSheet').addEventListener('click', e => { if (e.target === $('bdSheet')) closeBadge(); });
@@ -1849,17 +1883,18 @@ function renderMarket() {
     else if (open && best) act = '<span class="mk-msg ok">Tu as la meilleure offre</span>';
     else if (open && can) act = '<input type="number" min="' + min + '" value="' + min + '" inputmode="numeric" aria-label="Montant de ton offre" data-amt="' + a.id + '">' +
       '<button type="button" class="btn small" data-bid="' + a.id + '">Enchérir</button>';
-    return '<li class="mk-item' + (mine || best ? ' mine' : '') + '"><span class="mk-img">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(String(a.t || '?').charAt(0))) + '</span><div style="min-width:0">' +
-      '<b>' + esc(a.t) + '</b><small>vendu par ' + esc(a.sellerName || 'Joueur') + (open ? ' · reste ' + leftText(a.endsAt - now) : '') + '</small>' + crSlot(a.t) +
+    return '<li class="mk-item' + (mine || best ? ' mine' : '') + '"><button type="button" class="mk-img" data-view="' + a.id + '" aria-label="Voir le badge ' + esc(a.t) + '">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(String(a.t || '?').charAt(0))) + '</button><div style="min-width:0">' +
+      '<button type="button" class="mk-t" data-view="' + a.id + '">' + esc(a.t) + '</button><small>vendu par ' + esc(a.sellerName || 'Joueur') + (open ? ' · reste ' + leftText(a.endsAt - now) : '') + '</small>' +
       '<div class="mk-price">' + a.price + ' ' + IC('liens', 'liens') + ' <small style="display:inline">' + (a.bidder ? '· ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') + (best ? ' (toi)' : '') : '· prix de départ') + '</small></div>' +
       (state || act ? '<div class="mk-act">' + (state || act) + '</div>' : '') + '<div class="mk-msg ko" data-err="' + a.id + '"></div></div></li>';
   }).join('');
-  fillCredits($('mkList'), list.map(a => a.t));
   loadThumbs(list.map(a => a.t)).then(() => { if (!$('market').hidden && list.some(a => thumbCache[a.t] && !$('mkList').querySelector('img[src="' + CSS.escape(thumbCache[a.t]) + '"]'))) renderMarketSoon(); });
 }
 let mkSoon = null;
 function renderMarketSoon() { clearTimeout(mkSoon); mkSoon = setTimeout(renderMarket, 50); }
 $('mkList').addEventListener('click', async e => {
+  const view = e.target.closest('[data-view]');
+  if (view) { const a = (S.mkAll || []).find(x => x.id === view.dataset.view); if (a) openMarketBadge(a); return; }
   const bid = e.target.closest('[data-bid]'), cancel = e.target.closest('[data-cancel]');
   if (bid) {
     const id = bid.dataset.bid, inp = $('mkList').querySelector('[data-amt="' + id + '"]'), err = $('mkList').querySelector('[data-err="' + id + '"]');
