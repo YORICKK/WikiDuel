@@ -621,6 +621,8 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .mk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .mk-item { display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .mk-item.mine { border-color: var(--flag); }
+.mk-intro { margin: 6px 0 0; font: 500 15px/1.4 var(--display); color: var(--muted); }
+.mk-intro b { color: var(--ink); }
 .img-cr { display: block; font: 500 11px/1.35 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .img-cr:empty { display: none; }
 .img-cr a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
@@ -722,7 +724,8 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .podium .crown .ic { width: 14px; height: 14px; margin: 0; }
 .podium .reach { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
 .podium .reach.ok { border-color: color-mix(in srgb, var(--flag) 55%, var(--line)); }
-.podium .r-pic { flex: none; width: 48px; height: 48px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--line); color: var(--muted); }
+.podium .r-pic { flex: none; width: 48px; height: 48px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--line); color: var(--muted); padding: 0; border: 0; cursor: pointer; }
+.podium .r-pic:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; }
 .podium .reach.ok .r-pic { color: var(--flag); }
 .podium .r-pic img { width: 100%; height: 100%; object-fit: cover; }
 .podium .r-pic .ic { width: 22px; height: 22px; margin: 0; }
@@ -1003,6 +1006,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <div>
       <div class="label">Enchères entre joueurs</div>
       <h2 class="big">Marché</h2>
+      <p class="mk-intro">Les <b>Liens</b> <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> permettent d’échanger des badges entre joueurs.</p>
     </div>
     <div class="mk-bar"><span class="mk-bal" id="mkBal"><svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> 0</span><button type="button" class="btn ghost small" id="mkMine"><svg class="ic" aria-hidden="true"><use href="/icons.svg#badge"></use></svg> Mes badges</button></div>
     <p class="theme-note" id="mkGate" hidden></p>
@@ -1010,7 +1014,6 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
       <button type="button" data-t="open" class="on">En cours</button><button type="button" data-t="bids">Mes offres</button><button type="button" data-t="sales">Mes ventes</button>
     </div>
     <ul class="mk-list" id="mkList"></ul>
-    <p style="margin:0;color:var(--muted);font-size:13px">Ton offre est bloquée tout de suite ; si quelqu'un fait mieux, tu es remboursé. Une offre dans la dernière minute relance le compte à rebours à 2 minutes. Le vendeur reçoit tout le prix. Les Liens <svg class="ic liens" aria-hidden="true"><use href="/icons.svg#liens"></use></svg> sont fictifs : ils ne s'achètent pas et ne valent rien en argent réel.</p>
   </div>
 </section>
 
@@ -1634,13 +1637,6 @@ function creditHtml(t) {
   const lic = c.lic === 'Public domain' ? 'domaine public' : c.lic;
   return 'Image : ' + esc(c.who || 'auteur sur Commons') + (lic ? ' · ' + (c.lu ? a(c.lu, lic) : esc(lic)) : '') + ' · ' + a(c.src, 'source');
 }
-// Emplacement de crédit à remplir quand il arrive : <span class="img-cr" data-cr="Titre">.
-const crSlot = t => '<span class="img-cr" data-cr="' + esc(t) + '">' + creditHtml(t) + '</span>';
-function fillCredits(root, titles) {
-  return loadCredits(titles).then(() => {
-    root.querySelectorAll('.img-cr[data-cr]').forEach(el => { if (!el.innerHTML) el.innerHTML = creditHtml(el.dataset.cr); });
-  }).catch(() => {});
-}
 // Teinte stable tirée du titre, pour les badges sans image.
 function hueOf(t) { let x = 0; for (const c of String(t)) x = (x * 31 + c.charCodeAt(0)) % 360; return x; }
 function setBadgeImg(src, letter) {
@@ -1764,36 +1760,46 @@ $('bdGrid').onclick = async e => {
   $('bdText').textContent = text || 'Résumé indisponible.';
   if (s && s.thumbnail) setBadgeImg(s.thumbnail.source, '');
 };
-// Fiche d'un badge en vente : image, résumé, crédit de l'image, prix et vendeur.
-async function openMarketBadge(a) {
-  const b = { t: a.t, key: a.key, view: true };
+// Fiche d'une page en lecture seule (marché, résultats) : image, résumé, crédit de l'image et lien Wikipédia.
+const bdChip = (t, c) => '<span class="bd-chip' + (c ? ' ' + c : '') + '">' + t + '</span>';
+async function openViewSheet(t, chips, rare) {
+  const b = { t: t, view: true };
   S.badgeOpen = b;
   $('bdCard').classList.add('view');
-  const now = serverNow(), open = a.status === 'open' && a.endsAt > now, uq = a.key && isUnique(a.key), own = a.key ? ownersOf(a.key) : 0;
-  const chip = (t, c) => '<span class="bd-chip' + (c ? ' ' + c : '') + '">' + t + '</span>';
-  $('bdTitle').textContent = a.t;
-  $('bdTier').innerHTML = chip(IC('liens', 'liens') + ' ' + a.price + ' Liens' + (a.bids ? ' · ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') : ' · départ')) +
-    chip(IC('user') + ' vendu par ' + esc(a.sellerName || 'Joueur')) +
-    (open ? chip(IC('hourglass') + ' reste ' + leftText(a.endsAt - now)) : '') +
-    (uq ? chip(IC('star') + ' Unique', 'gold') : own ? chip(IC('users') + ' ' + own + (own > 1 ? ' joueurs l’ont' : ' joueur l’a')) : '');
-  $('bdCard').classList.toggle('rare', !!uq);
-  $('bdCard').style.setProperty('--h', hueOf(a.t));
-  setBadgeImg(thumbCache[a.t], String(a.t || '?').charAt(0).toUpperCase());
+  $('bdTitle').textContent = t;
+  $('bdTier').innerHTML = chips || '';
+  $('bdCard').classList.toggle('rare', !!rare);
+  $('bdCard').style.setProperty('--h', hueOf(t));
+  setBadgeImg(thumbCache[t], String(t || '?').charAt(0).toUpperCase());
   $('bdText').textContent = 'Chargement…';
-  $('bdLink').href = WIKI + '/wiki/' + encodeURIComponent(String(a.t).replace(/ /g, '_'));
-  $('bdCr').innerHTML = creditHtml(a.t);
-  loadCredits([a.t]).then(() => { if (S.badgeOpen === b) $('bdCr').innerHTML = creditHtml(a.t); });
+  $('bdLink').href = WIKI + '/wiki/' + encodeURIComponent(String(t).replace(/ /g, '_'));
+  $('bdCr').innerHTML = creditHtml(t);
+  loadCredits([t]).then(() => { if (S.badgeOpen === b) $('bdCr').innerHTML = creditHtml(t); });
   $('bdSheet').hidden = false;
   try { history.pushState({ wdBadge: 1 }, ''); } catch (err) {}
-  const s = await loadSummary(a.t);
+  const s = await loadSummary(t);
   if (S.badgeOpen !== b) return;
   let text = (s && s.extract) || '';
   if (text.length > 600) text = text.slice(0, 600).replace(/\s+\S*$/, '') + '…';
   $('bdText').textContent = text || 'Résumé indisponible.';
   if (s && s.thumbnail) setBadgeImg(s.thumbnail.source, '');
 }
+// Fiche d'un badge en vente : prix, vendeur, temps restant.
+function openMarketBadge(a) {
+  const now = serverNow(), open = a.status === 'open' && a.endsAt > now, uq = a.key && isUnique(a.key), own = a.key ? ownersOf(a.key) : 0;
+  const chip = bdChip;
+  openViewSheet(a.t, chip(IC('liens', 'liens') + ' ' + a.price + ' Liens' + (a.bids ? ' · ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') : ' · départ')) +
+    chip(IC('user') + ' vendu par ' + esc(a.sellerName || 'Joueur')) +
+    (open ? chip(IC('hourglass') + ' reste ' + leftText(a.endsAt - now)) : '') +
+    (uq ? chip(IC('star') + ' Unique', 'gold') : own ? chip(IC('users') + ' ' + own + (own > 1 ? ' joueurs l’ont' : ' joueur l’a')) : ''), uq);
+}
 function closeBadge() { $('bdSheet').hidden = true; if (history.state && history.state.wdBadge) { try { history.back(); } catch (e) {} } }
 $('bdX').onclick = closeBadge;
+// Résultats : toucher l'image d'une page atteinte ouvre sa fiche (résumé, crédit de l'image).
+$('podium').addEventListener('click', e => {
+  const p = e.target.closest('.r-pic[data-t]'); if (!p) return;
+  openViewSheet(p.dataset.t, bdChip(IC(p.dataset.ok ? 'flag' : 'cursor') + ' ' + (p.dataset.ok ? 'Page cible' : 'Page atteinte') + ' · ' + esc(p.dataset.who)));
+});
 $('bdSheet').addEventListener('click', e => { if (e.target === $('bdSheet')) closeBadge(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('bdSheet').hidden) closeBadge(); });
 $('badgesBtn').onclick = () => { closeAccMenu(); showBadges(); };
@@ -3502,8 +3508,8 @@ function renderResults() {
     const bad = verdicts[p.id] && verdicts[p.id].indexOf('invalide') === 0 ? '<div class="verdict">Chemin ' + esc(verdicts[p.id]) + '</div>' : '';
     const win = p.id === room.winnerId, reach = reachOf(p, pth);
     if (reach) reachTitles.push(reach);
-    const reachHtml = reach ? '<div class="reach' + (p.finishedAt ? ' ok' : '') + '"><span class="r-pic" data-t="' + esc(reach) + '">' + (thumbCache[reach] ? '<img src="' + esc(thumbCache[reach]) + '" alt="">' : IC(p.finishedAt ? 'flag' : 'cursor')) + '</span>' +
-      '<span class="r-txt"><small>' + (p.finishedAt ? 'Page cible atteinte' : p.gaveUp ? 'Page atteinte avant l’abandon' : 'Page atteinte') + '</small><b>' + esc(reach) + '</b>' + crSlot(reach) + '</span></div>' : '';
+    const reachHtml = reach ? '<div class="reach' + (p.finishedAt ? ' ok' : '') + '"><button type="button" class="r-pic" data-t="' + esc(reach) + '" data-who="' + esc(p.name) + '" data-ok="' + (p.finishedAt ? 1 : '') + '" aria-label="Voir la page ' + esc(reach) + '">' + (thumbCache[reach] ? '<img src="' + esc(thumbCache[reach]) + '" alt="">' : IC(p.finishedAt ? 'flag' : 'cursor')) + '</button>' +
+      '<span class="r-txt"><small>' + (p.finishedAt ? 'Page cible atteinte' : p.gaveUp ? 'Page atteinte avant l’abandon' : 'Page atteinte') + '</small><b>' + esc(reach) + '</b></span></div>' : '';
     return '<li class="' + (win ? 'win' : '') + '" style="--d:' + ((win ? 0.15 : 0.9 + (i - (wi >= 0 ? 1 : 0)) * 0.35) - el).toFixed(2) + 's">' +
       (win ? '<div class="crown">' + IC('crown') + (p.id === S.me.playerId ? ' Tu gagnes !' : ' Gagnant') + '</div>' : '') +
       '<div class="top"><span class="rank">' + (p.finishedAt ? (i + 1) + '.' : '–') + '</span>' +
@@ -3517,7 +3523,7 @@ function renderResults() {
       if (src && !el.querySelector('img')) el.innerHTML = '<img src="' + esc(src) + '" alt="">';
     });
   }).catch(() => {});
-  fillCredits($('podium'), reachTitles);
+  loadCredits(reachTitles); // prêts quand on touche une image
   const host = isHost();
   $('againBtn').hidden = !host; $('againWait').hidden = host;
   // Entre amis : l'hôte peut ramener tout le monde au salon (changer de thème, attendre un joueur…).
