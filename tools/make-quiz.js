@@ -35,14 +35,15 @@ const CATS = {
     'Fontaine de Trevi', 'Basilique Sainte-Sophie', 'Atomium', 'Château de Chillon', 'Jet d\'eau de Genève', 'Kapellbrücke', 'Pont du Gard',
     'Tours Petronas', 'Space Needle', 'Moaï', 'Temple d\'Or', 'Mosquée Cheikh Zayed', 'Pagode Shwedagon', 'Pont Charles', 'Pyramide du Louvre' ] },
   peinture: { name: 'Tableaux célèbres', one: 'tableau', titles: [
-    'La Joconde', 'La Nuit étoilée (Van Gogh)', 'La Jeune Fille à la perle', 'Le Cri', 'La Naissance de Vénus (Botticelli)', 'La Persistance de la mémoire',
-    'La Grande Vague de Kanagawa', 'Les Ménines', 'La Cène (Léonard de Vinci)', 'Guernica (Picasso)', 'Le Baiser (Klimt)', 'American Gothic',
+    // Seulement des tableaux du domaine public : les œuvres encore protégées (Dalí, Picasso, Warhol, Magritte…) sont exclues.
+    'La Joconde', 'La Nuit étoilée (Van Gogh)', 'La Jeune Fille à la perle', 'Le Cri', 'La Naissance de Vénus (Botticelli)',
+    'La Grande Vague de Kanagawa', 'Les Ménines', 'La Cène (Léonard de Vinci)', 'Le Baiser (Klimt)', 'American Gothic',
     'La Liberté guidant le peuple', 'Impression, soleil levant', 'Le Radeau de La Méduse', 'Les Tournesols', 'La Création d\'Adam',
-    'Le Jardin des délices', 'La Ronde de nuit', 'Le Déjeuner sur l\'herbe', 'Olympia (Manet)', 'Nighthawks', 'Le Fils de l\'homme',
-    'Les Demoiselles d\'Avignon', 'Le Voyageur contemplant une mer de nuages', 'Le Tres de mayo', 'L\'École d\'Athènes', 'Les Glaneuses',
+    'Le Jardin des délices', 'La Ronde de nuit', 'Le Déjeuner sur l\'herbe', 'Olympia (Manet)', 'Nighthawks',
+    'Le Voyageur contemplant une mer de nuages', 'Le Tres de mayo', 'L\'École d\'Athènes', 'Les Glaneuses',
     'Un dimanche après-midi à l\'Île de la Grande Jatte', 'Bal du moulin de la Galette', 'La Laitière (Vermeer)', 'Les Nymphéas',
     'Le Sacre de Napoléon', 'La Dame à l\'hermine', 'Les Époux Arnolfini', 'Chasseurs dans la neige', 'La Tour de Babel (Bruegel)',
-    'Composition en rouge, jaune, bleu et noir', 'Campbell\'s Soup Cans' ] }, // « Le Pont japonais » retiré : son image Wikipédia est une photo, pas le tableau
+    'Composition en rouge, jaune, bleu et noir', 'Les Raboteurs de parquet' ] }, // « Le Pont japonais » retiré : son image Wikipédia est une photo, pas le tableau
   personne: { name: 'Personnalités', one: 'personnalité', titles: [
     'Albert Einstein', 'Marie Curie', 'Isaac Newton', 'Charles Darwin', 'Léonard de Vinci', 'Napoléon Ier', 'Jules César', 'Cléopâtre VII',
     'Abraham Lincoln', 'Winston Churchill', 'Charles de Gaulle', 'Nelson Mandela', 'Gandhi', 'Martin Luther King', 'Barack Obama',
@@ -83,7 +84,7 @@ async function getJSON(url, tries = 4) {
   }
 }
 const fileOf = u => decodeURIComponent(String(u).split('/').pop()).replace(/_/g, ' ');
-const strip = h => String(h || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+const strip = h => String(h || '').replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/\s+/g, ' ').trim();
 const clean = t => t.replace(/\s*\([^)]*\)\s*$/, '');
 
 async function fromSparql(c) {
@@ -130,7 +131,7 @@ async function describe(list) {
       const ii = info.get(x.file) || info.get(x.file.replace(/_/g, ' '));
       if (!ii) { x.bad = true; return; }
       const m = ii.extmetadata || {};
-      x.thumb = ii.thumburl; x.page = ii.descriptionurl;
+      x.thumb = ii.thumburl; x.page = ii.descriptionurl; x.lu = strip(m.LicenseUrl && m.LicenseUrl.value).replace(/^http:/, 'https:'); // lien vers le texte de la licence
       x.credit = [strip(m.Artist && m.Artist.value).slice(0, 80) || 'Wikimedia Commons', strip(m.LicenseShortName && m.LicenseShortName.value)].filter(Boolean).join(' · ');
     });
     await sleep(300);
@@ -166,7 +167,7 @@ async function describe(list) {
           await sleep(150);
         } catch (e) { console.warn('  ✗ image ' + x.title + ' : ' + e.message); continue; }
       }
-      items.push({ id, c: key, l: clean(x.label || x.title).replace(/^Ville de /, ''), t: x.title, d: x.desc, r: x.sl, cr: x.credit, src: x.page });
+      items.push({ id, c: key, l: clean(x.label || x.title).replace(/^Ville de /, ''), t: x.title, d: x.desc, r: x.sl, cr: x.credit, src: x.page, ...(x.lu ? { lu: x.lu } : {}) });
     }
     console.log(items.filter(i => i.c === key).length);
   }

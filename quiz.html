@@ -191,7 +191,8 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .recap img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; background: var(--line); }
 .recap .flag img { object-fit: contain; }
 .recap b { font: 700 15px var(--display); display: block; }
-.recap small { font: 500 11px/1.3 var(--mono); color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recap small { font: 500 11px/1.35 var(--mono); color: var(--muted); display: block; overflow-wrap: anywhere; }
+.recap small a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .recap .s { font: 800 15px var(--mono); }
 .recap .s.ko { color: var(--bad); }
 .lb { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -346,7 +347,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
     </div>
     <span class="label">Les réponses</span>
     <ul class="recap" id="rRecap"></ul>
-    <p style="font-size:13px;color:var(--muted);margin:0">Images de Wikimedia Commons ; touche une réponse pour voir l'image, son auteur et sa licence.</p>
+    <p style="font-size:13px;color:var(--muted);margin:0">Images de Wikimedia Commons (réduites, non modifiées) : auteur, licence et source sous chaque réponse.</p>
   </div>
 </section>
 
@@ -392,6 +393,13 @@ function dailyNum(d) { return Math.round((Date.parse(d) - Date.parse(LAUNCH)) / 
 function dateLabel(d) { return new Date(d + 'T12:00:00Z').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); }
 const fmtPts = n => n.toLocaleString('fr-CH');
 const imgUrl = it => '/quiz-data/img/' + it.id + '.jpg';
+// Crédit d'une image : auteur · licence (lien vers le texte de la licence) · lien vers la page Commons.
+function crHtml(it) {
+  const cr = String(it.cr || ''), k = cr.lastIndexOf(' · ');
+  const who = k > 0 ? cr.slice(0, k) : cr, lic = k > 0 ? cr.slice(k + 3) : '';
+  const a = (u, t) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(t) + '</a>';
+  return esc(who) + (lic ? ' · ' + (it.lu ? a(it.lu, lic) : esc(lic)) : '') + (it.src ? ' · ' + a(it.src, 'source') : '');
+}
 
 /* ---------- Banque de questions et tirage déterministe ---------- */
 const bankReady = fetch('/quiz-data/questions.json').then(r => r.json()).then(b => { S.bank = b; return b; });
@@ -716,7 +724,7 @@ function showResults() {
   $('rRecap').innerHTML = g.qs.map((q, i) => {
     const r = g.res[i] || { s: 0 }, cat = S.bank.cats[q.cat];
     return '<li><a class="' + (cat.flag ? 'flag' : '') + '" href="' + esc(q.ans.src || '#') + '" target="_blank" rel="noopener"><img src="' + imgUrl(q.ans) + '" alt="' + esc(q.ans.l) + '"></a>' +
-      '<div style="min-width:0"><b>' + esc(q.ans.l) + '</b><small>' + esc(cat.name) + ' · ' + esc(q.ans.cr) + '</small></div>' +
+      '<div style="min-width:0"><b>' + esc(q.ans.l) + '</b><small>' + esc(cat.name) + ' · ' + crHtml(q.ans) + '</small></div>' +
       '<span class="s' + (r.s ? '' : ' ko') + '">' + (r.s ? '+' + r.s : '0') + '</span></li>';
   }).join('');
   if (g.mode === 'friends') renderRoomRank();

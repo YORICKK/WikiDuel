@@ -432,6 +432,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
 /* Article */
 .article { padding-block: 20px 110px; }
 .article h1.title { font: 800 clamp(28px, 8vw, 36px)/1.08 var(--display); letter-spacing: -.02em; margin: 4px 0 18px; }
+.art-src { margin: 28px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font: 500 12px/1.5 var(--display); color: var(--muted); }
+.art-src:empty { display: none; }
+.art-src a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .body { font-size: 17px; line-height: 1.65; overflow-wrap: break-word; min-width: 0; }
 .body p { margin: 0 0 14px; }
 .body b { font-weight: 600; }
@@ -618,6 +621,10 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 .mk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .mk-item { display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .mk-item.mine { border-color: var(--flag); }
+.img-cr { display: block; font: 500 11px/1.35 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.img-cr:empty { display: none; }
+.img-cr a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+#bdCr { margin-top: -10px; }
 .mk-img { width: 56px; height: 56px; border-radius: 50%; overflow: hidden; background: var(--line); display: grid; place-items: center; font: 800 20px var(--display); color: var(--muted); }
 .mk-img img { width: 100%; height: 100%; object-fit: cover; }
 .mk-item b { font: 800 16px/1.2 var(--display); }
@@ -949,6 +956,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     </div>
     <p id="bdText"></p>
     <a class="bd-wiki" id="bdLink" href="#" target="_blank" rel="noopener">Lire sur Wikipédia <svg class="ic" aria-hidden="true"><use href="/icons.svg#external"></use></svg></a>
+    <span class="img-cr" id="bdCr"></span>
     <div class="bd-acts">
       <button type="button" class="btn ghost" id="bdAvatar"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Photo de profil</button>
     </div>
@@ -1143,6 +1151,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
   <main class="wrap article">
     <h1 class="title" id="artTitle"></h1>
     <div class="body" id="artBody"></div>
+    <p class="art-src" id="artSrc"></p>
     <div class="err" id="artErr" role="alert"></div>
   </main>
   <div class="giveup-bar">
@@ -1583,6 +1592,50 @@ async function loadThumbs(titles) {
     } catch (e) {}
   }
 }
+// Crédits des images de pages (licences CC BY / BY-SA : auteur, licence et source à citer).
+// Page → nom du fichier (Wikipédia), puis auteur et licence sur Commons. Gardé en mémoire.
+const creditCache = {};
+async function loadCredits(titles) {
+  const need = [...new Set(titles.filter(t => t && !(t in creditCache)))];
+  for (let i = 0; i < need.length; i += 50) {
+    const part = need.slice(i, i + 50);
+    part.forEach(t => { creditCache[t] = null; });
+    try {
+      const j = await (await fetch(WIKI + '/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=pageimages&piprop=name&titles=' + encodeURIComponent(part.join('|')))).json();
+      const back = {}, files = {};
+      (j.query.normalized || []).concat(j.query.redirects || []).forEach(r => { back[r.to] = (back[r.from] || r.from); });
+      (j.query.pages || []).forEach(p => { if (p.pageimage) (files[p.pageimage] = files[p.pageimage] || []).push(back[p.title] || p.title, p.title); });
+      const names = Object.keys(files); if (!names.length) continue;
+      const c = await (await fetch('https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&prop=imageinfo&iiprop=extmetadata&iiextmetadatafilter=Artist|LicenseShortName|LicenseUrl&titles=' +
+        encodeURIComponent(names.map(n => 'File:' + n).join('|')))).json();
+      const norm = {}; (c.query.normalized || []).forEach(r => { norm[r.to] = r.from; });
+      (c.query.pages || []).forEach(p => {
+        const name = (norm[p.title] || p.title).replace(/^File:/, ''), key = files[name] || files[name.replace(/ /g, '_')] || files[p.title.replace(/^File:/, '').replace(/ /g, '_')];
+        if (!key) return;
+        const m = (p.imageinfo && p.imageinfo[0] && p.imageinfo[0].extmetadata) || {};
+        const txt = v => { const d = document.createElement('div'); d.innerHTML = String(v || ''); return d.textContent.replace(/\s+/g, ' ').trim(); };
+        let who = txt(m.Artist && m.Artist.value);
+        if (who.length > 60) who = who.slice(0, 57).trim() + '…';
+        const cr = { who: who, lic: txt(m.LicenseShortName && m.LicenseShortName.value), lu: txt(m.LicenseUrl && m.LicenseUrl.value), src: 'https://commons.wikimedia.org/wiki/' + encodeURIComponent(p.title.replace(/ /g, '_')) };
+        key.forEach(t => { creditCache[t] = cr; });
+      });
+    } catch (e) {}
+  }
+}
+// « Image : auteur · licence · source » (liens vers la licence et la page Commons).
+function creditHtml(t) {
+  const c = creditCache[t]; if (!c) return '';
+  const a = (u, s) => '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(s) + '</a>';
+  const lic = c.lic === 'Public domain' ? 'domaine public' : c.lic;
+  return 'Image : ' + esc(c.who || 'auteur sur Commons') + (lic ? ' · ' + (c.lu ? a(c.lu, lic) : esc(lic)) : '') + ' · ' + a(c.src, 'source');
+}
+// Emplacement de crédit à remplir quand il arrive : <span class="img-cr" data-cr="Titre">.
+const crSlot = t => '<span class="img-cr" data-cr="' + esc(t) + '">' + creditHtml(t) + '</span>';
+function fillCredits(root, titles) {
+  return loadCredits(titles).then(() => {
+    root.querySelectorAll('.img-cr[data-cr]').forEach(el => { if (!el.innerHTML) el.innerHTML = creditHtml(el.dataset.cr); });
+  }).catch(() => {});
+}
 // Teinte stable tirée du titre, pour les badges sans image.
 function hueOf(t) { let x = 0; for (const c of String(t)) x = (x * 31 + c.charCodeAt(0)) % 360; return x; }
 function setBadgeImg(src, letter) {
@@ -1692,6 +1745,8 @@ $('bdGrid').onclick = async e => {
   $('bdText').textContent = 'Chargement…';
   $('bdDatesL').textContent = b.n > 1 ? 'Obtenu ' + b.n + ' fois' : 'Obtenu le';
   $('bdLink').href = WIKI + '/wiki/' + encodeURIComponent(b.t.replace(/ /g, '_'));
+  $('bdCr').innerHTML = creditHtml(b.t);
+  loadCredits([b.t]).then(() => { if (S.badgeOpen === b) $('bdCr').innerHTML = creditHtml(b.t); });
   $('bdDates').innerHTML = b.d.map(x => '<li>' + new Date(x).toLocaleString('fr-CH', { timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·') + '</li>').join('') +
     (b.n > b.d.length ? '<li>… et ' + (b.n - b.d.length) + ' fois avant</li>' : '');
   $('bdSheet').hidden = false;
@@ -1795,10 +1850,11 @@ function renderMarket() {
     else if (open && can) act = '<input type="number" min="' + min + '" value="' + min + '" inputmode="numeric" aria-label="Montant de ton offre" data-amt="' + a.id + '">' +
       '<button type="button" class="btn small" data-bid="' + a.id + '">Enchérir</button>';
     return '<li class="mk-item' + (mine || best ? ' mine' : '') + '"><span class="mk-img">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(String(a.t || '?').charAt(0))) + '</span><div style="min-width:0">' +
-      '<b>' + esc(a.t) + '</b><small>vendu par ' + esc(a.sellerName || 'Joueur') + (open ? ' · reste ' + leftText(a.endsAt - now) : '') + '</small>' +
+      '<b>' + esc(a.t) + '</b><small>vendu par ' + esc(a.sellerName || 'Joueur') + (open ? ' · reste ' + leftText(a.endsAt - now) : '') + '</small>' + crSlot(a.t) +
       '<div class="mk-price">' + a.price + ' ' + IC('liens', 'liens') + ' <small style="display:inline">' + (a.bidder ? '· ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') + (best ? ' (toi)' : '') : '· prix de départ') + '</small></div>' +
       (state || act ? '<div class="mk-act">' + (state || act) + '</div>' : '') + '<div class="mk-msg ko" data-err="' + a.id + '"></div></div></li>';
   }).join('');
+  fillCredits($('mkList'), list.map(a => a.t));
   loadThumbs(list.map(a => a.t)).then(() => { if (!$('market').hidden && list.some(a => thumbCache[a.t] && !$('mkList').querySelector('img[src="' + CSS.escape(thumbCache[a.t]) + '"]'))) renderMarketSoon(); });
 }
 let mkSoon = null;
@@ -3224,6 +3280,9 @@ async function loadArticle(title, isMove) {
     $('artTitle').textContent = real;
     $('artBody').innerHTML = '';
     $('artBody').appendChild(cleanArticle(j.parse.text));
+    // Crédit de l'article (CC BY-SA) : source, auteurs (historique) et licence ; les crédits des images sont sur Wikipédia.
+    const wu = WIKI + '/wiki/' + encodeURIComponent(real.replace(/ /g, '_'));
+    $('artSrc').innerHTML = 'Article « <a href="' + esc(wu) + '" target="_blank" rel="noopener">' + esc(real) + '</a> » de Wikipédia, par <a href="' + esc(WIKI + '/w/index.php?title=' + encodeURIComponent(real) + '&action=history') + '" target="_blank" rel="noopener">ses contributeurs</a>, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a> (mise en page adaptée pour le jeu). Auteurs et licences des images : sur la page Wikipédia.';
     window.scrollTo(0, 0);
     if (S.finished) { stopTick(); renderTimer(); }
   } catch (e) {
@@ -3409,7 +3468,7 @@ function renderResults() {
     const win = p.id === room.winnerId, reach = reachOf(p, pth);
     if (reach) reachTitles.push(reach);
     const reachHtml = reach ? '<div class="reach' + (p.finishedAt ? ' ok' : '') + '"><span class="r-pic" data-t="' + esc(reach) + '">' + (thumbCache[reach] ? '<img src="' + esc(thumbCache[reach]) + '" alt="">' : IC(p.finishedAt ? 'flag' : 'cursor')) + '</span>' +
-      '<span class="r-txt"><small>' + (p.finishedAt ? 'Page cible atteinte' : p.gaveUp ? 'Page atteinte avant l’abandon' : 'Page atteinte') + '</small><b>' + esc(reach) + '</b></span></div>' : '';
+      '<span class="r-txt"><small>' + (p.finishedAt ? 'Page cible atteinte' : p.gaveUp ? 'Page atteinte avant l’abandon' : 'Page atteinte') + '</small><b>' + esc(reach) + '</b>' + crSlot(reach) + '</span></div>' : '';
     return '<li class="' + (win ? 'win' : '') + '" style="--d:' + ((win ? 0.15 : 0.9 + (i - (wi >= 0 ? 1 : 0)) * 0.35) - el).toFixed(2) + 's">' +
       (win ? '<div class="crown">' + IC('crown') + (p.id === S.me.playerId ? ' Tu gagnes !' : ' Gagnant') + '</div>' : '') +
       '<div class="top"><span class="rank">' + (p.finishedAt ? (i + 1) + '.' : '–') + '</span>' +
@@ -3423,6 +3482,7 @@ function renderResults() {
       if (src && !el.querySelector('img')) el.innerHTML = '<img src="' + esc(src) + '" alt="">';
     });
   }).catch(() => {});
+  fillCredits($('podium'), reachTitles);
   const host = isHost();
   $('againBtn').hidden = !host; $('againWait').hidden = host;
   // Entre amis : l'hôte peut ramener tout le monde au salon (changer de thème, attendre un joueur…).
