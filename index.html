@@ -618,7 +618,25 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .bd-auc-row label { display: grid; gap: 4px; font: 600 12px var(--display); color: var(--muted); }
 .bd-auc-row .field { min-height: 44px; font-size: 16px; }
 select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font: 600 16px var(--display); }
-.mk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mk-list { list-style: none; margin: 0; padding: 0; }
+.mk-list > li.lb-empty { grid-column: 1 / -1; }
+.mk-list .bd { width: 100%; height: 100%; }
+.bd.mk-mine { border-color: var(--flag); }
+.mk-tag { position: absolute; left: 5px; top: 5px; padding: 2px 7px; border-radius: 99px; background: var(--flag); color: #fff; font: 800 10px/1.4 var(--display); }
+.mk-tag.ok { background: var(--ok); }
+.mk-tag.off { background: rgba(8,14,32,.7); }
+.bd .mk-p { display: flex; align-items: center; gap: 4px; color: var(--ink); font: 800 14px var(--display); }
+.bd .mk-p .ic { width: 14px; height: 14px; margin: 0; }
+.bd .mk-p em { margin-left: auto; font: 600 11px var(--mono); font-style: normal; color: var(--muted); }
+/* Enchère dans la fiche du badge */
+.bd-mk { display: grid; gap: 10px; padding: 14px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); }
+.bd-mk[hidden] { display: none; }
+.bd-mk .mk-row { display: flex; gap: 8px; }
+.bd-mk input { flex: 1; min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); color: var(--ink); font: 800 18px var(--display); }
+.bd-mk .btn { min-height: 48px; }
+.bd-mk .mk-row .btn { flex: none; width: auto; padding: 0 20px; }
+.bd-mk .mk-row input { width: 0; }
+.bd-mk small { font: 500 12px/1.4 var(--display); color: var(--muted); }
 .mk-item { display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; }
 .mk-item.mine { border-color: var(--flag); }
 .mk-intro { margin: 6px 0 0; font: 500 15px/1.4 var(--display); color: var(--muted); }
@@ -965,6 +983,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <p id="bdText"></p>
     <a class="bd-wiki" id="bdLink" href="#" target="_blank" rel="noopener">Lire sur Wikipédia <svg class="ic" aria-hidden="true"><use href="/icons.svg#external"></use></svg></a>
     <span class="img-cr" id="bdCr"></span>
+    <div class="bd-mk" id="bdMk" hidden></div>
     <div class="bd-acts">
       <button type="button" class="btn ghost" id="bdAvatar"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Photo de profil</button>
     </div>
@@ -1013,7 +1032,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <div class="seg" id="mkTabs" style="grid-template-columns:repeat(3,minmax(0,1fr))">
       <button type="button" data-t="open" class="on">En cours</button><button type="button" data-t="bids">Mes offres</button><button type="button" data-t="sales">Mes ventes</button>
     </div>
-    <ul class="mk-list" id="mkList"></ul>
+    <ul class="mk-list bd-grid" id="mkList"></ul>
   </div>
 </section>
 
@@ -1728,7 +1747,7 @@ $('bdGrid').onclick = async e => {
   const el = e.target.closest('.bd'); if (!el) return;
   const b = S.badgeList[+el.dataset.i]; if (!b) return;
   S.badgeOpen = b;
-  $('bdCard').classList.remove('view');
+  $('bdCard').classList.remove('view'); $('bdMk').hidden = true;
   const own = ownersOf(b.key);
   $('bdTitle').textContent = b.t;
   const uq = isUnique(b.key), chip = (t, c) => '<span class="bd-chip' + (c ? ' ' + c : '') + '">' + t + '</span>';
@@ -1766,6 +1785,7 @@ async function openViewSheet(t, chips, rare) {
   const b = { t: t, view: true };
   S.badgeOpen = b;
   $('bdCard').classList.add('view');
+  $('bdMk').hidden = true;
   $('bdTitle').textContent = t;
   $('bdTier').innerHTML = chips || '';
   $('bdCard').classList.toggle('rare', !!rare);
@@ -1785,13 +1805,39 @@ async function openViewSheet(t, chips, rare) {
   if (s && s.thumbnail) setBadgeImg(s.thumbnail.source, '');
 }
 // Fiche d'un badge en vente : prix, vendeur, temps restant.
-function openMarketBadge(a) {
+function mkChips(a) {
   const now = serverNow(), open = a.status === 'open' && a.endsAt > now, uq = a.key && isUnique(a.key), own = a.key ? ownersOf(a.key) : 0;
   const chip = bdChip;
-  openViewSheet(a.t, chip(IC('liens', 'liens') + ' ' + a.price + ' Liens' + (a.bids ? ' · ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') : ' · départ')) +
+  return (chip(IC('liens', 'liens') + ' ' + a.price + ' Liens' + (a.bids ? ' · ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') : ' · départ')) +
     chip(IC('user') + ' vendu par ' + esc(a.sellerName || 'Joueur')) +
     (open ? chip(IC('hourglass') + ' reste ' + leftText(a.endsAt - now)) : '') +
-    (uq ? chip(IC('star') + ' Unique', 'gold') : own ? chip(IC('users') + ' ' + own + (own > 1 ? ' joueurs l’ont' : ' joueur l’a')) : ''), uq);
+    (uq ? chip(IC('star') + ' Unique', 'gold') : own ? chip(IC('users') + ' ' + own + (own > 1 ? ' joueurs l’ont' : ' joueur l’a')) : ''));
+}
+function openMarketBadge(a) {
+  openViewSheet(a.t, mkChips(a), a.key && isUnique(a.key));
+  S.badgeOpen.aid = a.id; S.mkSig = '';
+  $('bdMk').hidden = false;
+  renderMkSheet(a);
+}
+// Zone d'enchère de la fiche : réécrite seulement si la vente a changé (sinon on garderait pas le montant tapé).
+function renderMkSheet(a) {
+  const now = serverNow(), open = a.status === 'open' && a.endsAt > now, mine = a.seller === uid, best = a.bidder === uid;
+  $('bdTier').innerHTML = mkChips(a);
+  const sig = [a.status, a.price, a.bidder, open].join('|');
+  if (sig === S.mkSig) return; S.mkSig = sig;
+  const min = a.bidder ? a.price + Math.max(1, Math.ceil(a.price * 0.05)) : a.start;
+  let html;
+  if (a.status === 'sold') html = '<span class="mk-msg ok">' + (best ? IC('check') + ' Gagné ! Le badge est dans ta collection.' : mine ? 'Vendu : +' + (a.sellerGain || a.price) + ' ' + IC('liens', 'liens') : 'Vendu à ' + esc(a.bidderName || 'un joueur') + '.') + '</span>';
+  else if (a.status === 'unsold') html = '<span class="mk-msg">Invendu : le badge est revenu' + (mine ? ' dans ta collection' : ' à son vendeur') + '.</span>';
+  else if (a.status === 'cancelled') html = '<span class="mk-msg">Vente annulée.</span>';
+  else if (!open) html = '<span class="mk-msg">Clôture en cours…</span>';
+  else if (mine) html = a.bidder ? '<span class="mk-msg">Ta vente · meilleure offre de ' + esc(a.bidderName || 'Joueur') + '</span>'
+    : '<button type="button" class="btn ghost" data-cancel="' + a.id + '">Annuler la vente</button>';
+  else if (best) html = '<span class="mk-msg ok">' + IC('check') + ' Tu as la meilleure offre</span>';
+  else if (!canMarket()) html = '<small>' + esc(marketGateText()) + '</small>';
+  else html = '<div class="mk-row"><input type="number" min="' + min + '" value="' + min + '" inputmode="numeric" aria-label="Montant de ton offre" data-amt="' + a.id + '">' +
+    '<button type="button" class="btn" data-bid="' + a.id + '">Enchérir</button></div><small>Minimum ' + min + ' Liens · tu as ' + liens() + ' Liens. Remboursé si quelqu’un fait mieux.</small>';
+  $('bdMk').innerHTML = html + '<div class="mk-msg ko" data-err="' + a.id + '"></div>';
 }
 function closeBadge() { $('bdSheet').hidden = true; if (history.state && history.state.wdBadge) { try { history.back(); } catch (e) {} } }
 $('bdX').onclick = closeBadge;
@@ -1874,43 +1920,38 @@ function renderMarket() {
     $('mkList').innerHTML = '<li class="lb-empty">' + (tab === 'open' ? 'Aucune vente en cours. Mets un de tes badges aux enchères depuis « Mes badges » !' : tab === 'bids' ? 'Tu n’as encore fait aucune offre.' : 'Tu n’as encore rien mis en vente.') + '</li>';
     return;
   }
-  const can = canMarket();
   $('mkList').innerHTML = list.map(a => {
     const img = thumbCache[a.t], mine = a.seller === uid, best = a.bidder === uid, open = a.status === 'open' && a.endsAt > now;
-    const min = a.bidder ? a.price + Math.max(1, Math.ceil(a.price * 0.05)) : a.start;
-    let state = '';
-    if (a.status === 'sold') state = best ? '<span class="mk-msg ok">' + IC('check') + ' Gagné ! Le badge est dans ta collection.</span>' : mine ? '<span class="mk-msg ok">Vendu : +' + (a.sellerGain || '') + ' ' + IC('liens') + '</span>' : '<span class="mk-msg">Vendu</span>';
-    else if (a.status === 'unsold') state = '<span class="mk-msg">Invendu : le badge est revenu' + (mine ? ' dans ta collection' : '') + '.</span>';
-    else if (a.status === 'cancelled') state = '<span class="mk-msg">Vente annulée.</span>';
-    else if (!open) state = '<span class="mk-msg">Clôture en cours…</span>';
-    let act = '';
-    if (open && mine) act = a.bidder ? '<span class="mk-msg">Ta vente · meilleure offre de ' + esc(a.bidderName || 'Joueur') + '</span>'
-      : '<button type="button" class="btn ghost small" data-cancel="' + a.id + '">Annuler la vente</button>';
-    else if (open && best) act = '<span class="mk-msg ok">Tu as la meilleure offre</span>';
-    else if (open && can) act = '<input type="number" min="' + min + '" value="' + min + '" inputmode="numeric" aria-label="Montant de ton offre" data-amt="' + a.id + '">' +
-      '<button type="button" class="btn small" data-bid="' + a.id + '">Enchérir</button>';
-    return '<li class="mk-item' + (mine || best ? ' mine' : '') + '"><button type="button" class="mk-img" data-view="' + a.id + '" aria-label="Voir le badge ' + esc(a.t) + '">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(String(a.t || '?').charAt(0))) + '</button><div style="min-width:0">' +
-      '<button type="button" class="mk-t" data-view="' + a.id + '">' + esc(a.t) + '</button><small>vendu par ' + esc(a.sellerName || 'Joueur') + (open ? ' · reste ' + leftText(a.endsAt - now) : '') + '</small>' +
-      '<div class="mk-price">' + a.price + ' ' + IC('liens', 'liens') + ' <small style="display:inline">' + (a.bidder ? '· ' + a.bids + ' offre' + (a.bids > 1 ? 's' : '') + (best ? ' (toi)' : '') : '· prix de départ') + '</small></div>' +
-      (state || act ? '<div class="mk-act">' + (state || act) + '</div>' : '') + '<div class="mk-msg ko" data-err="' + a.id + '"></div></div></li>';
+    // Une étiquette au plus sur l'image : ce qui concerne le joueur, ou l'issue de la vente.
+    const tag = a.status === 'sold' ? (best ? ['Gagné', 'ok'] : mine ? ['Vendu', 'ok'] : ['Vendu', 'off'])
+      : a.status === 'unsold' ? ['Invendu', 'off'] : a.status === 'cancelled' ? ['Annulée', 'off']
+      : !open ? ['Clôture…', 'off'] : mine ? ['Ta vente', ''] : best ? ['Ton offre', 'ok'] : null;
+    return '<li><button type="button" class="bd' + (mine || best ? ' mk-mine' : '') + '" data-view="' + a.id + '" style="--h:' + hueOf(a.t) + '" aria-label="' + esc(a.t) + ', ' + a.price + ' Liens">' +
+      '<span class="bd-pic">' + (img ? '<img src="' + esc(img) + '" alt="" loading="lazy">' : esc(String(a.t || '?').charAt(0).toUpperCase())) +
+      (tag ? '<span class="mk-tag ' + tag[1] + '">' + tag[0] + '</span>' : '') + '</span>' +
+      '<b>' + esc(a.t) + '</b>' +
+      '<small class="mk-p">' + a.price + ' ' + IC('liens', 'liens') + (open ? '<em>' + leftText(a.endsAt - now) + '</em>' : '') + '</small></button></li>';
   }).join('');
+  if (S.badgeOpen && S.badgeOpen.aid && !$('bdSheet').hidden) { const a = all.find(x => x.id === S.badgeOpen.aid); if (a) renderMkSheet(a); }
   loadThumbs(list.map(a => a.t)).then(() => { if (!$('market').hidden && list.some(a => thumbCache[a.t] && !$('mkList').querySelector('img[src="' + CSS.escape(thumbCache[a.t]) + '"]'))) renderMarketSoon(); });
 }
 let mkSoon = null;
 function renderMarketSoon() { clearTimeout(mkSoon); mkSoon = setTimeout(renderMarket, 50); }
-$('mkList').addEventListener('click', async e => {
+$('mkList').addEventListener('click', e => {
   const view = e.target.closest('[data-view]');
-  if (view) { const a = (S.mkAll || []).find(x => x.id === view.dataset.view); if (a) openMarketBadge(a); return; }
+  if (view) { const a = (S.mkAll || []).find(x => x.id === view.dataset.view); if (a) openMarketBadge(a); }
+});
+$('bdMk').addEventListener('click', async e => {
   const bid = e.target.closest('[data-bid]'), cancel = e.target.closest('[data-cancel]');
   if (bid) {
-    const id = bid.dataset.bid, inp = $('mkList').querySelector('[data-amt="' + id + '"]'), err = $('mkList').querySelector('[data-err="' + id + '"]');
+    const id = bid.dataset.bid, inp = $('bdMk').querySelector('[data-amt="' + id + '"]'), err = $('bdMk').querySelector('[data-err="' + id + '"]');
     const amount = Math.floor(+inp.value);
     if (amount > liens()) { err.textContent = 'Solde insuffisant (' + liens() + ' Liens).'; return; }
     bid.disabled = true; err.textContent = '';
     try { await call('bid')({ id: id, amount: amount }); toast(IC('cart') + ' Offre placée : ' + amount + ' ' + IC('liens', 'liens') + '<small>La somme est bloquée ; tu seras remboursé si quelqu’un fait mieux.</small>', 4500); }
     catch (x) { err.textContent = errText(x); bid.disabled = false; }
   } else if (cancel) {
-    const id = cancel.dataset.cancel, err = $('mkList').querySelector('[data-err="' + id + '"]');
+    const id = cancel.dataset.cancel, err = $('bdMk').querySelector('[data-err="' + id + '"]');
     cancel.disabled = true;
     try { await call('cancelAuction')({ id: id }); toast('Vente annulée<small>Le badge est revenu dans ta collection.</small>'); }
     catch (x) { err.textContent = errText(x); cancel.disabled = false; }
