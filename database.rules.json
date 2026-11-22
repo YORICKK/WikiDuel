@@ -88,8 +88,9 @@
 
     "dailyScores": {
       "$date": {
-        ".read": true,
-        ".indexOn": ["time"]
+        ".read": "root.child('daily/' + $date + '/closesAt').val() <= now || (auth != null && (root.child('dailyRuns/' + $date + '/' + auth.uid + '/finishedAt').exists() || root.child('dailyRuns/' + $date + '/' + auth.uid + '/gaveUp').exists()))",
+        ".indexOn": ["time"],
+        "$uid": { ".read": "auth != null && auth.uid === $uid" }
       }
     },
 

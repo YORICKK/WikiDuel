@@ -232,7 +232,9 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .tile .btn { font-size: 16px; padding: 0 10px; }
 .tile.friends .btn:not(.ghost) { background: var(--link); border-color: var(--link); color: var(--card); }
 @media (max-width: 420px) { .tile:not(.friends) .t-head { flex-direction: column; gap: 8px; } }
-.d-left { margin-left: auto; font: 600 12px var(--mono); color: var(--muted); white-space: nowrap; }
+.d-left { margin-left: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 99px; background: var(--paper); border: 1px solid var(--line); font: 600 12px var(--mono); color: var(--muted); white-space: nowrap; }
+.d-left:empty { display: none; }
+.d-left .ic { width: 13px; height: 13px; margin: 0; }
 .d-actions .d-link { white-space: nowrap; }
 .account.guest .acc-top { display: none; }
 /* Compte invité : version compacte */
@@ -299,23 +301,40 @@ input.field:focus { border-color: var(--ink); outline: none; }
 
 /* Défi du jour */
 /* Discret : carte neutre, petite, sous les boutons de jeu */
-.daily { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
-.d-head { display: flex; align-items: baseline; gap: 8px; }
+.daily { display: grid; gap: 12px; padding: 16px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); }
+.daily.todo { border: 2px solid var(--flag); background: linear-gradient(135deg, color-mix(in srgb, var(--flag) 9%, var(--card)), var(--card) 70%); box-shadow: 0 10px 30px color-mix(in srgb, var(--flag) 14%, transparent); }
+.d-head { display: flex; align-items: center; gap: 12px; }
+.d-ic { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--flag) 16%, var(--card)); color: var(--flag); }
+.d-ic .ic { width: 22px; height: 22px; margin: 0; }
+.d-titles { display: grid; gap: 1px; min-width: 0; }
+.d-titles strong { font: 800 19px/1.2 var(--display); }
+.d-page { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); font: 700 15px/1.25 var(--display); }
+.d-page.tgt { border-color: var(--flag); }
+.daily.mystery .d-page { border-style: dashed; color: var(--muted); font-style: italic; font-weight: 600; }
+.daily.mystery .d-page.tgt { display: none; }
+.d-lock { margin: 0; display: flex; align-items: center; gap: 6px; font: 500 12px/1.4 var(--display); color: var(--muted); }
+.d-lock .ic { width: 14px; height: 14px; margin: 0; }
+.d-lock[hidden], .daily .btn[hidden] { display: none; }
 .daily.themed { border: 2px solid var(--flag); background: linear-gradient(135deg, color-mix(in srgb, var(--flag) 10%, var(--card)), var(--card)); }
 .d-theme { font: 800 16px var(--display); color: var(--flag); }
 .d-num { color: var(--muted); }
-.d-date { margin-left: auto; font: 500 12px var(--display); color: var(--muted); }
-.d-route { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; font: 700 16px/1.3 var(--display); }
-.d-arrow { color: var(--muted); }
-.daily.mystery .d-route { font-style: italic; color: var(--muted); font-weight: 600; }
+.d-date { font: 500 13px var(--display); color: var(--muted); }
+.d-route { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.d-arrow { color: var(--flag); display: inline-flex; }
+.d-arrow .ic { width: 18px; height: 18px; margin: 0; }
 .daily.mystery .d-arrow { display: none; }
-.d-me { font: 500 13px/1.4 var(--display); color: var(--muted); }
+.d-me { font: 500 14px/1.45 var(--display); color: var(--muted); }
 .d-me b { font-family: var(--mono); color: var(--ink); }
 .d-me sup, .challenge-res sup { font-size: .6em; line-height: 0; }
-.d-actions { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
-.daily .btn.small { min-height: 34px; padding: 0 16px; }
+.d-actions { display: grid; gap: 8px; }
+.d-actions .btn { width: 100%; }
+#dPlay { background: var(--flag); border-color: var(--flag); color: #fff; }
 .daily .btn:disabled { opacity: .55; }
 .d-link { background: none; border: 0; padding: 0; font: 600 13px var(--display); color: var(--link); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.lb li.lb-lock { display: grid !important; grid-template-columns: 1fr; justify-items: center; gap: 8px; text-align: center; padding: 24px 16px; }
+.lb li.lb-lock > .ic { width: 32px; height: 32px; margin: 0; color: var(--flag); }
+.lb li.lb-lock strong { font: 800 18px var(--display); color: var(--ink); }
+.lb li.lb-lock .btn { margin-top: 6px; width: 100%; }
 .lb .meta-time { font: 700 16px var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
 .lb .meta-time small { display: block; font: 500 11px var(--display); color: var(--muted); }
 
@@ -686,7 +705,28 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 #results .wrap { display: grid; gap: 20px; padding-block: 32px; }
 .podium { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .podium li { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 8px; }
-.podium li.win { border: 2px solid var(--flag); }
+.podium li.win { border: 2px solid var(--flag); background: linear-gradient(160deg, color-mix(in srgb, var(--flag) 10%, var(--card)), var(--card) 60%); padding-top: 12px; }
+.podium .crown { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 3px 10px; border-radius: 99px; background: var(--flag); color: #fff; font: 800 12px var(--display); letter-spacing: .02em; }
+.podium .crown .ic { width: 14px; height: 14px; margin: 0; }
+.podium .reach { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 12px; background: var(--paper); border: 1px solid var(--line); }
+.podium .reach.ok { border-color: color-mix(in srgb, var(--flag) 55%, var(--line)); }
+.podium .r-pic { flex: none; width: 48px; height: 48px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; background: var(--line); color: var(--muted); }
+.podium .reach.ok .r-pic { color: var(--flag); }
+.podium .r-pic img { width: 100%; height: 100%; object-fit: cover; }
+.podium .r-pic .ic { width: 22px; height: 22px; margin: 0; }
+.podium li.win .r-pic { width: 72px; height: 72px; border-radius: 12px; }
+.podium .r-txt { display: grid; gap: 2px; min-width: 0; }
+.podium .r-txt small { font: 600 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.podium .r-txt b { font: 800 16px/1.25 var(--display); overflow-wrap: anywhere; }
+.podium li.win .r-txt b { font-size: 19px; }
+/* Animation d'arrivée : le gagnant d'abord, puis les autres un par un */
+.podium.anim li { animation: resIn .55s cubic-bezier(.2, .9, .3, 1.2) both; animation-delay: var(--d, 0s); }
+.podium.anim li.win { animation-name: resWin; animation-duration: .8s; }
+.podium.anim li.win .crown { animation: resPop .5s cubic-bezier(.3, 1.6, .5, 1) both; animation-delay: calc(var(--d) + .6s); }
+@keyframes resIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+@keyframes resWin { 0% { opacity: 0; transform: scale(.8); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: none; } }
+@keyframes resPop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .podium.anim li, .podium.anim li.win .crown { animation: none; } }
 .podium .top { display: flex; align-items: baseline; gap: 10px; font: 800 20px var(--display); }
 .podium .rank { font: 700 14px var(--mono); color: var(--muted); width: 26px; }
 .podium .score { margin-left: auto; font: 700 14px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
@@ -782,17 +822,25 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <span id="dailyHome" hidden></span>
     <div class="daily" id="dailyBox" hidden>
       <div class="d-head">
-        <span class="label">Défi du jour <span class="d-num" id="dNum"></span></span>
-        <span class="d-date" id="dDate"></span>
-      </div>
-      <div class="d-theme" id="dTheme" hidden></div>
-      <div class="d-route"><span id="dStart"></span><span class="d-arrow" aria-hidden="true">→</span><span id="dTarget"></span></div>
-      <div class="d-me" id="dMe">Même parcours pour tous, une seule tentative.</div>
-      <div class="d-actions">
-        <button id="dPlay" class="btn small">Jouer</button>
-        <button id="dBoard" class="d-link">Classement du jour</button>
+        <span class="d-ic" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="/icons.svg#calendar"></use></svg></span>
+        <div class="d-titles">
+          <strong>Défi du jour</strong>
+          <span class="d-date"><span class="d-num" id="dNum"></span><span id="dDate"></span></span>
+        </div>
         <span class="d-left" id="dLeft"></span>
       </div>
+      <div class="d-theme" id="dTheme" hidden></div>
+      <div class="d-route">
+        <span class="d-page" id="dStart"></span>
+        <span class="d-arrow" aria-hidden="true"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg></span>
+        <span class="d-page tgt" id="dTarget"></span>
+      </div>
+      <div class="d-me" id="dMe">Même parcours pour tous, une seule tentative.</div>
+      <div class="d-actions">
+        <button id="dPlay" class="btn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#play"></use></svg> Jouer</button>
+        <button id="dBoard" class="btn ghost"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg> Classement du jour</button>
+      </div>
+      <p class="d-lock" id="dLock"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg> Le classement du jour se débloque après ta tentative.</p>
     </div>
     <nav class="home-links" aria-label="Classements et statistiques">
       <button id="rankBtn" class="home-link"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg> Classement</button>
@@ -2562,7 +2610,7 @@ function renderDailyCard() {
   const d = S.daily; if (!d) return;
   $('dailyBox').hidden = false;
   $('dDate').textContent = dateLabel(d.key);
-  $('dNum').textContent = d.n ? '· n°' + d.n : '';
+  $('dNum').textContent = d.n ? 'n°' + d.n + ' · ' : '';
   // Jour thématique (Noël, Halloween, Nouvel An…) : bandeau spécial sur la carte.
   $('dTheme').hidden = !d.theme;
   if (d.theme) $('dTheme').textContent = (d.theme.emoji || '') + ' Spécial ' + d.theme.name;
@@ -2577,8 +2625,11 @@ function renderDailyCard() {
   if (done) { if ($('dailyHome').nextElementSibling !== $('dailyBox')) $('dailyHome').after($('dailyBox')); }
   else if ($('dailyTop').nextElementSibling !== $('dailyBox')) $('dailyTop').after($('dailyBox'));
   dailyCountdown();
+  $('dailyBox').classList.toggle('todo', !done);
   $('dPlay').hidden = !!done;
-  $('dPlay').textContent = run && run.startedAt && !done ? 'Reprendre (chrono en cours)' : 'Jouer';
+  $('dPlay').innerHTML = IC('play') + (run && run.startedAt && !done ? ' Reprendre (chrono en cours)' : ' Jouer');
+  // Le classement du jour n'est visible qu'après sa propre tentative.
+  $('dBoard').hidden = !done; $('dLock').hidden = !!done;
   if (!done) {
     $('dMe').innerHTML = S.streak ? streakText() : 'Même parcours pour tous, une seule tentative.';
   } else if (run.gaveUp) {
@@ -2656,12 +2707,27 @@ function finishDaily(r) {
 }
 
 // Classement du défi du jour, avec un onglet pour celui de la veille.
+// Défi du jour déjà tenté (réussi ou abandonné) : condition pour voir le classement du jour.
+function dailyTried(key) {
+  const d = S.daily, run = d && d.key === key && d.run;
+  return !!((run && (run.finishedAt || run.gaveUp)) || (S.dailyResult && S.dailyResult.key === key));
+}
 async function showDailyBoard(key) {
   show('ranking');
   const today = zurichDate(serverNow());
   const yesterday = zurichDate(serverNow() - 864e5);
   setLbTabs([[today, 'Aujourd’hui'], [yesterday, 'Hier']], key, showDailyBoard);
   const isToday = key === today;
+  if (isToday && !dailyTried(key)) {
+    S.lbKey = key; S.lbRows = [];
+    $('lbSort').hidden = true;
+    $('lbLabel').textContent = 'Défi du jour · ' + dateLabel(key);
+    $('lbTitle').textContent = 'Classement du jour';
+    $('lbList').innerHTML = '<li class="lb-empty lb-lock">' + IC('trophy') + '<strong>Classement verrouillé</strong><span>Fais d’abord ta tentative du jour : le classement se débloque juste après.</span>' +
+      (S.daily && S.daily.key === key ? '<button type="button" class="btn" id="lbDailyGo">' + IC('play') + ' Jouer le défi du jour</button>' : '') + '</li>';
+    if ($('lbDailyGo')) $('lbDailyGo').onclick = () => $('dPlay').click();
+    return;
+  }
   S.lbKey = key; S.lbRows = [];
   $('lbSort').hidden = false;
   $('lbLabel').textContent = 'Défi du jour · ' + dateLabel(key);
@@ -3321,6 +3387,18 @@ function renderResults() {
     : res.state === 'classée' ? (res.ghost ? 'Course contre un fantôme : l’Elo compte à moitié.' : 'Chemins vérifiés, classement mis à jour.')
     : res.state === 'non classée' ? 'Manche non classée : ' + res.reason + '.'
     : 'Le classement n’a pas pu être calculé.';
+  // Le gagnant en tête, puis les autres dans l'ordre d'arrivée.
+  const wi = ranked.findIndex(p => p.id === room.winnerId);
+  if (wi > 0) ranked.unshift(ranked.splice(wi, 1)[0]);
+  // Page atteinte : la cible pour ceux qui sont arrivés, sinon la dernière page de leur chemin (si on la connaît).
+  const reachOf = (p, pth) => p.finishedAt ? room.target : (pth.length ? pth[pth.length - 1] : (p.current || ''));
+  const reachTitles = [];
+  // Animation une seule fois par manche (la page est redessinée quand l'Elo arrive).
+  const animKey = room.code + '/' + room.round + '/' + (S.solo ? 's' : '');
+  // Redessinée pendant l'animation (Elo, badge WikiDuel+…) : on reprend là où elle en était (délais négatifs).
+  if (S.resAnim !== animKey) { S.resAnim = animKey; S.resAnimT = Date.now(); }
+  const el = (Date.now() - S.resAnimT) / 1000, anim = el < 5;
+  $('podium').classList.toggle('anim', anim);
   $('podium').innerHTML = ranked.map((p, i) => {
     const score = p.finishedAt ? (fmt(p.finishedAt - room.startedAt) + '<br>' + p.clicks + ' clic' + (p.clicks > 1 ? 's' : '')) : (p.gaveUp ? 'abandon' : 'pas arrivé');
     const pth = room.ranked ? ((res && res.paths && res.paths[p.id]) || []) : (p.path || []);
@@ -3328,10 +3406,23 @@ function renderResults() {
     const c = changes[p.id];
     const delta = c ? ' <span class="delta ' + (c.delta >= 0 ? 'up' : 'down') + '">' + (c.delta >= 0 ? '+' : '') + c.delta + ' → ' + c.after + '</span>' : '';
     const bad = verdicts[p.id] && verdicts[p.id].indexOf('invalide') === 0 ? '<div class="verdict">Chemin ' + esc(verdicts[p.id]) + '</div>' : '';
-    return '<li class="' + (p.id === room.winnerId ? 'win' : '') + '"><div class="top"><span class="rank">' + (p.finishedAt ? (i + 1) + '.' : '–') + '</span>' +
+    const win = p.id === room.winnerId, reach = reachOf(p, pth);
+    if (reach) reachTitles.push(reach);
+    const reachHtml = reach ? '<div class="reach' + (p.finishedAt ? ' ok' : '') + '"><span class="r-pic" data-t="' + esc(reach) + '">' + (thumbCache[reach] ? '<img src="' + esc(thumbCache[reach]) + '" alt="">' : IC(p.finishedAt ? 'flag' : 'cursor')) + '</span>' +
+      '<span class="r-txt"><small>' + (p.finishedAt ? 'Page cible atteinte' : p.gaveUp ? 'Page atteinte avant l’abandon' : 'Page atteinte') + '</small><b>' + esc(reach) + '</b></span></div>' : '';
+    return '<li class="' + (win ? 'win' : '') + '" style="--d:' + ((win ? 0.15 : 0.9 + (i - (wi >= 0 ? 1 : 0)) * 0.35) - el).toFixed(2) + 's">' +
+      (win ? '<div class="crown">' + IC('crown') + (p.id === S.me.playerId ? ' Tu gagnes !' : ' Gagnant') + '</div>' : '') +
+      '<div class="top"><span class="rank">' + (p.finishedAt ? (i + 1) + '.' : '–') + '</span>' +
       esc(p.name) + dia(p.id, redraw.results) + (p.id === S.me.playerId ? ' <span style="font-weight:500;color:var(--muted)">(toi)</span>' : '') +
-      '<span class="score">' + score + '</span></div>' + (delta ? '<div>' + delta + '</div>' : '') + bad + '<div class="path">' + path + '</div></li>';
+      '<span class="score">' + score + '</span></div>' + reachHtml + (delta ? '<div>' + delta + '</div>' : '') + bad + '<div class="path">' + path + '</div></li>';
   }).join('');
+  // Images des pages atteintes (Wikipédia) : ajoutées dès qu'elles arrivent, sans redessiner la liste.
+  loadThumbs(reachTitles).then(() => {
+    $('podium').querySelectorAll('.r-pic[data-t]').forEach(el => {
+      const src = thumbCache[el.dataset.t];
+      if (src && !el.querySelector('img')) el.innerHTML = '<img src="' + esc(src) + '" alt="">';
+    });
+  }).catch(() => {});
   const host = isHost();
   $('againBtn').hidden = !host; $('againWait').hidden = host;
   // Entre amis : l'hôte peut ramener tout le monde au salon (changer de thème, attendre un joueur…).
