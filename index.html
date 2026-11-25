@@ -124,6 +124,10 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .ad-table th { font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .ad-table td.n, .ad-table th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .ad-table tr:last-child td { border-bottom: 0; }
+.ad-hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; align-items: end; height: 70px; margin-top: 10px; }
+.ad-hours span { display: grid; grid-template-rows: 1fr auto; height: 100%; align-items: end; }
+.ad-hours i { display: block; min-height: 2px; border-radius: 3px 3px 0 0; background: var(--flag); }
+.ad-hours small { font: 600 9px var(--mono, monospace); color: var(--muted); text-align: center; height: 12px; }
 .ad-bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--flag); vertical-align: middle; min-width: 2px; }
 .ad-err { font: 500 12px/1.4 var(--mono); color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; overflow-wrap: anywhere; }
 /* Sélecteur de jeu : course / quiz */
@@ -2252,9 +2256,10 @@ function renderAdmin(d) {
     '</div></div>' +
     '<div class="ad-sec"><h3>WikiDuel, dernières 24 h</h3><p style="margin:0;color:var(--muted);font-size:15px">' +
       'Solo ' + (m.solo || 0) + ' · amis ' + (m.amis || 0) + ' · classées ' + (m['classée'] || 0) + ' · salons ' + d.wikiduel.rooms24 +
-      ' (dont ' + d.wikiduel.ranked24 + ' classés, ' + d.wikiduel.ghosts24 + ' contre un fantôme) · ' + d.wikiduel.games7 + ' parties sur 7 jours</p></div>' +
-    '<div class="ad-sec"><h3>14 derniers jours</h3>' + table([['Jour'], ['Nouveaux', 1], ['Parties WikiDuel', 1], [''], ['Quiz', 1]],
-      d.perDay.slice().reverse().map(x => '<tr>' + td(dk(x.date)) + td(x.accounts, 1) + td(x.games, 1) +
+      ' (dont ' + d.wikiduel.ranked24 + ' classés, ' + d.wikiduel.ghosts24 + ' contre un fantôme) · ' + d.wikiduel.games7 + ' parties sur 7 jours</p>' + hoursHtml(d.hours) + '</div>' +
+    loyaltyHtml(d, tile, nf) +
+    '<div class="ad-sec"><h3>14 derniers jours</h3>' + table([['Jour'], ['Actifs', 1], ['Nouveaux', 1], ['Parties WikiDuel', 1], [''], ['Quiz', 1]],
+      d.perDay.slice().reverse().map(x => '<tr>' + td(dk(x.date)) + td(x.active == null ? '–' : '<b>' + x.active + '</b>', 1) + td(x.accounts, 1) + td(x.games, 1) +
         td('<span class="ad-bar" style="width:' + Math.round(70 * x.games / maxG) + 'px"></span>') + td(x.quiz, 1) + '</tr>')) + '</div>' +
     '<div class="ad-sec"><h3>Provenance des nouveaux joueurs</h3>' +
       (d.sources && d.sources.rows.length
@@ -2270,6 +2275,7 @@ function renderAdmin(d) {
             'Liens à partager : <code>wikiduel.ch/?src=insta</code>, <code>?src=tiktok</code>, <code>/quiz?src=insta</code>…</p>'
         : '<p style="margin:0;color:var(--muted);font-size:15px">Pas encore de données : le suivi commence avec les prochains nouveaux joueurs. Partage des liens comme <code>wikiduel.ch/?src=insta</code>.</p>') +
     '</div>' +
+    firstRaceHtml(d.firstRace) + marketHtml(d.market) +
     '<div class="ad-sec"><h3>Défi et quiz du jour</h3>' + table([['Jour'], ['Défi lancés', 1], ['Réussis', 1], ['Meilleur'], ['Quiz', 1], ['Meilleur quiz']],
       d.daily.map(x => '<tr>' + td(dk(x.date)) + td(x.started, 1) + td(x.done, 1) +
         td(x.best ? esc(x.best.name) + ' · ' + fmtC(x.best.time) + ' · ' + x.best.clicks + ' cl.' : '–') + td(x.quiz, 1) +
@@ -2281,6 +2287,40 @@ function renderAdmin(d) {
       d.quiz.soloPlayers + ' joueurs de quiz solo · ' + d.quiz.rooms + ' salons de quiz ouverts</p>' +
       d.errors.last.map(e => '<div class="ad-err">' + new Date(e.at).toLocaleString('fr-CH', { timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) +
         ' · ' + esc(e.page) + (e.screen ? ' / ' + esc(e.screen) : '') + '<br>' + esc(e.msg) + '</div>').join('') + '</div>';
+}
+// Sections ajoutées : fidélité, heures de jeu, première course, marché.
+function loyaltyHtml(d, tile, nf) {
+  const L = d.loyalty; if (!L) return '';
+  const s = L.streaks, f = L.freq, pct = (a, b) => Math.round(100 * a / Math.max(1, b)) + ' %';
+  return '<div class="ad-sec"><h3>Fidélité</h3><div class="ad-tiles">' +
+    tile(L.newBack + ' / ' + L.newPlayers, 'nouveaux joueurs revenus un autre jour (14 j) · ' + pct(L.newBack, L.newPlayers)) +
+    tile(s.active, 'séries en cours · ' + s.today + ' ont joué aujourd’hui') +
+    tile(s.max ? '🔥 ' + s.max : '–', 'plus longue série · ' + s.s3 + ' à 3 j et + · ' + s.s7 + ' à 7 j et +') +
+    tile(L.reminders.users, 'abonnés au rappel de 18 h (' + L.reminders.devices + ' appareil' + (L.reminders.devices > 1 ? 's' : '') + ')') +
+    '</div><p style="margin:0;color:var(--muted);font-size:15px">Jours joués sur les 7 derniers : 1 jour <b>' + f[1] + '</b> · 2-3 jours <b>' + f['2-3'] +
+    '</b> · 4-6 jours <b>' + f['4-6'] + '</b> · tous les jours <b>' + f[7] + '</b>' + (s.gifts ? ' · ' + s.gifts + ' cadeau' + (s.gifts > 1 ? 'x' : '') + ' de série donné' + (s.gifts > 1 ? 's' : '') : '') + '</p></div>';
+}
+function hoursHtml(h) {
+  if (!h) return '';
+  const max = Math.max(1, ...h);
+  return '<div class="ad-hours" aria-label="Parties par heure, 7 derniers jours">' + h.map((n, i) =>
+    '<span title="' + i + ' h : ' + n + ' partie' + (n > 1 ? 's' : '') + '"><i style="height:' + Math.round(100 * n / max) + '%"></i><small>' + (i % 3 ? '' : i) + '</small></span>').join('') +
+    '</div><p style="margin:0;color:var(--muted);font-size:13px">Parties par heure (course et quiz), 7 derniers jours, heure suisse. Pic : ' + h.indexOf(max) + ' h.</p>';
+}
+function firstRaceHtml(r) {
+  if (!r) return '';
+  if (!r.n) return '<div class="ad-sec"><h3>Première course des nouveaux</h3><p style="margin:0;color:var(--muted);font-size:15px">Pas encore de données : la mesure a commencé le 25 novembre.</p></div>';
+  const q = Object.entries(r.quitAt).sort((a, b) => (a[0] === '5+') - (b[0] === '5+') || a[0] - b[0]).map(e => e[0] + ' clic' + (e[0] === '1' || e[0] === '0' ? '' : 's') + ' : ' + e[1]).join(' · ');
+  return '<div class="ad-sec"><h3>Première course des nouveaux (7 j)</h3><p style="margin:0;font:600 15px/1.5 var(--display)">' +
+    r.n + ' premières courses : <b style="color:var(--ok)">' + r.ok + ' arrivées</b>' + (r.okMedian != null ? ' (en ' + r.okMedian + ' s, médiane)' : '') +
+    ' · <b style="color:var(--flag)">' + r.abandon + ' abandons</b>' + (r.abandon0 ? ' (dont ' + r.abandon0 + ' sans aucun clic)' : '') +
+    ' · ' + r.quit + ' parties en route' + (r.fin ? ' · ' + r.fin + ' battues par un autre joueur' : '') + '</p>' +
+    (q ? '<p style="margin:0;color:var(--muted);font-size:14px">Partis en route après ' + q + '</p>' : '') + '</div>';
+}
+function marketHtml(m) {
+  if (!m) return '';
+  return '<div class="ad-sec"><h3>Marché (7 j)</h3><p style="margin:0;color:var(--muted);font-size:15px">' + m.created7 + ' mises en vente par ' + m.sellers7 + ' vendeur' + (m.sellers7 > 1 ? 's' : '') +
+    ' · ' + m.sold7 + ' vendue' + (m.sold7 > 1 ? 's' : '') + ' à ' + m.buyers7 + ' acheteur' + (m.buyers7 > 1 ? 's' : '') + ' pour ' + m.liens7 + ' Liens · ' + m.open + ' en cours</p></div>';
 }
 $('adRefresh').onclick = showAdmin;
 $('adBackTop').onclick = () => show('home');

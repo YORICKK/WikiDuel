@@ -1356,8 +1356,8 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
   } while (token);
 
   const snap = async p => (await db.ref(p).once('value')).val() || {};
-  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors, sources, starts] = await Promise.all(
-    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors', 'sources', 'starts'].map(snap));
+  const [users, history, rooms, dailyRuns, dailyScores, quizDaily, quizSolo, quizRooms, purchases, errors, sources, starts, pushSubs, auctions] = await Promise.all(
+    ['users', 'history', 'rooms', 'dailyRuns', 'dailyScores', 'quizDaily', 'quizSolo', 'quizRooms', 'purchases', 'errors', 'sources', 'starts', 'pushSubs', 'auctions'].map(snap));
 
   const days = []; for (let i = 13; i >= 0; i--) days.push(dayKey(now - i * D));
   const perDay = () => Object.fromEntries(days.map(d => [d, 0]));
@@ -1428,6 +1428,47 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
   });
   const srcRows = Object.values(bySrc).sort((a, b) => b.total - a.total);
 
+  // Joueurs actifs par jour (au moins une partie : course, quiz, défi ou quiz du jour)
+  const activeDay = {}; days.forEach(d => { activeDay[d] = new Set(); });
+  const actDays = {}; // uid -> jours actifs
+  Object.keys(activity).forEach(uid => activity[uid].forEach(t => {
+    const k = dayKey(t); (actDays[uid] = actDays[uid] || new Set()).add(k);
+    if (activeDay[k]) activeDay[k].add(uid);
+  }));
+  // Fidélité : jours actifs sur les 7 derniers jours ; nouveaux joueurs (1re partie ces 14 jours, hier ou avant) revenus un autre jour.
+  const today = dayKey(now), last7 = new Set(days.slice(-7));
+  const freq = { 1: 0, '2-3': 0, '4-6': 0, 7: 0 };
+  let newP = 0, newBack = 0;
+  Object.values(actDays).forEach(set => {
+    const n = [...set].filter(k => last7.has(k)).length;
+    if (n) freq[n === 1 ? 1 : n <= 3 ? '2-3' : n <= 6 ? '4-6' : 7]++;
+    const first = [...set].sort()[0];
+    if (first >= days[0] && first < today) { newP++; if (set.size > 1) newBack++; }
+  });
+  // Séries de jours en cours (défi de la course ou quiz du jour)
+  const yesterday = dayKey(now - D);
+  const live = Object.values(users).filter(p => p && (p.dailyLast === today || p.dailyLast === yesterday) && p.dailyStreak > 0).map(p => p.dailyStreak);
+  const streaks = { active: live.length, today: Object.values(users).filter(p => p && p.dailyLast === today).length, max: Math.max(0, ...live),
+    s3: live.filter(n => n >= 3).length, s7: live.filter(n => n >= 7).length, gifts: Object.values(users).filter(p => p && p.streakGift).length };
+  // Première course mesurée (starts/<uid>/first) sur 7 jours
+  const F = Object.values(starts).filter(s => s && s.first && s.at > now - 7 * D).map(s => s.first);
+  const firstQuit = {}; F.filter(f => !f.end).forEach(f => { const k = f.c >= 5 ? '5+' : String(f.c); firstQuit[k] = (firstQuit[k] || 0) + 1; });
+  const okT = F.filter(f => f.end === 'ok').map(f => f.s).sort((a, b) => a - b);
+  const firstRace = { n: F.length, ok: okT.length, abandon: F.filter(f => f.end === 'abandon').length, fin: F.filter(f => f.end === 'fin').length,
+    quit: F.filter(f => !f.end).length, quitAt: firstQuit, okMedian: okT.length ? okT[Math.floor(okT.length / 2)] : null,
+    abandon0: F.filter(f => f.end === 'abandon' && !f.c).length };
+  // Heures de jeu (heure suisse, 7 jours) : courses + quiz
+  const hourOf = t => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Zurich', hour: 'numeric', hourCycle: 'h23' }).format(new Date(t));
+  const hours = Array(24).fill(0);
+  g.concat(qs).forEach(x => { if (x.at > now - 7 * D) hours[hourOf(x.at)]++; });
+  // Marché
+  const A = Object.values(auctions).filter(Boolean);
+  const sold7 = A.filter(x => x.status === 'sold' && x.closedAt > now - 7 * D);
+  const market = { open: A.filter(x => x.status === 'open').length, sold7: sold7.length, liens7: sold7.reduce((s, x) => s + (x.price || 0), 0),
+    created7: A.filter(x => x.createdAt > now - 7 * D).length, sellers7: new Set(A.filter(x => x.createdAt > now - 7 * D).map(x => x.seller)).size,
+    buyers7: new Set(sold7.map(x => x.bidder)).size };
+  const reminders = { users: Object.keys(pushSubs).length, devices: Object.values(pushSubs).reduce((s, x) => s + Object.keys(x || {}).length, 0) };
+
   const recentRooms = Object.values(rooms).filter(r => r && r.createdAt > now - D);
   return {
     at: now,
@@ -1438,7 +1479,9 @@ exports.adminStats = onCall({ region: 'europe-west1', memory: '512MiB' }, async 
       ghosts24: recentRooms.filter(r => r.ghost).length },
     quiz: { solo24: qs.filter(x => x.at > now - D).length, solo7: qs.filter(x => x.at > now - 7 * D).length, soloPlayers: Object.keys(quizSolo).length,
       rooms: Object.keys(quizRooms).length },
-    perDay: days.map(d => ({ date: d, accounts: newAcc[d], games: games[d], quiz: quizGames[d] })),
+    perDay: days.map(d => ({ date: d, accounts: newAcc[d], games: games[d], quiz: quizGames[d], active: activeDay[d].size })),
+    loyalty: { freq, newPlayers: newP, newBack, streaks, reminders },
+    firstRace, hours, market,
     daily,
     money: { purchases: real.length, chf: real.reduce((s, x) => s + (x.amount || 0), 0) / 100, premium: Object.values(users).filter(p => p && p.premium === true).length },
     errors: { d1: errs.filter(e => e.at > now - D).length, d7: errs.filter(e => e.at > now - 7 * D).length,
