@@ -1125,6 +1125,35 @@ exports.cleanup = onSchedule({ schedule: 'every day 04:00', timeZone: 'Europe/Zu
   logger.info('Nettoyage quotidien', { suppressions: n });
 });
 
+/* ===================== Salons abandonnés ===================== */
+// Salon pas terminé (salle d'attente ou partie en cours) où plus personne n'est en ligne :
+// au premier passage on note idleSince, et s'il est toujours vide 30 min plus tard, on le ferme.
+// Un salon terminé garde ses résultats (supprimé par le nettoyage des 30 jours).
+const ROOM_IDLE = 30 * 60e3;
+function idleRoomUpdates(rooms, now) {
+  const upd = {};
+  Object.keys(rooms || {}).forEach(code => {
+    const r = rooms[code];
+    if (!r || (r.status !== 'lobby' && r.status !== 'playing')) return;
+    const someoneOnline = Object.values(r.players || {}).some(p => p && p.online);
+    if (someoneOnline || (r.createdAt || 0) > now - ROOM_IDLE) {
+      if (r.idleSince) upd['rooms/' + code + '/idleSince'] = null;
+    } else if (!r.idleSince) upd['rooms/' + code + '/idleSince'] = now;
+    else if (r.idleSince <= now - ROOM_IDLE) {
+      ['rooms/', 'results/', 'paths/', 'pathTimes/'].forEach(p => { upd[p + code] = null; });
+    }
+  });
+  return upd;
+}
+exports.closeIdleRooms = onSchedule({ schedule: 'every 15 minutes', region: 'europe-west1' }, async () => {
+  if (!db) db = admin.database();
+  const snaps = await Promise.all(['lobby', 'playing'].map(s => db.ref('rooms').orderByChild('status').equalTo(s).once('value')));
+  const rooms = Object.assign({}, ...snaps.map(s => s.val() || {}));
+  const upd = idleRoomUpdates(rooms, Date.now());
+  const closed = Object.keys(upd).filter(k => /^rooms\/[^/]+$/.test(k));
+  if (Object.keys(upd).length) await db.ref().update(upd);
+  if (closed.length) logger.info('Salons abandonnés fermés', { salons: closed.map(k => k.slice(6)) });
+});
 /* ===================== WikiDuel+ : paiement Stripe ===================== */
 // Les clés Stripe ne sont jamais dans le code : ce sont des secrets Firebase
 // (firebase functions:secrets:set STRIPE_SECRET_KEY / STRIPE_WEBHOOK_SECRET).
