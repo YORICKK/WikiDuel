@@ -1065,6 +1065,7 @@ exports.defisPage = onRequest({ region: 'europe-west1' }, async (req, res) => {
   res.status(200).send('<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
     '<title>Défis du jour passés et solutions | WikiDuel</title>' +
     '<meta name="description" content="' + escHtml(desc) + '">' +
+    '<meta name="keywords" content="solution défi du jour, wikirace solution, course wikipédia, chemin le plus court wikipédia, classement wikiduel">' +
     '<link rel="canonical" href="' + SITE + '/defis">' +
     '<meta property="og:type" content="article"><meta property="og:site_name" content="WikiDuel">' +
     '<meta property="og:title" content="Défis du jour passés et solutions"><meta property="og:description" content="' + escHtml(desc) + '">' +
