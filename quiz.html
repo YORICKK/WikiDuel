@@ -184,6 +184,15 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .info .pts { font: 800 22px var(--display); }
 .info .pts.ok { color: var(--ok); } .info .pts.ko { color: var(--bad); }
 .info small { display: block; font: 500 11px/1.4 var(--mono); margin-top: 4px; opacity: .8; }
+.streak { color: #e8590c; font: 800 15px var(--display); }
+.streak[hidden] { display: none; }
+.big-streak { margin: 0; text-align: center; font-size: 17px; }
+.next-race { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 14px; border-radius: 16px; background: var(--card); border: 2px solid #ff5a36; color: var(--ink); text-decoration: none; }
+.next-race[hidden] { display: none; }
+.next-race .nr-ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: rgba(255,90,54,.14); color: #ff5a36; }
+.next-race .nr-ic .ic { width: 24px; height: 24px; margin: 0; }
+.next-race b { display: block; font: 800 17px/1.2 var(--display); }
+.next-race small { display: block; margin-top: 2px; color: var(--muted); font-size: 14px; line-height: 1.4; }
 .live { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
 .live span { font: 700 12px var(--display); padding: 3px 8px; border-radius: 99px; background: var(--card); border: 1px solid var(--line); }
 .live span.done { border-color: var(--quiz); }
@@ -260,6 +269,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
         </button>
         <div class="menu" id="accMenu" role="menu" hidden>
           <button type="button" role="menuitem" id="nameBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#pencil"></use></svg>Changer de pseudo</button>
+          <button type="button" role="menuitem" id="remindBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bell"></use></svg><span id="remindTxt">Rappel des défis à 18 h</span></button>
           <a role="menuitem" href="/"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg>Retour à la course</a>
           <button type="button" role="menuitem" id="logoutBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#logout"></use></svg>Se déconnecter</button>
         </div>
@@ -270,6 +280,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
       <div class="top"><span class="label" id="dLabel">Quiz du jour</span><span class="label" id="dDate"></span></div>
       <strong id="dTitle">Les mêmes 10 questions pour tout le monde</strong>
       <span id="dSub" style="color:var(--muted);font-size:15px">Une seule tentative. Classement du jour.</span>
+      <span class="streak" id="dStreak" hidden></span>
       <div class="acts"><button class="btn quiz small" id="dPlay" disabled>Jouer</button><button class="linkbtn" id="dBoard">Classement du jour</button></div>
     </div>
 
@@ -346,6 +357,8 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
     <div><div class="big" id="rScore">0</div><div style="font:700 18px var(--display)" id="rSub"></div></div>
     <div class="marks" id="rMarks" aria-hidden="true"></div>
     <ul class="lb" id="rRank" hidden></ul>
+    <p class="streak big-streak" id="rStreak" hidden></p>
+    <a class="next-race" id="rRace" href="/" hidden><span class="nr-ic"><svg class="ic" aria-hidden="true"><use href="/icons.svg#calendar"></use></svg></span><span><b>Et le défi de la course ?</b><small>Un parcours mystère sur Wikipédia, une seule tentative. Il compte aussi pour ta série.</small></span></a>
     <div class="stack">
       <button class="btn quiz" id="rShare">Partager mon score</button>
       <button class="btn" id="rAgain">Rejouer</button>
@@ -373,6 +386,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="/reminder.js"></script>
 <script>
 'use strict';
 const $ = id => document.getElementById(id);
@@ -556,6 +570,10 @@ function closeNameSheet(n) {
   const w = S.nameWait; S.nameWait = null; if (w) w(n || null);
 }
 $('nameBtn').onclick = () => { closeAccMenu(); openNameSheet(false); };
+WDRemind.init({ db: () => db, uid: () => uid, store: store, accent: 'var(--quiz)' });
+function renderRemindBtn() { $('remindTxt').textContent = WDRemind.on() ? 'Arrêter le rappel de 18 h' : 'Rappel des défis à 18 h'; }
+renderRemindBtn();
+$('remindBtn').onclick = async () => { closeAccMenu(); await WDRemind.toggle(); renderRemindBtn(); };
 $('nameCancel').onclick = () => closeNameSheet(null);
 $('nameForm').onsubmit = e => {
   e.preventDefault();
@@ -751,6 +769,20 @@ function showResults() {
       '<span class="s' + (r.s ? '' : ' ko') + '">' + (r.s ? '+' + r.s : '0') + '</span></li>';
   }).join('');
   if (g.mode === 'friends') renderRoomRank();
+  $('rStreak').hidden = true; $('rRace').hidden = true;
+  if (g.mode === 'daily') afterDaily(g);
+}
+// Après le quiz du jour : série à jour (le serveur la compte quelques secondes après), défi de la course, rappel.
+async function afterDaily(g) {
+  await new Promise(r => setTimeout(r, 2500));
+  if (G !== g) return;
+  await loadStreak();
+  if (S.streak) { $('rStreak').innerHTML = streakLine(); $('rStreak').hidden = false; }
+  try {
+    const run = (await db.ref('dailyRuns/' + g.date + '/' + uid).once('value')).val();
+    $('rRace').hidden = !!(run && (run.finishedAt || run.gaveUp));
+  } catch (e) {}
+  if (G === g && !$('results').hidden && S.remindAsked !== g.date) { S.remindAsked = g.date; if (WDRemind.maybeAsk(S.streak || 0)) renderRemindBtn(); }
 }
 $('rHome').onclick = () => { leaveRoom(); G = null; show('home'); loadDaily(); };
 $('rAgain').onclick = () => startSolo();
@@ -758,7 +790,7 @@ $('rBoard').onclick = () => showBoard('today');
 $('rShare').onclick = () => {
   const g = G; if (!g) return;
   const head = g.mode === 'daily' ? 'WikiDuel Quiz du jour n°' + dailyNum(g.date) : 'WikiDuel Quiz';
-  const text = head + ' : ' + g.ok + '/10 · ' + fmtPts(g.score) + ' pts\n' + marksEmoji(g.marks) + '\nTu fais mieux ? https://wikiduel.ch/quiz';
+  const text = head + ' : ' + g.ok + '/10 · ' + fmtPts(g.score) + ' pts\n' + marksEmoji(g.marks) + (g.mode === 'daily' && S.streak > 1 ? '\n🔥 ' + S.streak + ' jours d’affilée' : '') + '\nTu fais mieux ? https://wikiduel.ch/quiz';
   if (navigator.share) navigator.share({ text: text }).catch(() => {});
   else window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
 };
@@ -776,6 +808,20 @@ async function startSolo() {
 $('solo').onclick = startSolo;
 
 /* ---------- Quiz du jour ---------- */
+// Série de jours : défi de la course OU quiz du jour, chaque jour (voir bumpStreak dans functions/index.js).
+async function loadStreak() {
+  try {
+    const d = zurichDate(serverNow()), y = zurichDate(serverNow() - 864e5);
+    const [last, n] = await Promise.all(['dailyLast', 'dailyStreak'].map(k => db.ref('users/' + uid + '/' + k).once('value').then(s => s.val())));
+    S.streak = last === d || last === y ? (n || 0) : 0; S.streakToday = last === d;
+  } catch (e) { S.streak = 0; S.streakToday = false; }
+  return S.streak;
+}
+const flame = '<svg class="ic" aria-hidden="true" style="width:16px;height:16px;margin:0 2px -3px 0"><use href="/icons.svg#flame"></use></svg>';
+function streakLine() {
+  if (!S.streak) return '';
+  return flame + S.streak + ' jour' + (S.streak > 1 ? 's' : '') + ' d’affilée' + (S.streakToday ? '' : ' : joue aujourd’hui pour la garder !');
+}
 async function loadDaily() {
   const d = zurichDate(serverNow());
   $('dDate').textContent = dateLabel(d);
@@ -797,6 +843,8 @@ async function loadDaily() {
       $('dSub').textContent = 'Une seule tentative par jour. Nouveau quiz à minuit.';
       $('dPlay').hidden = true;
     } else { $('dPlay').hidden = false; $('dPlay').textContent = 'Jouer'; }
+    await loadStreak();
+    $('dStreak').innerHTML = streakLine(); $('dStreak').hidden = !S.streak;
     // Comme dans la course : en haut tant qu'il reste à jouer, sous les tuiles une fois fait.
     const anchor = $('dPlay').hidden ? $('dailyDone') : $('dailyTop');
     if (anchor.nextElementSibling !== $('dailyCard')) anchor.after($('dailyCard'));

@@ -236,6 +236,14 @@
         ".validate": "newData.hasChildren(['via', 'at'])",
         "via": { ".validate": "newData.isString() && newData.val().matches(/^(rapide|solo|defi|invitation|salon|classe|quiz)$/)" },
         "at": { ".validate": "newData.val() === now" },
+        "first": {
+          ".write": "auth != null && auth.uid === $uid && !data.child('end').exists()",
+          ".validate": "newData.hasChildren(['c', 's'])",
+          "c": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500" },
+          "s": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 86400" },
+          "end": { ".validate": "newData.isString() && newData.val().matches(/^(ok|abandon|fin)$/)" },
+          "$other": { ".validate": false }
+        },
         "$other": { ".validate": false }
       }
     },

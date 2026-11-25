@@ -353,6 +353,27 @@ input.field:focus { border-color: var(--ink); outline: none; }
 .challenge-res { margin: 0; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); font: 600 15px/1.4 var(--display); text-align: center; }
 .challenge-res.won { border-color: var(--ok); color: var(--ok); }
 .challenge-res.lost { border-color: var(--flag); color: var(--flag); }
+/* Prochaine étape (après le défi du jour ou la toute première course) */
+.next-box { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; align-items: center; padding: 14px; border-radius: 16px; background: var(--card); border: 2px solid var(--flag); }
+.next-box[hidden] { display: none; }
+.next-box .nx-ic { grid-row: span 2; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--flag) 14%, transparent); color: var(--flag); }
+.next-box .nx-ic .ic { width: 24px; height: 24px; margin: 0; }
+.next-box b { font: 800 17px/1.2 var(--display); }
+.next-box p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.next-box .btn { grid-column: 1 / -1; margin-top: 6px; text-decoration: none; background: var(--flag); color: #fff; border-color: var(--flag); }
+.next-box.quiz { border-color: #8b5cf6; }
+.next-box.quiz .nx-ic { color: #8b5cf6; background: color-mix(in srgb, #8b5cf6 14%, transparent); }
+.next-box.quiz .btn { background: #8b5cf6; }
+.d-quiz { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; color: #8b5cf6; font: 800 14px var(--display); text-decoration: none; }
+.d-quiz .ic { width: 16px; height: 16px; margin: 0; }
+/* Première course : conseils sous la barre */
+.coach { margin: 0 auto; max-width: 760px; padding: 10px 14px; background: #fff7d6; color: #3d3000; border-bottom: 1px solid #f0d77a; font: 600 14px/1.4 var(--display); }
+.coach[hidden] { display: none; }
+.coach .ic { width: 16px; height: 16px; margin: 0 4px -3px 0; }
+.coach .wl-demo { color: var(--link); text-decoration: underline; text-underline-offset: 3px; }
+.body a.wl.hint { outline: 3px solid #f5b800; outline-offset: 2px; border-radius: 4px; animation: hintPulse 1.2s ease-in-out infinite; }
+@keyframes hintPulse { 50% { outline-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .body a.wl.hint { animation: none; } }
 
 /* File d'attente */
 #queue .wrap { display: grid; gap: 20px; padding-block: 32px; }
@@ -819,6 +840,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
           <button type="button" role="menuitem" id="marketBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#cart"></use></svg>Marché</button>
           <button type="button" role="menuitem" id="achBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg>Succès<span class="ndot gift" id="achDot" hidden aria-label="Récompense à récupérer"><svg class="ic" aria-hidden="true"><use href="/icons.svg#gift"></use></svg></span></button>
           <button type="button" role="menuitem" id="nameBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#pencil"></use></svg>Changer de pseudo</button>
+          <button type="button" role="menuitem" id="remindBtn"><svg class="ic" aria-hidden="true"><use href="/icons.svg#bell"></use></svg><span id="remindTxt">Rappel des défis à 18 h</span></button>
           <button type="button" role="menuitem" id="installBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#install"></use></svg>Installer l'appli</button>
           <button type="button" role="menuitem" id="statsBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#chart"></use></svg>Stats de l'appli</button>
           <button type="button" role="menuitem" id="logoutBtn" hidden><svg class="ic" aria-hidden="true"><use href="/icons.svg#logout"></use></svg>Se déconnecter</button>
@@ -1175,6 +1197,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     </div>
     <div class="progress" id="progress"></div>
   </header>
+  <div class="coach" id="coach" role="status" hidden></div>
   <main class="wrap article">
     <h1 class="title" id="artTitle"></h1>
     <div class="body" id="artBody"></div>
@@ -1197,6 +1220,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
     <ol class="podium" id="podium"></ol>
     <p class="wait" id="rateMsg" hidden></p>
     <p class="challenge-res" id="challengeRes" hidden></p>
+    <div class="next-box" id="nextBox" hidden></div>
     <div class="share-box" id="shareBox" hidden>
       <a id="shareWa" class="btn wa" href="#" target="_blank" rel="noopener">
         <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.4.1-.6.3-.2.2-.8.8-.8 1.9s.8 2.2.9 2.3c.1.2 1.6 2.5 4 3.5 1.5.6 2.1.7 2.8.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
@@ -1263,6 +1287,7 @@ select.field { width: 100%; padding: 0 12px; border-radius: 14px; border: 2px so
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="/reminder.js"></script>
 <script>
 'use strict';
 const WIKI = 'https://fr.wikipedia.org';
@@ -1562,6 +1587,7 @@ function markStart(via) {
     if (store.get('wd-started')) return;
     if (navigator.webdriver) return; // tests automatiques : pas comptés
     store.set('wd-started', via);
+    S.trackFirst = true; // première course de ce joueur : on note jusqu'où il va (clics, temps, issue)
     $('quickBox').hidden = true; $('demoRoute').hidden = false;
     ready.then(() => db.ref('starts/' + uid).set({ via: via, at: firebase.database.ServerValue.TIMESTAMP })).catch(() => {});
   } catch (e) {}
@@ -1585,12 +1611,99 @@ $('installBtn').onclick = async () => {
   if (deferredInstall) { deferredInstall.prompt(); try { await deferredInstall.userChoice; } catch (e) {} deferredInstall = null; renderAppMenu(); }
   else toast(IC('install') + ' Sur iPhone : touche <b>Partager</b> ' + IC('share') + '<small>puis « Sur l’écran d’accueil »</small>', 7000);
 };
-// Rappel du défi du jour retiré : on désabonne proprement les appareils qui l'avaient activé.
-if (store.get('wd-push') && 'serviceWorker' in navigator) {
-  store.del('wd-push');
-  navigator.serviceWorker.ready.then(r => r.pushManager && r.pushManager.getSubscription()).then(s => s && s.unsubscribe()).catch(() => {});
-}
+store.del('wd-push'); // ancienne version du rappel (8 h), déjà désabonnée
 renderAppMenu();
+
+/* ---------- Rappel des défis du jour (voir reminder.js) ---------- */
+WDRemind.init({ db: () => db, uid: () => uid, store: store, accent: 'var(--flag)' });
+function renderRemindBtn() { $('remindTxt').textContent = WDRemind.on() ? 'Arrêter le rappel de 18 h' : 'Rappel des défis à 18 h'; }
+renderRemindBtn();
+$('remindBtn').onclick = async () => { closeAccMenu(); const t = await WDRemind.toggle(); renderRemindBtn(); if (t) toast(t); };
+// Après le défi du jour : une proposition au plus par jour (reminder.js espace aussi après un refus).
+function askRemind() {
+  const day = zurichDate(serverNow());
+  if (S.remindAsked === day || $('results').hidden) return;
+  S.remindAsked = day;
+  setTimeout(() => { if (!$('results').hidden && WDRemind.maybeAsk(S.streak || 0)) renderRemindBtn(); }, 1800);
+}
+
+/* ---------- Première course : conseils, mesure, prochaine étape ---------- */
+// Conseils sous la barre pendant la toute première course de l'appareil (n'importe quel mode).
+// Course facile des débutants : en plus, le lien vers la cible est signalé quand il est sur la page.
+function afterArticle(isMove) {
+  if (!S.room || S.room.status !== 'playing') return;
+  if (!isMove && S.path.length === 1) {
+    clearTimeout(S.coachT);
+    S.coach = store.get('wd-coached') ? null : { help: !!(S.solo && S.firstRun), slow: false };
+    if (S.coach) S.coachT = setTimeout(() => { if (S.coach && S.path.length === 1 && !S.finished) { S.coach.slow = true; renderCoach(); } }, 20000);
+  }
+  renderCoach();
+  trackFirstMove();
+}
+function renderCoach() {
+  const c = S.coach, box = $('coach');
+  $('artBody').querySelectorAll('a.wl.hint').forEach(a => a.classList.remove('hint'));
+  if (!c || S.finished || !S.room) { box.hidden = true; return; }
+  const tgt = '<b>' + esc(S.room.target) + '</b>', n = S.path.length - 1;
+  const link = c.help ? [...$('artBody').querySelectorAll('a.wl')].find(a => norm(a.dataset.to) === S.targetKey) : null;
+  let html = '';
+  if (link) {
+    link.classList.add('hint');
+    const sec = link.closest('details'); if (sec) sec.open = true;
+    html = IC('target') + ' Le lien ' + tgt + ' est sur cette page : il clignote, touche-le !';
+  } else if (n === 0) html = c.slow
+    ? IC('sparkle') + ' Astuce : pense à un sujet proche de ' + tgt + ' (un pays, une ville, un thème) et cherche-le dans le texte. Les titres de section s’ouvrent d’un toucher.'
+    : IC('cursor') + ' Touche un <span class="wl-demo">lien bleu</span> pour passer à un autre article. But : arriver à ' + tgt + '.';
+  else if (n === 1) html = IC('check') + ' Bien joué ! Continue de lien en lien jusqu’à ' + tgt + '.';
+  box.innerHTML = html; box.hidden = !html;
+}
+function endCoach() {
+  clearTimeout(S.coachT);
+  if (S.coach) store.set('wd-coached', 1);
+  S.coach = null; $('coach').hidden = true;
+}
+// Mesure (anonyme) de la première course : nombre de clics, secondes, puis issue. Sert à voir où les débutants décrochent.
+function firstRef() { return db.ref('starts/' + uid + '/first'); }
+function trackFirstMove() {
+  if (!S.trackFirst || !S.room || !S.room.startedAt) return;
+  const s = Math.max(0, Math.round((serverNow() - S.room.startedAt) / 1000));
+  firstRef().set({ c: Math.max(0, S.path.length - 1), s: Math.min(86400, s) }).catch(() => {});
+}
+function trackFirstEnd(room) {
+  if (!S.trackFirst) return;
+  S.trackFirst = false;
+  const me = room.players.find(p => p.id === S.me.playerId); if (!me) return;
+  const s = Math.max(0, Math.round(((me.finishedAt || serverNow()) - room.startedAt) / 1000));
+  firstRef().set({ c: Math.max(0, me.clicks || 0), s: Math.min(86400, s), end: me.finishedAt ? 'ok' : me.gaveUp ? 'abandon' : 'fin' }).catch(() => {});
+}
+// Écran de résultats : la suite logique (quiz du jour après le défi ; défi du jour après la première course).
+function nextCard(cls, icon, title, text, btn) {
+  return '<span class="nx-ic">' + IC(icon) + '</span><b>' + title + '</b><p>' + text + '</p>' + btn;
+}
+function renderNextStep(room) {
+  const box = $('nextBox'); let html = '', cls = '';
+  const d = S.daily, dailyDone = d && d.run && (d.run.finishedAt || d.run.gaveUp);
+  if (S.solo && S.solo.daily) {
+    if (!S.quizDone) { cls = 'quiz'; html = nextCard(cls, 'image', 'Encore 2 minutes ?', 'Le quiz du jour t’attend : 10 photos, 10 secondes chacune. Il compte aussi pour ta série.', '<a class="btn" href="/quiz">Jouer le quiz du jour</a>'); }
+  } else if (S.solo && S.firstDone) {
+    if (S.firstDone.ok && d && !dailyDone && !(S.dailyResult && S.dailyResult.key === d.key))
+      html = nextCard('', 'calendar', 'Prochaine étape : le défi du jour', 'Le même parcours mystère pour tout le monde, une seule tentative. Compare ton temps aux autres !', '<button type="button" class="btn" data-next="daily">Jouer le défi du jour</button>');
+    else if (!S.firstDone.ok)
+      html = nextCard('', 'dice', 'Pas grave !', 'La première est la plus dure. Essaie un autre parcours facile : en 2 clics, c’est faisable.', '<button type="button" class="btn" data-next="easy">Un autre parcours facile</button>');
+  }
+  box.className = 'next-box' + (cls ? ' ' + cls : '');
+  box.innerHTML = html; box.hidden = !html;
+}
+$('nextBox').addEventListener('click', async e => {
+  const b = e.target.closest('[data-next]'); if (!b) return;
+  if (b.dataset.next === 'daily') { S.firstDone = null; await leave(); $('dPlay').click(); return; }
+  if (b.dataset.next === 'easy') {
+    const last = S.firstDone && S.firstDone.start, pool = EASY.filter(p => p[0] !== last);
+    const pair = pool[Math.floor(Math.random() * pool.length)];
+    S.firstDone = null; S.solo = null; S.firstRun = true;
+    startSolo({ start: pair[0], target: pair[1] });
+  }
+});
 
 /* ---------- Mes badges ---------- */
 // Un badge par page d'arrivée atteinte ; chaque obtention = un exemplaire. Rareté = nombre de joueurs qui le possèdent.
@@ -2273,7 +2386,7 @@ async function showProfile(id) {
       stat(v.games || 0, 'parties classées') +
       stat(v.wins || 0, 'victoires en classé') +
       stat(v.soloDone || 0, 'parcours solo réussis') +
-      stat((v.dailyStreak || 0) + (v.dailyBest > (v.dailyStreak || 0) ? '<small> / ' + v.dailyBest + '</small>' : ''), 'série au défi du jour' + (v.dailyBest > (v.dailyStreak || 0) ? ' (record)' : '')) +
+      stat((v.dailyStreak || 0) + (v.dailyBest > (v.dailyStreak || 0) ? '<small> / ' + v.dailyBest + '</small>' : ''), 'jours d’affilée (défis du jour)' + (v.dailyBest > (v.dailyStreak || 0) ? ' (record)' : '')) +
       stat(IC('badge', 'gold') + ' ' + (v.badges || 0), 'badges différents') +
       stat(IC('liens', 'liens') + ' ' + (v.liens || 0), 'Liens') +
       stat(IC('trophy', 'gold') + ' ' + (v.achTotal || 0), 'paliers de succès') +
@@ -2662,10 +2775,9 @@ function soloEnd() {
   const p = S.solo.me;
   S.solo.status = 'done';
   S.solo.rec = p.finishedAt ? saveSoloRecord(S.solo, p.finishedAt - S.solo.startedAt, p.path.length - 1) : null;
-  if (S.firstRun) {  // première course du « Jouer maintenant » : on montre la suite
-    S.firstRun = false;
-    if (p.finishedAt) setTimeout(() => toast(IC('sparkle', 'gold') + ' Première course réussie !<small>Essaie le défi du jour, ou défie un ami avec le bouton WhatsApp.</small>', 6500), 900);
-  }
+  // Course facile des débutants : la suite est proposée sur l'écran de résultats (renderNextStep).
+  S.firstDone = S.firstRun ? { ok: !!p.finishedAt, start: S.solo.start } : null;
+  S.firstRun = false;
   saveSoloHistory(S.solo);
   if (S.solo.daily) finishDaily(S.solo);
   soloEmit();
@@ -2720,6 +2832,7 @@ async function loadDaily() {
     db.ref('dailyScores/' + key + '/' + uid).once('value').then(s => s.val()).catch(() => null)
   ]);
   S.daily.run = run; S.daily.score = score;
+  S.quizDone = await db.ref('quizDaily/' + key + '/' + uid + '/res').once('value').then(s => s.exists()).catch(() => false);
   await loadStreak(key);
   // Le départ et la cible ne sont lisibles qu'après le lancement (règle de sécurité).
   if (run && run.startedAt) await revealDaily(S.daily);
@@ -2737,11 +2850,17 @@ async function loadStreak(todayKey) {
     const yest = zurichDate(serverNow() - 864e5);
     S.streak = u.dailyLast === todayKey || u.dailyLast === yest ? (u.dailyStreak || 0) : 0;
     S.streakToday = u.dailyLast === todayKey;
+    // Cadeau de série (badge + Liens) donné par le serveur : annoncé une fois.
+    const g = u.streakGift;
+    if (g && g.at && g.at > (+store.get('wd-gift-seen') || 0)) {
+      store.set('wd-gift-seen', g.at);
+      setTimeout(() => toast(IC('flame', 'fire') + ' ' + g.n + ' jours d’affilée !<small>Cadeau : le badge « ' + esc(g.t) + ' » et ' + g.liens + ' Liens.</small>', 7000), 1200);
+    }
   } catch (e) { S.streak = 0; S.streakToday = false; }
 }
 function streakText() {
   if (!S.streak) return '';
-  return IC('flame', 'fire') + ' ' + S.streak + ' jour' + (S.streak > 1 ? 's' : '') + ' d’affilée' + (S.streakToday ? '' : ' : joue aujourd’hui pour continuer !');
+  return IC('flame', 'fire') + ' ' + S.streak + ' jour' + (S.streak > 1 ? 's' : '') + ' d’affilée' + (S.streakToday ? '' : ' : joue le défi ou le quiz du jour pour la garder !');
 }
 function ordinal(n) { return n + '<sup>' + (n === 1 ? 'er' : 'e') + '</sup>'; }
 function renderDailyCard() {
@@ -2781,6 +2900,7 @@ function renderDailyCard() {
       (S.streak > 1 ? '<br>' + streakText() : '');
     dailyRank(d.key).then(r => { if (r && S.daily === d && !d.rank) { d.rank = r.rank; d.total = r.total; renderDailyCard(); } });
   }
+  if (done && !S.quizDone) $('dMe').insertAdjacentHTML('beforeend', '<br><a class="d-quiz" href="/quiz">' + IC('image') + ' Et le quiz du jour ? 2 minutes →</a>');
 }
 // Classement du jour : scores valides triés par temps, puis par clics.
 async function dailyScores(key) {
@@ -2827,7 +2947,7 @@ function finishDaily(r) {
   if (r.me.finishedAt) upd.finishedAt = NOW(); else upd.gaveUp = true;
   S.dailyResult = { key: r.daily, state: r.me.finishedAt ? 'wait' : 'gaveup' };
   ref.update(upd).then(() => {
-    if (!r.me.finishedAt) return;
+    if (!r.me.finishedAt) { setTimeout(async () => { await loadStreak(r.daily); askRemind(); }, 2500); return; }
     const sRef = db.ref('dailyScores/' + r.daily + '/' + uid);
     const off = setTimeout(() => sRef.off(), 60000);
     sRef.on('value', async s => {
@@ -2840,6 +2960,7 @@ function finishDaily(r) {
         await loadStreak(r.daily);
       }
       if (S.solo && S.solo.daily === r.daily && !$('results').hidden) renderResults();
+      askRemind();
     });
   }).catch(e => { S.dailyResult = { key: r.daily, state: 'error', error: e.code || e.message }; if (!$('results').hidden) renderResults(); });
 }
@@ -3367,6 +3488,7 @@ async function loadArticle(title, isMove) {
     $('artSrc').innerHTML = 'Article « <a href="' + esc(wu) + '" target="_blank" rel="noopener">' + esc(real) + '</a> » de Wikipédia, par <a href="' + esc(WIKI + '/w/index.php?title=' + encodeURIComponent(real) + '&action=history') + '" target="_blank" rel="noopener">ses contributeurs</a>, sous licence <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.fr" target="_blank" rel="noopener">CC BY-SA 4.0</a> (mise en page adaptée pour le jeu). Auteurs et licences des images : sur la page Wikipédia.';
     window.scrollTo(0, 0);
     if (S.finished) { stopTick(); renderTimer(); }
+    afterArticle(isMove);
   } catch (e) {
     $('artErr').textContent = e.message || 'Erreur de chargement. Réessaie.';
   } finally {
@@ -3596,6 +3718,7 @@ function renderResults() {
     $('soloRecord').hidden = !recTxt;
   }
   renderChallengeResult(room);
+  endCoach(); trackFirstEnd(room); renderNextStep(room);
   renderShare(room);
   maybeCelebrate(room);
 }

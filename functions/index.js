@@ -498,6 +498,7 @@ exports.quizDailyXp = onValueCreated(Object.assign({ ref: '/quizDaily/{date}/{ui
   const v = event.data.val() || {};
   const name = (await db.ref('quizDaily/' + event.params.date + '/' + event.params.uid + '/name').once('value')).val();
   await awardQuiz(event.params.uid, v.score, name);
+  await bumpStreak(event.params.uid, event.params.date, name); // le quiz du jour compte aussi pour la série
 });
 exports.pruneSoloHistory = onValueCreated(Object.assign({ ref: '/history/{uid}/{key}' }, DB_OPTS), async event => {
   if (!db) db = admin.database();
@@ -776,21 +777,46 @@ exports.verifyDaily = onValueCreated(Object.assign({ ref: '/dailyRuns/{date}/{ui
     at: run.finishedAt
   });
   // Pas de fantôme ici : le défi du jour en cours n'est jamais proposé (voir dailyGhosts, après minuit).
-  // Série de jours : +1 si le défi d'hier a aussi été réussi, sinon on repart à 1.
-  if (!err) {
-    const [y, m, d] = date.split('-').map(Number);
-    const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
-    await db.ref('users/' + uid).transaction(p => {
-      p = p || {};
-      if (p.dailyLast === date) return p;
-      p.dailyStreak = (p.dailyLast === yesterday ? (p.dailyStreak || 0) : 0) + 1;
-      p.dailyBest = Math.max(p.dailyBest || 0, p.dailyStreak);
-      p.dailyLast = date;
-      if (!p.name && run.name) p.name = String(run.name).slice(0, 16);
-      return p;
-    });
-  }
+  // Série de jours : un chemin refusé (triche, bug) ne compte pas.
+  if (!err) await bumpStreak(uid, date, run.name);
 });
+// Abandon du défi du jour : la tentative compte quand même pour la série.
+exports.dailyGaveUp = onValueCreated(Object.assign({ ref: '/dailyRuns/{date}/{uid}/gaveUp' }, DB_OPTS), async event => {
+  if (!db) db = admin.database();
+  const { date, uid } = event.params;
+  const run = (await db.ref('dailyRuns/' + date + '/' + uid).once('value')).val() || {};
+  if (run.startedAt && !run.finishedAt) await bumpStreak(uid, date, run.name);
+});
+
+/* ===================== Série de jours ===================== */
+// Un jour compte dès qu'on a joué le défi de la course (arrivé ou abandon) OU le quiz du jour.
+// +1 si la veille comptait aussi, sinon on repart à 1. Cadeaux : un badge et des Liens à 7 et 30 jours.
+const STREAK_GIFTS = { 7: { t: 'Flamme olympique', liens: 20 }, 30: { t: 'Phénix', liens: 100 } };
+function nextStreak(p, date) {
+  if (p.dailyLast && p.dailyLast >= date) return null; // déjà compté aujourd'hui (ou jour plus ancien)
+  const [y, m, d] = date.split('-').map(Number);
+  const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  const n = (p.dailyLast === yesterday ? (p.dailyStreak || 0) : 0) + 1;
+  return { dailyStreak: n, dailyBest: Math.max(p.dailyBest || 0, n), dailyLast: date };
+}
+async function bumpStreak(uid, date, name) {
+  let n = 0;
+  await db.ref('users/' + uid).transaction(p => {
+    p = p || {}; n = 0;
+    const s = nextStreak(p, date); if (!s) return p;
+    Object.assign(p, s); n = s.dailyStreak;
+    if (!p.name && name) p.name = String(name).slice(0, 16);
+    return p;
+  });
+  const gift = STREAK_GIFTS[n];
+  if (!gift) return;
+  // Une seule fois par palier et par jour (verrou), même si deux défis finissent en même temps.
+  const lock = await db.ref('users/' + uid + '/streakGift').transaction(g => g && g.n === n && g.date === date ? undefined : { n, date, t: gift.t, liens: gift.liens, at: Date.now() });
+  if (!lock.committed) return;
+  await db.ref('users/' + uid + '/liens').transaction(v => (v || 0) + gift.liens);
+  await addCopy(uid, badgeKey(gift.t), gift.t, Date.now());
+  logger.info('Série de jours : cadeau', { uid, jours: n, badge: gift.t });
+}
 
 // Après minuit : la meilleure course valide de chaque défi terminé rejoint la réserve de fantômes.
 async function addDailyGhost(date) {
@@ -1238,6 +1264,44 @@ exports.stripeWebhook = onRequest({ region: 'europe-west1', secrets: [STRIPE_SEC
     logger.error('Erreur de traitement du webhook', { type: event.type, error: e.message });
     res.status(500).send('Erreur');
   }
+});
+
+/* ===================== Rappel des défis du jour (notifications) ===================== */
+// Chaque jour à 18 h (heure suisse) : une notification aux joueurs qui l'ont demandée (après un défi du jour)
+// et qui n'ont joué ni le défi de la course ni le quiz du jour. Clé privée VAPID : secret Firebase.
+const VAPID_PUBLIC = 'BJy6n4uraZoMR59gu3TDVYiHxa-PAtcEvqK17PPo0Mp0F24JvkN_7YAiJ8P-FSReOrIksnjCQ6B4JDIFycgPITo';
+const VAPID_PRIVATE_KEY = defineSecret('VAPID_PRIVATE_KEY');
+exports.dailyReminder = onSchedule({ schedule: 'every day 18:00', timeZone: 'Europe/Zurich', region: 'europe-west1', secrets: [VAPID_PRIVATE_KEY] }, async () => {
+  if (!db) db = admin.database();
+  const webpush = require('web-push');
+  webpush.setVapidDetails('https://wikiduel.ch', VAPID_PUBLIC, VAPID_PRIVATE_KEY.value().trim());
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const [y, m, d] = today.split('-').map(Number);
+  const yesterday = new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10);
+  const [day, subs, runs, quiz] = await Promise.all(['daily/' + today, 'pushSubs', 'dailyRuns/' + today, 'quizDaily/' + today].map(p => db.ref(p).once('value').then(s => s.val())));
+  if (!subs) { logger.info('Rappel : aucun abonné'); return; }
+  let sent = 0, gone = 0, skipped = 0;
+  const drop = {};
+  for (const uid of Object.keys(subs)) {
+    const r = runs && runs[uid], q = quiz && quiz[uid];
+    if ((r && (r.finishedAt || r.gaveUp)) || (q && q.res)) { skipped++; continue; } // déjà joué aujourd'hui
+    const u = (await db.ref('users/' + uid).once('value')).val() || {};
+    const streak = u.dailyLast === yesterday ? (u.dailyStreak || 0) : 0;
+    const payload = JSON.stringify(streak > 0
+      ? { title: '🔥 Ta série de ' + streak + ' jour' + (streak > 1 ? 's' : '') + ' t’attend', body: 'Joue le défi du jour ou le quiz du jour avant minuit pour la garder.', url: '/?src=rappel', tag: 'wikiduel-daily-' + today }
+      : { title: '🗓️ Défi du jour' + (day && day.n ? ' n°' + day.n : ''), body: 'Un parcours mystère et 10 questions t’attendent. À toi de jouer !', url: '/?src=rappel', tag: 'wikiduel-daily-' + today });
+    for (const [id, s] of Object.entries(subs[uid] || {})) {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys }, payload, { TTL: 5 * 3600, urgency: 'normal' });
+        sent++;
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) { drop['pushSubs/' + uid + '/' + id] = null; gone++; } // abonnement expiré
+        else logger.warn('Rappel non envoyé', { uid, code: e.statusCode, error: String(e.body || e.message).slice(0, 200) });
+      }
+    }
+  }
+  if (gone) await db.ref().update(drop);
+  logger.info('Rappel envoyé', { date: today, envoyes: sent, expires: gone, dejaJoue: skipped });
 });
 
 /* ===================== Photo de profil : un de ses badges ===================== */
