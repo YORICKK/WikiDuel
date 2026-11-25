@@ -244,7 +244,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
   <div class="wrap">
     <nav class="modes" aria-label="Choisir le jeu"><a href="/"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg> Course</a><a href="/quiz" class="on" aria-current="page"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Quiz</a></nav>
     <h1 class="logo">Wiki<span>Duel</span><em>Quiz</em></h1>
-    <p class="pitch">Un nom, quatre photos tirées de Wikipédia : touche la bonne, le plus vite possible. Parfois l’inverse : une photo, quatre noms. 10 questions, 10 secondes chacune.</p>
+    <p class="pitch">Un nom, quatre photos, ou l’inverse. Trouve la bonne réponse, vite ! 10 questions, 10 secondes chacune.</p>
     <div class="demo" aria-hidden="true"><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#mountain"></use></svg></i><i class="ok"><svg class="ic" aria-hidden="true"><use href="/icons.svg#wave"></use></svg></i><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#paw"></use></svg></i><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#car"></use></svg></i></div>
 
     <span id="dailyTop" hidden></span>
@@ -381,7 +381,7 @@ const IC = (n, c) => '<svg class="ic' + (c ? ' ' + c : '') + '" aria-hidden="tru
 const QN = 10, QDUR = 10000, REVEAL = 2600, SLOT = QDUR + 3500;
 const DAILY_LIMIT = 15 * 60000; // délai pour enregistrer le quiz du jour après le départ (voir database.rules.json)
 const LAUNCH = '2026-11-13'; // quiz du jour n°1
-const INV_SINCE = '2026-11-26', INV_N = 3; // questions « une photo, quatre noms » : 3 sur 10 (quiz du jour : à partir de cette date)
+const INV_SINCE = '2026-11-26', INV_N = 4; // questions « une photo, quatre noms » : 4 sur 10 (quiz du jour : à partir de cette date)
 const S = { clockOffset: 0, bank: null };
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
