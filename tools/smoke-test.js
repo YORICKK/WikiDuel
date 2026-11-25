@@ -134,10 +134,17 @@ function step(name, ok, detail) {
     step('WikiDuel Quiz : ouvert aux invités', gate.google && gate.open, gate.open ? '' : 'un mode est bloqué pour les invités');
     // Partie solo (n'écrit en base qu'à la fin, que le test n'atteint pas).
     await page.evaluate(() => { document.getElementById('name').value = 'Test auto'; startSolo(); });
-    await page.waitForFunction(() => !document.getElementById('game').hidden && document.querySelectorAll('#gGrid .tile img').length === 4 && !!document.getElementById('gName').textContent, { timeout: 30000 }).catch(() => {});
-    const quiz = await page.evaluate(() => ({ game: !document.getElementById('game').hidden, name: document.getElementById('gName').textContent,
-      imgs: [...document.querySelectorAll('#gGrid .tile img')].filter(i => i.complete && i.naturalWidth > 0).length }));
-    step('WikiDuel Quiz : partie solo', quiz.game && quiz.imgs === 4, quiz.name ? quiz.name + ', ' + quiz.imgs + ' images' : 'question non affichée');
+    // Première question : « un nom, quatre photos » ou l'inverse « une photo, quatre noms ».
+    await page.waitForFunction(() => !document.getElementById('game').hidden && (document.querySelectorAll('#gGrid .tile img').length === 4 || (document.querySelectorAll('#gGrid .word').length === 4 && !!document.querySelector('#gName .qpic img'))), { timeout: 30000 }).catch(() => {});
+    await page.waitForFunction(() => [...document.querySelectorAll('#gGrid .tile img, #gName .qpic img')].every(i => i.complete), { timeout: 15000 }).catch(() => {});
+    const quiz = await page.evaluate(() => {
+      const ok = i => i.complete && i.naturalWidth > 0, words = [...document.querySelectorAll('#gGrid .word')].map(b => b.textContent);
+      const pic = document.querySelector('#gName .qpic img');
+      return { game: !document.getElementById('game').hidden, inv: words.length === 4, name: pic ? words.join(' / ') : document.getElementById('gName').textContent,
+        imgs: [...document.querySelectorAll('#gGrid .tile img')].filter(ok).length, pic: !!pic && ok(pic) };
+    });
+    step('WikiDuel Quiz : partie solo', quiz.game && (quiz.inv ? quiz.pic : quiz.imgs === 4),
+      !quiz.name ? 'question non affichée' : quiz.inv ? 'une photo' + (quiz.pic ? '' : ' (non chargée)') + ', 4 noms : ' + quiz.name : quiz.name + ', ' + quiz.imgs + ' images');
     await page.evaluate(() => { G.over = true; showBoard('today'); });
     await page.waitForFunction(() => !/Chargement/.test(document.getElementById('bList').innerText), { timeout: 15000 }).catch(() => {});
     const qb = await page.evaluate(() => document.getElementById('bList').innerText);
