@@ -169,6 +169,13 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .tile.dim { opacity: .45; }
 .tile .tag { position: absolute; left: 6px; right: 6px; bottom: 6px; padding: 4px 6px; border-radius: 8px; background: rgba(10,15,30,.78); color: #fff;
   font: 700 12px/1.25 var(--display); text-align: center; }
+/* Question inversée : la photo en haut, quatre noms en dessous */
+.qpic { display: block; width: min(100%, 300px); aspect-ratio: 4 / 3; margin: 2px auto 0; border-radius: 16px; overflow: hidden; border: 3px solid var(--line); background: var(--card); }
+.qpic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.qpic.flag img { object-fit: contain; padding: 6%; }
+.tile.word { aspect-ratio: auto; min-height: 72px; padding: 10px 12px; color: var(--ink); font: 800 16px/1.2 var(--display); text-align: center; overflow-wrap: anywhere; hyphens: auto; }
+.tile.word { padding: 10px 26px; }
+.tile.word .mark { top: 4px; right: 4px; width: 20px; height: 20px; font-size: 12px; }
 .tile .mark { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font: 800 17px var(--display); }
 .tile.good .mark { background: var(--ok); }
 .tile.wrong .mark { background: var(--bad); }
@@ -237,7 +244,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
   <div class="wrap">
     <nav class="modes" aria-label="Choisir le jeu"><a href="/"><svg class="ic" aria-hidden="true"><use href="/icons.svg#flag"></use></svg> Course</a><a href="/quiz" class="on" aria-current="page"><svg class="ic" aria-hidden="true"><use href="/icons.svg#image"></use></svg> Quiz</a></nav>
     <h1 class="logo">Wiki<span>Duel</span><em>Quiz</em></h1>
-    <p class="pitch">Un nom, quatre photos tirées de Wikipédia. Touche la bonne, le plus vite possible. 10 questions, 10 secondes chacune.</p>
+    <p class="pitch">Un nom, quatre photos tirées de Wikipédia : touche la bonne, le plus vite possible. Parfois l’inverse : une photo, quatre noms. 10 questions, 10 secondes chacune.</p>
     <div class="demo" aria-hidden="true"><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#mountain"></use></svg></i><i class="ok"><svg class="ic" aria-hidden="true"><use href="/icons.svg#wave"></use></svg></i><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#paw"></use></svg></i><i><svg class="ic" aria-hidden="true"><use href="/icons.svg#car"></use></svg></i></div>
 
     <span id="dailyTop" hidden></span>
@@ -374,6 +381,7 @@ const IC = (n, c) => '<svg class="ic' + (c ? ' ' + c : '') + '" aria-hidden="tru
 const QN = 10, QDUR = 10000, REVEAL = 2600, SLOT = QDUR + 3500;
 const DAILY_LIMIT = 15 * 60000; // délai pour enregistrer le quiz du jour après le départ (voir database.rules.json)
 const LAUNCH = '2026-11-13'; // quiz du jour n°1
+const INV_SINCE = '2026-11-26', INV_N = 3; // questions « une photo, quatre noms » : 3 sur 10 (quiz du jour : à partir de cette date)
 const S = { clockOffset: 0, bank: null };
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
@@ -421,7 +429,7 @@ function buildQuiz(seed, day) {
   order = order.slice(0, QN);
   const LIMIT = [10, 12, 14, 18, 22, 26, 32, 40, 55, 999]; // de plus en plus pointu
   const used = new Set();
-  return order.map((cat, k) => {
+  const qs = order.map((cat, k) => {
     const all = b.items.filter(it => it.c === cat);
     let pool = all.filter(it => it.r < LIMIT[k] && !used.has(it.id));
     if (pool.length < 1) pool = all.filter(it => !used.has(it.id));
@@ -431,9 +439,15 @@ function buildQuiz(seed, day) {
     const opts = shuffle([ans].concat(others));
     return { cat, ans, opts, good: opts.indexOf(ans) };
   });
+  if (!day || day >= INV_SINCE) {
+    const r2 = rngFrom(seed + '|inv'), idx = [...Array(QN).keys()];
+    for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(r2() * (i + 1)); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+    idx.slice(0, INV_N).forEach(i => { if (qs[i]) qs[i].inv = true; });
+  }
+  return qs;
 }
 function preload(qs, onProgress) {
-  const urls = [...new Set(qs.flatMap(q => q.opts.map(imgUrl)))];
+  const urls = [...new Set(qs.flatMap(q => (q.inv ? [q.ans] : q.opts).map(imgUrl)))];
   let done = 0;
   return Promise.race([
     Promise.all(urls.map(u => new Promise(res => { const im = new Image(); im.onload = im.onerror = () => { done++; onProgress && onProgress(done / urls.length); res(); }; im.src = u; }))),
@@ -630,11 +644,20 @@ function renderQuestion(i) {
   const q = G.qs[i], cat = S.bank.cats[q.cat];
   $('gNum').textContent = i + 1;
   $('gCat').textContent = cat.name;
-  $('gHint').textContent = cat.flag ? 'Touche le drapeau de ce pays' : 'Touche : ' + cat.one;
-  $('gName').textContent = q.ans.l;
   $('gInfo').innerHTML = '';
-  $('gGrid').innerHTML = q.opts.map((it, k) =>
-    '<button type="button" class="tile' + (cat.flag ? ' flag' : '') + '" data-k="' + k + '" aria-label="Image ' + (k + 1) + '"><img src="' + imgUrl(it) + '" alt="" draggable="false"></button>').join('');
+  $('game').classList.toggle('inv', !!q.inv);
+  if (q.inv) {
+    // Une photo, quatre noms
+    $('gHint').textContent = cat.flag ? 'De quel pays est ce drapeau ?' : 'Quel est le bon nom ?';
+    $('gName').innerHTML = '<span class="qpic' + (cat.flag ? ' flag' : '') + '"><img src="' + imgUrl(q.ans) + '" alt="" draggable="false"></span>';
+    $('gGrid').innerHTML = q.opts.map((it, k) =>
+      '<button type="button" class="tile word" data-k="' + k + '">' + esc(it.l) + '</button>').join('');
+  } else {
+    $('gHint').textContent = cat.flag ? 'Touche le drapeau de ce pays' : 'Touche : ' + cat.one;
+    $('gName').textContent = q.ans.l;
+    $('gGrid').innerHTML = q.opts.map((it, k) =>
+      '<button type="button" class="tile' + (cat.flag ? ' flag' : '') + '" data-k="' + k + '" aria-label="Image ' + (k + 1) + '"><img src="' + imgUrl(it) + '" alt="" draggable="false"></button>').join('');
+  }
   $('gGrid').onclick = e => { const b = e.target.closest('.tile'); if (b) answer(+b.dataset.k); };
 }
 function nextQuestion() {
@@ -682,7 +705,7 @@ function reveal() {
     else if (k === r.p) el.classList.add('wrong');
     else el.classList.add('dim');
     if (k === q.good || k === r.p) el.insertAdjacentHTML('beforeend', '<span class="mark">' + (k === q.good ? '✓' : '✗') + '</span>');
-    el.insertAdjacentHTML('beforeend', '<span class="tag">' + esc(it.l) + '</span>');
+    if (!q.inv) el.insertAdjacentHTML('beforeend', '<span class="tag">' + esc(it.l) + '</span>');
     el.disabled = true;
   });
   $('gScore').textContent = fmtPts(G.score);
