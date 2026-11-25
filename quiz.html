@@ -392,7 +392,7 @@ function zurichDate(t) { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Eu
 function dailyNum(d) { return Math.round((Date.parse(d) - Date.parse(LAUNCH)) / 864e5) + 1; }
 function dateLabel(d) { return new Date(d + 'T12:00:00Z').toLocaleDateString('fr-CH', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); }
 const fmtPts = n => n.toLocaleString('fr-CH');
-const imgUrl = it => '/quiz-data/img/' + it.id + '.jpg';
+const imgUrl = it => '/quiz-data/img/' + it.id + '.jpg' + (it.iv ? '?v=' + it.iv : ''); // iv : image remplacée (contourne le cache de 7 jours)
 // Crédit d'une image : auteur · licence (lien vers le texte de la licence) · lien vers la page Commons.
 function crHtml(it) {
   const cr = String(it.cr || ''), k = cr.lastIndexOf(' · ');

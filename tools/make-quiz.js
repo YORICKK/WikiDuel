@@ -99,6 +99,8 @@ async function fromSparql(c) {
   }
   return [...seen.values()].slice(0, c.n);
 }
+// Image choisie à la main quand celle de l'article ne montre pas bien le sujet.
+const IMG_OVERRIDE = { 'Natation': 'Swimming.breaststroke.arp.750pix.jpg' }; // l'article montre un bébé sous l'eau
 async function fromTitles(titles) {
   const out = [];
   for (let i = 0; i < titles.length; i += 40) {
@@ -111,7 +113,7 @@ async function fromTitles(titles) {
       let tt = t; for (let n = 0; n < 3 && redir.has(tt); n++) tt = redir.get(tt);
       const p = byTitle.get(tt);
       if (!p || p.missing !== undefined || !p.pageimage) { console.warn('  ✗ ' + t); return; }
-      out.push({ title: p.title, label: t, file: p.pageimage.replace(/_/g, ' '), sl: 1000 - (i + k) });
+      out.push({ title: p.title, label: t, file: IMG_OVERRIDE[t] || p.pageimage.replace(/_/g, ' '), sl: 1000 - (i + k) });
     });
   }
   return out;
