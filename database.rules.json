@@ -270,6 +270,7 @@
     "quizSolo": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
+        ".indexOn": ["at"],
         "$id": {
           ".write": "auth != null && auth.uid === $uid && !data.exists()",
           ".validate": "newData.hasChildren(['at', 'score', 'ok'])",
@@ -277,6 +278,8 @@
           "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000" },
           "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
           "m": { ".validate": "newData.val() === 'amis'" },
+          "marks": { ".validate": "newData.isString() && newData.val().matches(/^[01]{10}$/)" },
+          "q": { ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{10}(,[0-9a-f]{10}){9}$/)" },
           "name": { ".validate": "newData.isString() && newData.val().length <= 16" },
           "$other": { ".validate": false }
         }
@@ -311,6 +314,7 @@
             "ok": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10" },
             "marks": { ".validate": "newData.isString() && newData.val().matches(/^[01]{10}$/)" },
             "ms": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+            "q": { ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{10}(,[0-9a-f]{10}){9}$/)" },
             "at": { ".validate": "newData.isNumber()" },
             "$other": { ".validate": false }
           },

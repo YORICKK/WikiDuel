@@ -219,6 +219,32 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
 .lb strong { font: 700 16px var(--display); }
 .lb small { display: block; font: 500 12px var(--mono); color: var(--muted); }
 .lb .sc { font: 800 17px var(--mono); }
+/* Mes parties (historique du quiz) */
+.home-links { grid-template-columns: 1fr 1fr; }
+.h-sum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.h-sum div { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 6px; text-align: center; }
+.h-sum b { display: block; font: 800 20px var(--mono); }
+.h-sum small { font: 600 11px/1.2 var(--display); color: var(--muted); }
+.h-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.h-list details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.h-list details[open] { border-color: var(--quiz); }
+.h-list summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; }
+.h-list summary::-webkit-details-marker { display: none; }
+.h-list summary:focus-visible { outline: 3px solid var(--flag); outline-offset: 2px; border-radius: 12px; }
+.h-ic { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--paper); color: var(--quiz); }
+.h-ic .ic { width: 18px; height: 18px; }
+.h-list strong { font: 700 15px var(--display); display: block; }
+.h-list small { font: 500 12px var(--mono); color: var(--muted); display: block; }
+.h-sc { text-align: right; font: 800 16px var(--mono); }
+.h-sc small { font-weight: 600; }
+.h-dots { display: flex; gap: 3px; margin-top: 5px; }
+.h-dots i { width: 9px; height: 9px; border-radius: 3px; background: var(--bad); opacity: .85; }
+.h-dots i.y { background: var(--ok); }
+.h-det { padding: 0 10px 10px; }
+.h-det .recap li { grid-template-columns: 44px 1fr auto; }
+.h-det .recap img { width: 44px; height: 44px; }
+.h-det .recap .s:not(.ko) { color: var(--ok); }
+.h-det p { margin: 0; color: var(--muted); font-size: 14px; }
 .lb-empty { justify-content: center; text-align: center; color: var(--muted); grid-template-columns: 1fr !important; }
 .back-top { justify-self: start; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; margin: 0 0 6px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 700 14px var(--display); cursor: pointer; }
@@ -305,6 +331,7 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
     <span id="dailyDone" hidden></span>
     <nav class="home-links" aria-label="Classements">
       <button id="board" class="home-link"><svg class="ic" aria-hidden="true"><use href="/icons.svg#trophy"></use></svg> Classement</button>
+      <button id="histBtn" class="home-link"><svg class="ic" aria-hidden="true"><use href="/icons.svg#chart"></use></svg> Mes parties</button>
     </nav>
     <a class="insta" href="https://www.instagram.com/wikiduel/" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.3" cy="6.7" r="1.2" fill="currentColor"/></svg> Suis WikiDuel sur Instagram</a>
     <footer>Images : <a href="https://commons.wikimedia.org/" rel="noopener">Wikimedia Commons</a>, crédits affichés après chaque partie. WikiDuel n'est pas affilié à la Wikimedia Foundation.<br>
@@ -372,6 +399,18 @@ footer { text-align: center; font: 500 13px/1.6 var(--display); color: var(--mut
   </div>
 </section>
 
+<!-- MES PARTIES -->
+<section id="history" class="screen" hidden>
+  <div class="wrap">
+    <button type="button" class="back-top" id="hBackTop" aria-label="Retour">← Retour</button>
+    <div><span class="label">WikiDuel Quiz</span><h2 style="font-size:30px">Mes parties</h2></div>
+    <div class="h-sum" id="hSum" hidden></div>
+    <ul class="h-list" id="hList"></ul>
+    <p style="font-size:13px;color:var(--muted);margin:0" id="hNote">Tes 50 dernières parties : solo, entre amis et quiz du jour. Touche une partie pour revoir les réponses.</p>
+    <button class="btn ghost" id="hBack">Retour</button>
+  </div>
+</section>
+
 <!-- CLASSEMENT -->
 <section id="ranking" class="screen" hidden>
   <div class="wrap">
@@ -405,7 +444,7 @@ const store = {
 };
 function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
 function serverNow() { return Date.now() + S.clockOffset; }
-function show(id) { document.documentElement.classList.toggle('in-game', id === 'game'); ['home', 'lobby', 'game', 'results', 'ranking'].forEach(s => { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
+function show(id) { document.documentElement.classList.toggle('in-game', id === 'game'); ['home', 'lobby', 'game', 'results', 'ranking', 'history'].forEach(s => { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
 // Alerte avant de quitter ou recharger la page pendant une partie.
 window.addEventListener('beforeunload', e => {
   if (typeof G === 'undefined' || !G || G.over || $('game').hidden) return;
@@ -738,15 +777,16 @@ function finish() {
   const ok = G.res.filter(r => r && r.s > 0).length;
   const marks = G.qs.map((q, i) => (G.res[i] && G.res[i].s > 0) ? '1' : '0').join('');
   G.marks = marks; G.ok = ok;
+  const qids = G.qs.map(q => q.ans.id).join(','); // questions jouées, pour « Mes parties »
   if (G.mode === 'solo') {
     const b = store.get('wq-best') || 0; G.record = G.score > b; if (G.record) store.set('wq-best', G.score); renderBest();
     // Compteur des parties solo terminées (statistiques d'utilisation).
-    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok, name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
+    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: G.score, ok: ok, marks: marks, q: qids, name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
   }
-  if (G.mode === 'daily') { saveDaily(ok, marks); store.del('wq-daily'); }
+  if (G.mode === 'daily') { saveDaily(ok, marks, qids); store.del('wq-daily'); }
   // Partie entre amis terminée : comptée aussi (elle rapporte de l'XP, comme le solo).
   if (G.mode === 'friends' && G.res.some(r => r)) {
-    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: Math.min(10000, G.score), ok: ok, m: 'amis', name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
+    db.ref('quizSolo/' + uid).push({ at: firebase.database.ServerValue.TIMESTAMP, score: Math.min(10000, G.score), ok: ok, m: 'amis', marks: marks, q: qids, name: (store.get('wd-name') || 'Joueur').slice(0, 16) }).catch(() => {});
   }
   showResults();
 }
@@ -886,10 +926,10 @@ function dailyResumable(d, mine) {
   const p = store.get('wq-daily');
   return !!(p && p.date === d && p.uid === uid && Array.isArray(p.res) && serverNow() - mine.startedAt < DAILY_LIMIT - 60000);
 }
-function saveDaily(ok, marks) {
+function saveDaily(ok, marks, qids) {
   const ms = G.res.reduce((s, r) => s + (r ? r.t : QDUR), 0);
   db.ref('quizDaily/' + G.date + '/' + uid).update({
-    res: { score: G.score, ok: ok, marks: marks, ms: ms, at: firebase.database.ServerValue.TIMESTAMP }, score: G.score
+    res: { score: G.score, ok: ok, marks: marks, ms: ms, q: qids, at: firebase.database.ServerValue.TIMESTAMP }, score: G.score
   }).catch(e => { $('rSub').textContent += ' · score non enregistré (' + e.message + ')'; });
 }
 async function showBoard(which) {
@@ -940,6 +980,59 @@ async function showWeekBoard() {
 }
 $('dBoard').onclick = () => showBoard('today');
 $('board').onclick = () => showBoard('today');
+
+/* ---------- Mes parties (historique du quiz) ---------- */
+// Solo et entre amis : quizSolo/uid ; quiz du jour : quizDaily/date/uid/res (un jour = une lecture, 60 derniers jours).
+async function showHistory() {
+  show('history');
+  $('hSum').hidden = true;
+  $('hList').innerHTML = '<li class="lb-empty">Chargement…</li>';
+  try {
+    await Promise.all([ready, bankReady]);
+    const today = zurichDate(serverNow()), days = [];
+    for (let i = 0; i < 60; i++) { const d = zurichDate(Date.parse(today + 'T12:00:00Z') - i * 864e5); if (d < LAUNCH) break; days.push(d); }
+    const [solo, daily] = await Promise.all([
+      db.ref('quizSolo/' + uid).orderByChild('at').limitToLast(50).once('value').then(s => s.val() || {}),
+      Promise.all(days.map(d => db.ref('quizDaily/' + d + '/' + uid + '/res').once('value').then(s => s.val() && Object.assign({ m: 'jour', d: d }, s.val())).catch(() => null)))
+    ]);
+    const games = Object.values(solo).filter(x => x && x.at).concat(daily.filter(Boolean))
+      .sort((a, b) => b.at - a.at).slice(0, 50);
+    S.hist = games;
+    if (!games.length) { $('hList').innerHTML = '<li class="lb-empty">Aucune partie pour l’instant. Lance un quiz !</li>'; return; }
+    const best = Math.max(...games.map(g => g.score)), avg = Math.round(games.reduce((s, g) => s + g.score, 0) / games.length);
+    const pct = Math.round(100 * games.reduce((s, g) => s + (g.ok || 0), 0) / (games.length * QN));
+    $('hSum').innerHTML = [[games.length, 'parties'], [fmtPts(best), 'meilleur score'], [fmtPts(avg), 'moyenne'], [pct + ' %', 'bonnes réponses']]
+      .map(([v, l]) => '<div><b>' + v + '</b><small>' + l + '</small></div>').join('');
+    $('hSum').hidden = false;
+    $('hList').innerHTML = games.map((g, i) => {
+      const kind = g.m === 'jour' ? ['calendar', 'Quiz du jour n°' + dailyNum(g.d)] : g.m === 'amis' ? ['users', 'Entre amis'] : ['target', 'Solo'];
+      const when = new Date(g.at).toLocaleString('fr-CH', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Zurich' });
+      const dots = g.marks ? '<span class="h-dots" aria-hidden="true">' + g.marks.split('').map(c => '<i' + (c === '1' ? ' class="y"' : '') + '></i>').join('') + '</span>' : '';
+      return '<li><details data-i="' + i + '"><summary><span class="h-ic">' + IC(kind[0]) + '</span>' +
+        '<span><strong>' + esc(kind[1]) + '</strong><small>' + esc(when) + '</small>' + dots + '</span>' +
+        '<span class="h-sc">' + fmtPts(g.score) + '<small>' + (g.ok || 0) + '/' + QN + '</small></span></summary><div class="h-det"></div></details></li>';
+    }).join('');
+  } catch (e) {
+    $('hList').innerHTML = '<li class="lb-empty">Historique indisponible (' + esc(e.code || e.message) + ').</li>';
+  }
+}
+// Détail d'une partie, construit à l'ouverture : les 10 réponses avec photo, juste ou faux.
+$('hList').addEventListener('toggle', e => {
+  const det = e.target; if (!det.open || det.dataset.done) return;
+  det.dataset.done = 1;
+  const g = S.hist[+det.dataset.i], box = det.querySelector('.h-det');
+  const byId = {}; S.bank.items.forEach(it => { byId[it.id] = it; });
+  const items = g.q ? g.q.split(',').map(id => byId[id]) : [];
+  if (!items.length || items.some(it => !it)) { box.innerHTML = '<p>Le détail des réponses n’est disponible que pour les parties jouées à partir du 26 novembre.</p>'; return; }
+  box.innerHTML = '<ul class="recap">' + items.map((it, k) => {
+    const ok = g.marks && g.marks[k] === '1', cat = S.bank.cats[it.c] || {};
+    return '<li><a class="' + (cat.flag ? 'flag' : '') + '" href="' + esc(it.src || '#') + '" target="_blank" rel="noopener"><img loading="lazy" src="' + imgUrl(it) + '" alt="' + esc(it.l) + '"></a>' +
+      '<div style="min-width:0"><b>' + esc(it.l) + '</b><small>' + esc(cat.name || '') + ' · ' + crHtml(it) + '</small></div>' +
+      '<span class="s' + (ok ? '' : ' ko') + '">' + (ok ? '✓' : '✗') + '</span></li>';
+  }).join('') + '</ul>';
+}, true);
+$('histBtn').onclick = () => showHistory();
+$('hBack').onclick = $('hBackTop').onclick = () => show('home');
 $('bBack').onclick = $('bBackTop').onclick = () => { show(G && G.over ? 'results' : 'home'); };
 
 /* ---------- Entre amis ---------- */
